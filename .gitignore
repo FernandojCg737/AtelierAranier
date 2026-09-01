@@ -23,7 +23,7 @@ mobile/.pub-cache/
 mobile/**/ios/Pods/
 
 # Assets de maqueta temporales (con derechos ajenos, nunca deben commitearse)
-frontend/public/video/hero.mp4
+#frontend/public/video/hero.mp4
 
 # IDE / OS
 .vscode/
