@@ -1,4 +1,8 @@
+import json
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEFAULT_CORS_ORIGINS = ["http://localhost:4200", "http://127.0.0.1:4200"]
 
 
 class Settings(BaseSettings):
@@ -14,7 +18,20 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     ALGORITHM: str = "HS256"
 
-    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:4200", "http://127.0.0.1:4200"]
+    # str (no list[str]): asi pydantic-settings no intenta json.loads() el
+    # valor crudo de la env var antes de que lleguemos a parsearlo nosotros.
+    # Tolerante con como se escriba en paneles como Render: JSON
+    # ("[\"a\",\"b\"]"), texto separado por comas ("a,b"), o vacio (default).
+    BACKEND_CORS_ORIGINS: str = ""
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        value = self.BACKEND_CORS_ORIGINS.strip()
+        if not value:
+            return DEFAULT_CORS_ORIGINS
+        if value.startswith("["):
+            return json.loads(value)
+        return [origin.strip() for origin in value.split(",") if origin.strip()]
 
     GOOGLE_CLIENT_ID: str = ""
 
