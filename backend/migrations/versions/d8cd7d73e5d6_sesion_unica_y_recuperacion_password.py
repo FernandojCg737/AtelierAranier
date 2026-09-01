@@ -16,12 +16,15 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("usuario", sa.Column("session_id", sa.String(length=64), nullable=True))
-    op.add_column("usuario", sa.Column("reset_code_hash", sa.String(length=255), nullable=True))
-    op.add_column("usuario", sa.Column("reset_code_expires_at", sa.DateTime(), nullable=True))
+    # IF NOT EXISTS: la migracion "esquema inicial" crea las tablas a partir del
+    # estado *actual* de los modelos (Base.metadata.create_all), asi que en una
+    # base 100% nueva estas columnas ya existen para cuando esta revision corre.
+    op.execute('ALTER TABLE usuario ADD COLUMN IF NOT EXISTS session_id VARCHAR(64)')
+    op.execute('ALTER TABLE usuario ADD COLUMN IF NOT EXISTS reset_code_hash VARCHAR(255)')
+    op.execute('ALTER TABLE usuario ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMP')
 
 
 def downgrade() -> None:
-    op.drop_column("usuario", "reset_code_expires_at")
-    op.drop_column("usuario", "reset_code_hash")
-    op.drop_column("usuario", "session_id")
+    op.execute('ALTER TABLE usuario DROP COLUMN IF EXISTS reset_code_expires_at')
+    op.execute('ALTER TABLE usuario DROP COLUMN IF EXISTS reset_code_hash')
+    op.execute('ALTER TABLE usuario DROP COLUMN IF EXISTS session_id')

@@ -102,9 +102,8 @@ $$ LANGUAGE plpgsql;
 
 
 def upgrade() -> None:
-    op.add_column(
-        "usuario",
-        sa.Column("metodo_registro", sa.String(length=20), nullable=False, server_default="sistema"),
+    op.execute(
+        "ALTER TABLE usuario ADD COLUMN IF NOT EXISTS metodo_registro VARCHAR(20) NOT NULL DEFAULT 'sistema'"
     )
     op.execute(FN_BITACORA_NUEVO_USUARIO)
     op.execute("DROP FUNCTION IF EXISTS sp_crear_cliente(VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR);")

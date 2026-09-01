@@ -54,10 +54,10 @@ $$ LANGUAGE plpgsql;
 
 
 def upgrade() -> None:
-    op.add_column("bitacora", sa.Column("ip_address", sa.String(length=45), nullable=True))
+    op.execute('ALTER TABLE bitacora ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45)')
     op.execute(FUNCTION_SQL)
 
 
 def downgrade() -> None:
     op.execute(FUNCTION_SQL_DOWN)
-    op.drop_column("bitacora", "ip_address")
+    op.execute('ALTER TABLE bitacora DROP COLUMN IF EXISTS ip_address')

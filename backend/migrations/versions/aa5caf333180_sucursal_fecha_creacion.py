@@ -16,11 +16,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "sucursal",
-        sa.Column("fecha_creacion", sa.Date(), nullable=False, server_default=sa.text("CURRENT_DATE")),
+    op.execute(
+        'ALTER TABLE sucursal ADD COLUMN IF NOT EXISTS fecha_creacion DATE NOT NULL DEFAULT CURRENT_DATE'
     )
 
 
 def downgrade() -> None:
-    op.drop_column("sucursal", "fecha_creacion")
+    op.execute('ALTER TABLE sucursal DROP COLUMN IF EXISTS fecha_creacion')

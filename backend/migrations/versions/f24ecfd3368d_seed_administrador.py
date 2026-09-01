@@ -29,7 +29,7 @@ BEGIN
 
     SELECT id INTO v_rol_id FROM rol WHERE nombre = 'Administrador';
 
-    INSERT INTO usuario (nombre, email, password_hash, estado, fecha_registro, tipo, rol_id)
+    INSERT INTO usuario (nombre, email, password_hash, estado, fecha_registro, tipo, metodo_registro, rol_id)
     VALUES (
         'Administrador General',
         '{ADMIN_EMAIL}',
@@ -37,6 +37,7 @@ BEGIN
         'activo',
         CURRENT_DATE,
         'administrador',
+        'sistema',
         v_rol_id
     )
     RETURNING id INTO v_usuario_id;
