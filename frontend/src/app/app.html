@@ -1,0 +1,17 @@
+@if (auth.sessionMessage(); as message) {
+  <div class="session-banner">
+    <span>{{ message }}</span>
+    <button type="button" (click)="auth.sessionMessage.set(null)">&times;</button>
+  </div>
+}
+
+@if (!hideChrome()) {
+  <app-header />
+}
+
+<router-outlet />
+
+@if (!hideChrome()) {
+  <app-footer />
+  <app-whatsapp-float />
+}

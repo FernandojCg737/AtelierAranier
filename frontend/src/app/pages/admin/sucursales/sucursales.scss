@@ -1,0 +1,238 @@
+.admin-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 32px 64px;
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 32px;
+
+    h1 {
+      margin: 4px 0 8px;
+      font-size: clamp(24px, 3vw, 30px);
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--brand-dark);
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+      color: #777;
+      max-width: 480px;
+    }
+  }
+
+  &__eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #999;
+  }
+}
+
+.admin-error {
+  background: #fdecea;
+  color: #b3261e;
+  font-size: 13px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.admin-search__refresh {
+  border: none;
+  background: var(--brand-dark);
+  color: #fff;
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.admin-table-wrap {
+  background: #fff;
+  border: 1px solid #eee;
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    text-align: left;
+    padding: 14px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #999;
+    border-bottom: 1px solid #eee;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f2f2f2;
+    color: var(--brand-dark);
+    vertical-align: middle;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  &__empty {
+    text-align: center;
+    color: #999;
+    padding: 40px 16px;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+    white-space: nowrap;
+
+    button {
+      border: 1px solid #ddd;
+      background: #fff;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      cursor: pointer;
+
+      &:hover {
+        background: #f5f5f5;
+      }
+
+      &.is-danger {
+        color: #b3261e;
+        border-color: #f3d3cf;
+
+        &:hover {
+          background: #fdecea;
+        }
+      }
+    }
+  }
+}
+
+.admin-badge {
+  display: inline-block;
+  background: #eef4f0;
+  color: #2e7d32;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+
+  &.is-inactive {
+    background: #f5f5f5;
+    color: #999;
+  }
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(10, 15, 15, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal {
+  background: #fff;
+  width: 100%;
+  max-width: 420px;
+  padding: 28px;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+
+  h2 {
+    margin: 0 0 20px;
+    font-size: 18px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--brand-dark);
+  }
+}
+
+.modal-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.modal-field {
+  display: block;
+  margin-bottom: 16px;
+
+  span {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #999;
+    margin-bottom: 6px;
+  }
+
+  input,
+  select {
+    width: 100%;
+    border: 1px solid #ddd;
+    padding: 9px 10px;
+    font-size: 14px;
+    color: var(--brand-dark);
+    outline: none;
+    background: #fff;
+
+    &:focus {
+      border-color: var(--brand-dark);
+    }
+  }
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+
+  button {
+    border: none;
+    padding: 10px 20px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    background: var(--brand-dark);
+    color: #fff;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    &.is-secondary {
+      background: none;
+      color: #777;
+      border: 1px solid #ddd;
+    }
+  }
+}

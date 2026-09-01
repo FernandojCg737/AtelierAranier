@@ -1,0 +1,38 @@
+<section
+  class="hero"
+  [class.hero--centered]="align() === 'center'"
+  [class.hero--half]="size() === 'half'"
+>
+  <video
+    #heroVideo
+    class="hero-video"
+    [poster]="posterSrc()"
+    muted
+    loop
+    playsinline
+    preload="auto"
+  >
+    <source [src]="videoSrc()" type="video/mp4" />
+  </video>
+
+  <div class="hero-overlay"></div>
+
+  <div class="hero-content">
+    @if (eyebrow()) {
+      <span class="hero-eyebrow">{{ eyebrow() }}</span>
+    }
+    <h1>{{ title() }}</h1>
+    <p>{{ subtitle() }}</p>
+  </div>
+
+  @if (showCta()) {
+    <div class="hero-cta">
+      <a class="hero-cta__btn" routerLink="/tienda">
+        <span>Ir a tienda</span>
+      </a>
+      <a class="hero-cta__btn hero-cta__btn--secondary" routerLink="/tienda">
+        <span>Explorar coleccion</span>
+      </a>
+    </div>
+  }
+</section>

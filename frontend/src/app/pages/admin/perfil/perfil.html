@@ -1,0 +1,168 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P2 · CU17</span>
+      <h1>Mi Perfil</h1>
+      <p>Actualiza tus datos personales y tu contrasena de acceso al panel.</p>
+    </div>
+  </div>
+
+  <div class="perfil-cards">
+    <div class="perfil-card">
+      <h2>Datos personales</h2>
+
+      @if (profileError()) {
+        <div class="admin-error">{{ profileError() }}</div>
+      }
+      @if (profileSuccess()) {
+        <div class="admin-success">{{ profileSuccess() }}</div>
+      }
+
+      <form (submit)="$event.preventDefault(); submitProfile()">
+        <label class="modal-field">
+          <span>Nombre Completo</span>
+          <input type="text" [value]="nombre()" (input)="nombre.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Correo Electronico</span>
+          <input type="email" [value]="auth.currentUser()?.email" disabled />
+        </label>
+
+        @if (isCliente()) {
+          <label class="modal-field">
+            <span>Telefono</span>
+            <input type="tel" [value]="telefono()" (input)="telefono.set($any($event.target).value)" />
+          </label>
+
+          <label class="modal-field">
+            <span>Direccion</span>
+            <input type="text" [value]="direccion()" (input)="direccion.set($any($event.target).value)" />
+          </label>
+        }
+
+        <button type="submit" class="admin-search__refresh" [disabled]="profileSaving()">
+          {{ profileSaving() ? 'Guardando...' : 'Guardar cambios' }}
+        </button>
+      </form>
+    </div>
+
+    <div class="perfil-card">
+      <h2>Cambiar contrasena</h2>
+
+      @if (passwordError()) {
+        <div class="admin-error">{{ passwordError() }}</div>
+      }
+      @if (passwordSuccess()) {
+        <div class="admin-success">{{ passwordSuccess() }}</div>
+      }
+
+      <form (submit)="$event.preventDefault(); submitPassword()">
+        <label class="modal-field">
+          <span>Contrasena Actual</span>
+          <div class="modal-field__input-wrap">
+            <input
+              [type]="showActual() ? 'text' : 'password'"
+              [value]="passwordActual()"
+              (input)="passwordActual.set($any($event.target).value)"
+            />
+            <button
+              type="button"
+              class="modal-field__toggle"
+              [attr.aria-label]="showActual() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+              (click)="showActual.set(!showActual())"
+            >
+              @if (showActual()) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                  <line x1="3" y1="21" x2="21" y2="3" />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              }
+            </button>
+          </div>
+        </label>
+
+        <label class="modal-field">
+          <span>Contrasena Nueva</span>
+          <div class="modal-field__input-wrap">
+            <input
+              [type]="showNueva() ? 'text' : 'password'"
+              [value]="passwordNueva()"
+              (input)="passwordNueva.set($any($event.target).value)"
+              (focus)="passwordTouched.set(true)"
+            />
+            <button
+              type="button"
+              class="modal-field__toggle"
+              [attr.aria-label]="showNueva() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+              (click)="showNueva.set(!showNueva())"
+            >
+              @if (showNueva()) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                  <line x1="3" y1="21" x2="21" y2="3" />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              }
+            </button>
+          </div>
+
+          @if (passwordTouched()) {
+            <ul class="password-checklist">
+              <li [class.is-valid]="passwordChecks().length">Minimo 8 caracteres</li>
+              <li [class.is-valid]="passwordChecks().upper">Una mayuscula</li>
+              <li [class.is-valid]="passwordChecks().lower">Una minuscula</li>
+              <li [class.is-valid]="passwordChecks().number">Un numero</li>
+              <li [class.is-valid]="passwordChecks().special">Un caracter especial</li>
+            </ul>
+          }
+        </label>
+
+        <label class="modal-field">
+          <span>Confirmar Contrasena Nueva</span>
+          <div class="modal-field__input-wrap">
+            <input
+              [type]="showConfirmar() ? 'text' : 'password'"
+              [value]="passwordConfirmar()"
+              (input)="passwordConfirmar.set($any($event.target).value)"
+            />
+            <button
+              type="button"
+              class="modal-field__toggle"
+              [attr.aria-label]="showConfirmar() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+              (click)="showConfirmar.set(!showConfirmar())"
+            >
+              @if (showConfirmar()) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                  <line x1="3" y1="21" x2="21" y2="3" />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              }
+            </button>
+          </div>
+        </label>
+
+        <button type="submit" class="admin-search__refresh" [disabled]="passwordSaving()">
+          {{ passwordSaving() ? 'Actualizando...' : 'Cambiar contrasena' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

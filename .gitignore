@@ -1,0 +1,36 @@
+# Env
+.env
+!.env.example
+backend/.env
+!backend/.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node / Angular
+node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Flutter
+mobile/.dart_tool/
+mobile/.flutter-plugin-dependencies
+mobile/build/
+mobile/.pub-cache/
+mobile/**/ios/Pods/
+
+# Assets de maqueta temporales (con derechos ajenos, nunca deben commitearse)
+frontend/public/video/hero.mp4
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code / documentacion interna (no va al repo)
+.claude/
+docs/

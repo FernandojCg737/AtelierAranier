@@ -1,0 +1,17 @@
+<div class="admin-home">
+  <span class="admin-home__eyebrow">Panel de Administracion</span>
+  <h1>Hola, {{ auth.currentUser()?.nombre?.split(' ')?.[0] }}</h1>
+  <p>
+    Accesos rapidos segun tu rol <strong>{{ auth.currentUser()?.rol }}</strong>. Tambien podes navegar con los
+    paquetes P1-P5 de arriba.
+  </p>
+
+  <div class="admin-home__grid">
+    @for (item of accesosRapidos(); track item.code) {
+      <a class="admin-home__card" [routerLink]="item.route">
+        <span class="admin-home__card-code">{{ item.code }}</span>
+        <span class="admin-home__card-label">{{ item.label }}</span>
+      </a>
+    }
+  </div>
+</div>

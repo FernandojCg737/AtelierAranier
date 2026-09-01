@@ -1,0 +1,172 @@
+<div class="auth-page">
+  <app-auth-showcase class="auth-page__showcase" />
+
+  <div class="auth-page__form-wrap">
+    <img class="auth-page__watermark" src="/img/logo.png" alt="" aria-hidden="true" />
+
+    <div class="auth-form">
+      <div class="auth-page__mobile-header">
+        <a routerLink="/" class="auth-page__back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          <span>Volver al inicio</span>
+        </a>
+        <img src="/img/logo.png" alt="Atelier Aranier" class="auth-page__mobile-logo" />
+      </div>
+
+      <span class="auth-form__eyebrow">Registro</span>
+      <h1>Crear una Cuenta</h1>
+      <p>Registrate para guardar tus datos, ver tus pedidos y agilizar tus compras.</p>
+
+      @if (error()) {
+        <div class="auth-form__error">{{ error() }}</div>
+      }
+
+      <form (submit)="$event.preventDefault(); submit()">
+        <label class="auth-field">
+          <span>Nombre Completo</span>
+          <input
+            type="text"
+            placeholder="Introduce tu nombre"
+            [value]="nombre()"
+            (input)="nombre.set($any($event.target).value)"
+          />
+        </label>
+
+        <label class="auth-field">
+          <span>Correo Electronico</span>
+          <input
+            type="email"
+            placeholder="Introduce tu email"
+            [value]="email()"
+            (input)="email.set($any($event.target).value)"
+          />
+        </label>
+
+        <label class="auth-field">
+          <span>Telefono</span>
+          <input
+            type="tel"
+            placeholder="Introduce tu telefono"
+            [value]="telefono()"
+            (input)="telefono.set($any($event.target).value)"
+          />
+        </label>
+
+        <label class="auth-field">
+          <span>Contrasena</span>
+          <div class="auth-field__input-wrap">
+            <input
+              [type]="showPassword() ? 'text' : 'password'"
+              placeholder="********"
+              [value]="password()"
+              (input)="password.set($any($event.target).value)"
+              (focus)="passwordTouched.set(true)"
+            />
+            <button
+              type="button"
+              class="auth-field__toggle"
+              [attr.aria-label]="showPassword() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+              (click)="showPassword.set(!showPassword())"
+            >
+              @if (showPassword()) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                  <line x1="3" y1="21" x2="21" y2="3" />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              }
+            </button>
+          </div>
+
+          @if (passwordTouched()) {
+            <ul class="password-checklist">
+              <li [class.is-valid]="passwordChecks().length">Minimo 8 caracteres</li>
+              <li [class.is-valid]="passwordChecks().upper">Una mayuscula</li>
+              <li [class.is-valid]="passwordChecks().lower">Una minuscula</li>
+              <li [class.is-valid]="passwordChecks().number">Un numero</li>
+              <li [class.is-valid]="passwordChecks().special">Un caracter especial</li>
+            </ul>
+          }
+        </label>
+
+        <label class="auth-field">
+          <span>Confirmar Contrasena</span>
+          <div class="auth-field__input-wrap">
+            <input
+              [type]="showConfirmPassword() ? 'text' : 'password'"
+              placeholder="********"
+              [value]="confirmPassword()"
+              (input)="confirmPassword.set($any($event.target).value)"
+            />
+            <button
+              type="button"
+              class="auth-field__toggle"
+              [attr.aria-label]="showConfirmPassword() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+              (click)="showConfirmPassword.set(!showConfirmPassword())"
+            >
+              @if (showConfirmPassword()) {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                  <line x1="3" y1="21" x2="21" y2="3" />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              }
+            </button>
+          </div>
+        </label>
+
+        <button type="submit" class="auth-form__submit" [disabled]="loading()">
+          {{ loading() ? 'Creando cuenta...' : 'Crear Cuenta' }}
+        </button>
+      </form>
+
+      <div class="auth-form__sep"><span>o</span></div>
+
+      <div class="auth-form__google-wrap">
+        <div class="auth-form__google" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="18" height="18">
+            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5Z" />
+            <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4c-7.5 0-14 4.2-17.7 10.7Z" />
+            <path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.5-5.5C29.4 34.9 26.8 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.9 39.7 16.4 44 24 44Z" />
+            <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.6l6.5 5.5C39.9 37 44 31.5 44 24c0-1.3-.1-2.7-.4-3.5Z" />
+          </svg>
+          <span>Registrarte con Google</span>
+        </div>
+        <div id="googleBtnRegistro" class="auth-form__google-overlay"></div>
+      </div>
+
+      <p class="auth-form__switch">
+        Ya tienes cuenta?
+        <a routerLink="/login">Inicia sesion aqui</a>
+      </p>
+
+      <div class="auth-mobile-badges">
+        <div>
+          <span>100%</span>
+          <small>Seguro</small>
+        </div>
+        <div>
+          <span>24/7</span>
+          <small>Soporte</small>
+        </div>
+        <div>
+          <span>Express</span>
+          <small>Envios</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

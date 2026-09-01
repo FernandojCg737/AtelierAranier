@@ -1,0 +1,28 @@
+<section class="categories">
+  <div class="categories-header">
+    <div>
+      <span class="categories-eyebrow">Categorias</span>
+      <h2>La Seleccion</h2>
+    </div>
+    <a class="categories-link" routerLink="/categorias">
+      Ver todas las categorias
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="5" y1="12" x2="19" y2="12" />
+        <polyline points="12 5 19 12 12 19" />
+      </svg>
+    </a>
+  </div>
+
+  <div class="categories-grid">
+    @for (cat of categories; track cat.path; let i = $index) {
+      <a class="tile" [class.tile--large]="i === 0" [routerLink]="cat.path">
+        <img [src]="cat.image" [alt]="cat.name" />
+        <div class="tile-overlay"></div>
+        <div class="tile-label">
+          <span class="tile-name">{{ cat.name }}</span>
+          <span class="tile-cta">Comprar ahora</span>
+        </div>
+      </a>
+    }
+  </div>
+</section>

@@ -1,0 +1,160 @@
+<header class="site-header" [class.scrolled]="scrolled()">
+  <div class="header-inner">
+    <a class="logo" routerLink="/" (click)="closeMobileMenu()">
+      <img src="/img/logo.png" alt="Atelier Aranier" />
+    </a>
+
+    <nav class="nav-desktop">
+      @for (link of navLinks; track link.label) {
+        <a [routerLink]="link.path" [queryParams]="link.queryParams">{{ link.label }}</a>
+      }
+    </nav>
+
+    <div class="header-actions" [class.header-actions--searching]="searchOpen()">
+      @if (!searchOpen()) {
+        <button
+          class="icon-btn"
+          type="button"
+          aria-label="Buscar"
+          [attr.aria-expanded]="false"
+          (click)="toggleSearch()"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </button>
+      } @else {
+        <div class="header-search-inline">
+          <input
+            #searchInput
+            type="text"
+            placeholder="Buscar productos..."
+            [value]="searchQuery()"
+            (input)="searchQuery.set($any($event.target).value)"
+            (keydown.enter)="submitSearch()"
+          />
+          <button type="button" class="icon-btn" aria-label="Cerrar busqueda" (click)="closeSearch()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <line x1="5" y1="5" x2="19" y2="19" />
+              <line x1="19" y1="5" x2="5" y2="19" />
+            </svg>
+          </button>
+        </div>
+      }
+      <div class="account-menu-wrap">
+        <button
+          class="icon-btn"
+          type="button"
+          aria-label="Mi cuenta"
+          [attr.aria-expanded]="accountMenuOpen()"
+          (click)="toggleAccountMenu()"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+          </svg>
+        </button>
+
+        @if (accountMenuOpen()) {
+          <div class="account-menu">
+            @if (auth.currentUser(); as user) {
+              <span class="account-menu__greeting">Hola, {{ user.nombre.split(' ')[0] }}</span>
+              <a routerLink="/perfil" (click)="accountMenuOpen.set(false)">Mi Perfil</a>
+              <button type="button" (click)="logout()">Cerrar Sesion</button>
+            } @else {
+              <a routerLink="/login" (click)="accountMenuOpen.set(false)">Iniciar Sesion</a>
+              <a routerLink="/registro" (click)="accountMenuOpen.set(false)">Crear una Cuenta</a>
+            }
+          </div>
+        }
+      </div>
+      <a class="icon-btn icon-btn--cart" routerLink="/carrito" aria-label="Carrito">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M6 6h15l-1.5 9h-12z" />
+          <path d="M6 6 5 3H2" />
+          <circle cx="9.5" cy="19.5" r="1.5" />
+          <circle cx="17.5" cy="19.5" r="1.5" />
+        </svg>
+        @if (cart.totalItems() > 0) {
+          <span class="icon-btn__badge">{{ cart.totalItems() }}</span>
+        }
+      </a>
+    </div>
+
+    <div class="mobile-actions">
+      <a class="icon-btn icon-btn--cart" routerLink="/carrito" aria-label="Carrito">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M6 6h15l-1.5 9h-12z" />
+          <path d="M6 6 5 3H2" />
+          <circle cx="9.5" cy="19.5" r="1.5" />
+          <circle cx="17.5" cy="19.5" r="1.5" />
+        </svg>
+        @if (cart.totalItems() > 0) {
+          <span class="icon-btn__badge">{{ cart.totalItems() }}</span>
+        }
+      </a>
+      <button class="icon-btn" type="button" aria-label="Abrir menu" (click)="toggleMobileMenu()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="mobile-menu-backdrop" [class.open]="mobileMenuOpen()" (click)="closeMobileMenu()"></div>
+
+<aside class="mobile-menu" [class.open]="mobileMenuOpen()">
+  <button class="mobile-menu-close" type="button" aria-label="Cerrar menu" (click)="closeMobileMenu()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <line x1="4" y1="4" x2="20" y2="20" />
+      <line x1="20" y1="4" x2="4" y2="20" />
+    </svg>
+  </button>
+
+  <div class="mobile-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+    <input type="text" placeholder="Buscar productos..." />
+  </div>
+
+  <nav class="mobile-nav">
+    @for (link of navLinks; track link.label) {
+      <a [routerLink]="link.path" [queryParams]="link.queryParams" (click)="closeMobileMenu()">{{ link.label }}</a>
+    }
+
+    <a routerLink="/carrito" (click)="closeMobileMenu()" class="mobile-nav-icon-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M6 6h15l-1.5 9h-12z" />
+        <path d="M6 6 5 3H2" />
+        <circle cx="9.5" cy="19.5" r="1.5" />
+        <circle cx="17.5" cy="19.5" r="1.5" />
+      </svg>
+      Carrito
+      @if (cart.totalItems() > 0) {
+        <span class="mobile-nav-icon-link__count">({{ cart.totalItems() }})</span>
+      }
+    </a>
+    <a routerLink="/login" (click)="closeMobileMenu()" class="mobile-nav-icon-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+      </svg>
+      Iniciar Sesion
+    </a>
+    <a routerLink="/registro" (click)="closeMobileMenu()" class="mobile-nav-icon-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+        <line x1="19" y1="8" x2="19" y2="14" />
+        <line x1="16" y1="11" x2="22" y2="11" />
+      </svg>
+      Crear una Cuenta
+    </a>
+  </nav>
+</aside>

@@ -1,0 +1,146 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P2 · CU04</span>
+      <h1>Ciudades y Sucursales</h1>
+      <p>Administra las sucursales fisicas de la tienda. La ciudad se escribe directamente al crear cada sucursal.</p>
+    </div>
+
+    <button type="button" class="admin-search__refresh" (click)="openNew()">+ Nueva Sucursal</button>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Sucursal</th>
+          <th>Ciudad</th>
+          <th>Direccion</th>
+          <th>Horario</th>
+          <th>Telefono</th>
+          <th>Estado</th>
+          <th>Creada</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td colspan="8" class="admin-table__empty">Cargando...</td>
+          </tr>
+        } @else if (sucursales().length === 0) {
+          <tr>
+            <td colspan="8" class="admin-table__empty">No hay sucursales registradas.</td>
+          </tr>
+        } @else {
+          @for (s of sucursales(); track s.id) {
+            <tr>
+              <td><strong>{{ s.nombre }}</strong></td>
+              <td>{{ s.ciudad_nombre }} · {{ s.departamento }}</td>
+              <td>{{ s.direccion }}</td>
+              <td>{{ s.horario_atencion || '-' }}</td>
+              <td>{{ s.telefono || '-' }}</td>
+              <td>
+                <span class="admin-badge" [class.is-inactive]="s.estado === 'inactiva'">{{ s.estado }}</span>
+              </td>
+              <td>{{ s.fecha_creacion }}</td>
+              <td class="admin-table__actions">
+                <button type="button" (click)="edit(s)">Editar</button>
+                <button type="button" class="is-danger" (click)="remove(s)">Eliminar</button>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (showForm()) {
+  <div class="modal-overlay" (click)="closeForm()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>{{ editingId() ? 'Editar Sucursal' : 'Nueva Sucursal' }}</h2>
+
+      <form (submit)="$event.preventDefault(); submit()">
+        <label class="modal-field">
+          <span>Denominativo</span>
+          <input
+            type="text"
+            placeholder="Ej. Sucursal Equipetrol"
+            [value]="sNombre()"
+            (input)="sNombre.set($any($event.target).value)"
+          />
+        </label>
+
+        <div class="modal-field-row">
+          <label class="modal-field">
+            <span>Ciudad</span>
+            <input
+              type="text"
+              placeholder="Ej. Santa Cruz de la Sierra"
+              [value]="sCiudad()"
+              (input)="sCiudad.set($any($event.target).value)"
+            />
+          </label>
+
+          <label class="modal-field">
+            <span>Departamento</span>
+            <input
+              type="text"
+              placeholder="Ej. Santa Cruz"
+              [value]="sDepartamento()"
+              (input)="sDepartamento.set($any($event.target).value)"
+            />
+          </label>
+        </div>
+
+        <label class="modal-field">
+          <span>Direccion</span>
+          <input
+            type="text"
+            placeholder="Ej. Av. San Martin #123"
+            [value]="sDireccion()"
+            (input)="sDireccion.set($any($event.target).value)"
+          />
+        </label>
+
+        <label class="modal-field">
+          <span>Horario de atencion</span>
+          <input
+            type="text"
+            placeholder="Ej. Lun-Sab 9:00-19:00"
+            [value]="sHorario()"
+            (input)="sHorario.set($any($event.target).value)"
+          />
+        </label>
+
+        <label class="modal-field">
+          <span>Telefono</span>
+          <input
+            type="text"
+            placeholder="Ej. 70012345"
+            [value]="sTelefono()"
+            (input)="sTelefono.set($any($event.target).value)"
+          />
+        </label>
+
+        <label class="modal-field">
+          <span>Estado</span>
+          <select [value]="sEstado()" (change)="sEstado.set($any($event.target).value)">
+            <option value="activa">Activa</option>
+            <option value="inactiva">Inactiva</option>
+          </select>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="is-secondary" (click)="closeForm()">Cancelar</button>
+          <button type="submit" [disabled]="saving()">{{ saving() ? 'Guardando...' : 'Guardar' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

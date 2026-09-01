@@ -1,0 +1,53 @@
+<div class="admin-shell">
+  <header class="admin-topbar">
+    <div class="admin-topbar__brand">
+      <img src="/img/logo.png" alt="Atelier Aranier" />
+      <span>Panel de Administracion</span>
+    </div>
+    <div class="admin-topbar__user">
+      <span>{{ auth.currentUser()?.nombre }}</span>
+      <button type="button" (click)="logout()">Cerrar Sesion</button>
+    </div>
+  </header>
+
+  <nav class="admin-packages-wrap">
+    <div class="admin-packages">
+      @for (pkg of menu; track pkg.code) {
+        <button
+          type="button"
+          class="pkg-tile"
+          [class.is-open]="openPackage() === pkg.code"
+          (click)="togglePackage(pkg.code)"
+        >
+          {{ pkg.code }}
+        </button>
+      }
+    </div>
+
+    @if (activePackage(); as pkg) {
+      <div class="pkg-panel">
+        <div class="pkg-panel__header">{{ pkg.code }} · {{ pkg.label }}</div>
+        <ul>
+          @for (uc of pkg.useCases; track uc.code) {
+            <li>
+              @if (estadoUseCase(uc) === 'ok') {
+                <a [routerLink]="uc.route" routerLinkActive="is-active" (click)="openPackage.set(null)">
+                  <strong>{{ uc.code }}</strong> {{ uc.label }}
+                </a>
+              } @else {
+                <span class="is-disabled">
+                  <strong>{{ uc.code }}</strong> {{ uc.label }}
+                  <em>{{ estadoUseCase(uc) === 'sin-acceso' ? 'Sin acceso' : 'Proximamente' }}</em>
+                </span>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  </nav>
+
+  <main class="admin-main">
+    <router-outlet />
+  </main>
+</div>

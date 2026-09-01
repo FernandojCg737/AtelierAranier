@@ -1,0 +1,228 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P1 · CU02</span>
+      <h1>Usuarios, Roles y Permisos</h1>
+      <p>
+        Administra las cuentas de personal (Administradores, Encargados de Sucursal, Cajeros) y controla que puede
+        ver cada rol dentro del panel.
+      </p>
+    </div>
+  </div>
+
+  <div class="admin-tabs">
+    <button type="button" [class.is-active]="topTab() === 'usuarios'" (click)="setTopTab('usuarios')">
+      Usuarios
+    </button>
+    <button type="button" [class.is-active]="topTab() === 'permisos'" (click)="setTopTab('permisos')">
+      Permisos
+    </button>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  @if (topTab() === 'usuarios') {
+    <div class="admin-subtabs">
+      <button type="button" [class.is-active]="tipoActivo() === 'administrador'" (click)="setTipoActivo('administrador')">
+        Administradores
+      </button>
+      <button
+        type="button"
+        [class.is-active]="tipoActivo() === 'encargado_sucursal'"
+        (click)="setTipoActivo('encargado_sucursal')"
+      >
+        Encargados de Sucursal
+      </button>
+      <button type="button" [class.is-active]="tipoActivo() === 'cajero'" (click)="setTipoActivo('cajero')">
+        Cajeros
+      </button>
+      <a class="admin-subtabs__link" routerLink="/admin/clientes">Clientes se administran en CU03 &rarr;</a>
+    </div>
+
+    <div class="admin-content__header admin-content__header--tight">
+      <form class="admin-search" (submit)="$event.preventDefault(); search()">
+        <input
+          type="text"
+          placeholder="Buscar por nombre o correo..."
+          [value]="buscar()"
+          (input)="buscar.set($any($event.target).value)"
+        />
+        <button type="submit">Buscar</button>
+      </form>
+      <button type="button" class="admin-search__refresh" (click)="openCreate()">+ Nuevo</button>
+    </div>
+
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            @if (requiereSucursal()) {
+              <th>Sucursal</th>
+            }
+            <th>Rol</th>
+            <th>Metodo</th>
+            <th>Estado</th>
+            <th>Registrado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading()) {
+            <tr>
+              <td [attr.colspan]="tableColspan()" class="admin-table__empty">Cargando...</td>
+            </tr>
+          } @else if (empleados().length === 0) {
+            <tr>
+              <td [attr.colspan]="tableColspan()" class="admin-table__empty">No hay registros.</td>
+            </tr>
+          } @else {
+            @for (e of empleados(); track e.id) {
+              <tr>
+                <td>
+                  <div class="admin-table__user">
+                    <strong>{{ e.nombre }}</strong>
+                    <span>{{ e.email }}</span>
+                  </div>
+                </td>
+                @if (requiereSucursal()) {
+                  <td>{{ e.sucursal_nombre || '-' }}</td>
+                }
+                <td>{{ e.rol_nombre || '-' }}</td>
+                <td><span class="admin-badge is-neutral">{{ e.metodo_registro }}</span></td>
+                <td>
+                  <span class="admin-badge" [class.is-inactive]="e.estado === 'inactivo'">{{ e.estado }}</span>
+                </td>
+                <td>{{ e.fecha_registro }}</td>
+                <td class="admin-table__actions">
+                  <button type="button" (click)="editEmpleado(e)">Editar</button>
+                  <button type="button" class="is-danger" (click)="toggleEstado(e)">
+                    {{ e.estado === 'activo' ? 'Desactivar' : 'Activar' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="admin-subtabs">
+      @for (r of roles(); track r.id) {
+        <button type="button" [class.is-active]="rolSeleccionadoId() === r.id" (click)="selectRol(r.id)">
+          {{ r.nombre }}
+        </button>
+      }
+    </div>
+
+    @if (rolSeleccionado(); as rol) {
+      @if (rol.nombre === 'Administrador') {
+        <p class="permisos-hint">El rol Administrador tiene acceso total al sistema y no es configurable.</p>
+      }
+      @if (rol.nombre === 'Cliente') {
+        <p class="permisos-hint">
+          Los clientes no entran al panel: hoy la tienda es igual para todos. Lo que marques acá queda guardado
+          para cuando se implemente una seccion diferenciada (ej. clientes VIP).
+        </p>
+      }
+
+      @if (permisosError()) {
+        <div class="admin-error">{{ permisosError() }}</div>
+      }
+      @if (permisosSuccess()) {
+        <div class="admin-success">{{ permisosSuccess() }}</div>
+      }
+
+      <div class="permisos-grid">
+        @for (pkg of menu; track pkg.code) {
+          <div class="permisos-package">
+            <div class="permisos-package__header">{{ pkg.code }} · {{ pkg.label }}</div>
+            <ul>
+              @for (uc of pkg.useCases; track uc.code) {
+                <li>
+                  <label class="permisos-checkbox">
+                    <input
+                      type="checkbox"
+                      [checked]="permisosSeleccionados().has(permisoIdForCode(uc.code))"
+                      [disabled]="rol.nombre === 'Administrador'"
+                      (change)="togglePermiso(permisoIdForCode(uc.code))"
+                    />
+                    <span><strong>{{ uc.code }}</strong> {{ uc.label }}</span>
+                  </label>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+
+      @if (rol.nombre !== 'Administrador') {
+        <button type="button" class="admin-search__refresh" [disabled]="permisosSaving()" (click)="guardarPermisos()">
+          {{ permisosSaving() ? 'Guardando...' : 'Guardar Permisos' }}
+        </button>
+      }
+    }
+  }
+</div>
+
+@if (showForm()) {
+  <div class="modal-overlay" (click)="closeForm()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>{{ editingId() ? 'Editar' : 'Nuevo' }} {{ tipoLabel[tipoActivo()] }}</h2>
+      @if (!editingId()) {
+        <p class="modal-hint">Se genera una contrasena temporal y se le envia por correo.</p>
+      }
+
+      <form (submit)="$event.preventDefault(); submitForm()">
+        <label class="modal-field">
+          <span>Nombre Completo</span>
+          <input type="text" [value]="fNombre()" (input)="fNombre.set($any($event.target).value)" />
+        </label>
+
+        @if (!editingId()) {
+          <label class="modal-field">
+            <span>Correo Electronico</span>
+            <input type="email" [value]="fEmail()" (input)="fEmail.set($any($event.target).value)" />
+          </label>
+        }
+
+        @if (requiereSucursal()) {
+          <label class="modal-field">
+            <span>Sucursal</span>
+            <select [value]="fSucursalId()" (change)="fSucursalId.set(+$any($event.target).value)">
+              @for (s of sucursales(); track s.id) {
+                <option [value]="s.id">{{ s.nombre }}</option>
+              }
+            </select>
+          </label>
+        }
+
+        <label class="modal-field">
+          <span>Rol</span>
+          <select [value]="fRolId()" (change)="fRolId.set(+$any($event.target).value)">
+            @for (r of rolesEmpleado(); track r.id) {
+              <option [value]="r.id">{{ r.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        @if (editingId()) {
+          <label class="modal-field">
+            <span>Estado</span>
+            <select [value]="fEstado()" (change)="fEstado.set($any($event.target).value)">
+              <option value="activo">Activo</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
+          </label>
+        }
+
+        <div class="modal-actions">
+          <button type="button" class="is-secondary" (click)="closeForm()">Cancelar</button>
+          <button type="submit" [disabled]="saving()">{{ saving() ? 'Guardando...' : 'Guardar' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

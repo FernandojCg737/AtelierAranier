@@ -1,0 +1,30 @@
+.tienda-shop {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+
+  @media (min-width: 900px) {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 48px 40px 80px;
+    gap: 48px;
+  }
+}
+
+.tienda-shop__filters {
+  flex-shrink: 0;
+
+  @media (min-width: 900px) {
+    width: 260px;
+    position: sticky;
+    top: 100px;
+  }
+}
+
+.tienda-shop__grid {
+  flex: 1;
+  min-width: 0;
+}

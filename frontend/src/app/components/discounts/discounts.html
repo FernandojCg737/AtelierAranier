@@ -1,0 +1,45 @@
+<section class="discounts">
+  <div class="discounts-header">
+    <h2>Descuentos</h2>
+
+    <p class="discounts-subtitle">
+      Aprovecha nuestras ofertas limitadas en productos seleccionados.
+    </p>
+
+    <a class="discounts-link" routerLink="/tienda" [queryParams]="{ filtro: 'ofertas' }">
+      Ver todo
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="5" y1="12" x2="19" y2="12" />
+        <polyline points="12 5 19 12 12 19" />
+      </svg>
+    </a>
+  </div>
+
+  <div class="discounts-grid">
+    @for (product of products; track product.id) {
+      <a class="discount-card" [routerLink]="['/producto', product.id]">
+        <div class="discount-card__image">
+          <span class="discount-card__badge">{{ product.discountLabel }}</span>
+          <img [src]="product.image" [alt]="product.name" />
+          <button
+            class="discount-card__add-to-cart"
+            type="button"
+            (click)="$event.preventDefault(); $event.stopPropagation(); addToCart(product)"
+          >
+            Agregar al carrito
+          </button>
+        </div>
+        <div class="discount-card__info">
+          @if (product.brand) {
+            <span class="discount-card__brand">{{ product.brand }}</span>
+          }
+          <span class="discount-card__name">{{ product.name }}</span>
+          <span class="discount-card__prices">
+            <span class="discount-card__original">{{ product.originalPrice }} Bs</span>
+            <span class="discount-card__price">{{ product.price }} Bs</span>
+          </span>
+        </div>
+      </a>
+    }
+  </div>
+</section>

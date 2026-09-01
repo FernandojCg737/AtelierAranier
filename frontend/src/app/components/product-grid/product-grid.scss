@@ -1,0 +1,238 @@
+.product-grid-wrapper {
+  width: 100%;
+}
+
+.product-grid-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.product-grid-toolbar__count {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a97a3;
+}
+
+.product-grid-sort {
+  position: relative;
+}
+
+.product-grid-sort__btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--brand-dark);
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.product-grid-sort__label {
+  color: #8a97a3;
+  font-weight: 600;
+}
+
+.product-grid-sort__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: #333;
+    cursor: pointer;
+
+    &:hover {
+      background: #f5f5f5;
+    }
+  }
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: #e2e2e0;
+  border: 1px solid #e2e2e0;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (min-width: 1100px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.product-grid-empty {
+  padding: 48px 20px;
+  text-align: center;
+  color: #888;
+  font-size: 14px;
+}
+
+.product-grid-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+
+  button {
+    border: none;
+    background: var(--brand-dark);
+    color: #fff;
+    padding: 16px 48px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      opacity 0.2s ease,
+      transform 0.15s ease;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-2px);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+}
+
+.product-tile {
+  display: block;
+  min-width: 0;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+}
+
+.product-tile__image {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: #d9d9d6;
+  overflow: hidden;
+
+  img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+}
+
+.product-tile:hover .product-tile__image img {
+  transform: scale(1.04);
+}
+
+.product-tile__badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  background: var(--brand-dark);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+}
+
+.product-tile__add-to-cart {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 1;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.88);
+  color: #fff;
+  padding: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.product-tile:hover .product-tile__add-to-cart,
+.product-tile:focus-within .product-tile__add-to-cart {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.product-tile__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px 14px 16px;
+}
+
+.product-tile__brand {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9a9a9a;
+  margin-bottom: 2px;
+}
+
+.product-tile__name {
+  font-size: clamp(12px, 2vw, 14px);
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+  color: var(--brand-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-tile__price {
+  margin-top: 6px;
+  align-self: flex-end;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--brand-dark);
+}

@@ -1,0 +1,141 @@
+<aside class="shop-filters">
+  <div class="shop-filters__header">
+    <h2>Filtros</h2>
+    <button type="button" class="shop-filters__clear" (click)="limpiarFiltros()">Limpiar</button>
+  </div>
+
+  <section class="filter-group">
+    <h3>Sucursal</h3>
+    @for (s of sucursales; track s.id) {
+      <label class="filter-check filter-check--stacked">
+        <input
+          type="checkbox"
+          [checked]="selectedSucursal() === s.id"
+          (change)="selectSucursal(s.id)"
+        />
+        <span class="filter-check__text">
+          <span class="filter-check__label">{{ s.nombre }}</span>
+          @if (s.direccion) {
+            <span class="filter-check__hint">{{ s.direccion }}</span>
+          }
+        </span>
+      </label>
+    }
+  </section>
+
+  <section class="filter-group">
+    <h3>Filtros rapidos</h3>
+    @for (f of filtrosRapidos; track f.id) {
+      <label class="filter-check">
+        <input
+          type="checkbox"
+          [checked]="selectedFiltrosRapidos().has(f.id)"
+          (change)="toggleFiltroRapido(f.id)"
+        />
+        <span>{{ f.label }}</span>
+      </label>
+    }
+  </section>
+
+  <section class="filter-group">
+    <div class="filter-group__header">
+      <h3>Categorias</h3>
+      <button
+        type="button"
+        class="filter-group__toggle"
+        (click)="categoriasOpen.set(!categoriasOpen())"
+        [attr.aria-label]="categoriasOpen() ? 'Contraer categorias' : 'Expandir categorias'"
+      >
+        ×
+      </button>
+    </div>
+    @if (categoriasOpen()) {
+      @for (c of categorias; track c.id) {
+        <label class="filter-check" [class.filter-check--active]="selectedCategoria() === c.id">
+          <input
+            type="checkbox"
+            [checked]="selectedCategoria() === c.id"
+            (change)="selectCategoria(c.id)"
+          />
+          <span>{{ c.label }}</span>
+        </label>
+      }
+    }
+  </section>
+
+  <section class="filter-group">
+    <h3>Marcas</h3>
+    <label class="filter-check" [class.filter-check--active]="todasMarcasChecked()">
+      <input type="checkbox" [checked]="todasMarcasChecked()" (change)="selectTodasMarcas()" />
+      <span>Todas las Marcas</span>
+    </label>
+    @for (m of marcasVisibles(); track m.id) {
+      <label class="filter-check">
+        <input type="checkbox" [checked]="selectedMarcas().has(m.id)" (change)="toggleMarca(m.id)" />
+        <span>{{ m.label }}</span>
+      </label>
+    }
+  </section>
+
+  <section class="filter-group">
+    <div class="filter-group__header">
+      <h3>Precio</h3>
+      <button
+        type="button"
+        class="filter-group__toggle"
+        (click)="precioOpen.set(!precioOpen())"
+        [attr.aria-label]="precioOpen() ? 'Contraer precio' : 'Expandir precio'"
+      >
+        ×
+      </button>
+    </div>
+
+    @if (precioOpen()) {
+      <div class="price-slider">
+        <div class="price-slider__track">
+          <div
+            class="price-slider__range"
+            [style.left.%]="minPercent()"
+            [style.right.%]="100 - maxPercent()"
+          ></div>
+        </div>
+        <input
+          type="range"
+          class="price-slider__input"
+          [min]="precioMin"
+          [max]="precioMax"
+          [value]="selectedPrecioMin()"
+          (input)="onMinRangeInput($any($event.target).value)"
+        />
+        <input
+          type="range"
+          class="price-slider__input"
+          [min]="precioMin"
+          [max]="precioMax"
+          [value]="selectedPrecioMax()"
+          (input)="onMaxRangeInput($any($event.target).value)"
+        />
+      </div>
+
+      <div class="price-inputs">
+        <div class="price-inputs__box">
+          <span>Bs</span>
+          <input
+            type="number"
+            [value]="selectedPrecioMin()"
+            (change)="onMinInputChange($any($event.target).value)"
+          />
+        </div>
+        <span class="price-inputs__sep">—</span>
+        <div class="price-inputs__box">
+          <span>Bs</span>
+          <input
+            type="number"
+            [value]="selectedPrecioMax()"
+            (change)="onMaxInputChange($any($event.target).value)"
+          />
+        </div>
+      </div>
+    }
+  </section>
+</aside>

@@ -1,0 +1,60 @@
+<div class="product-grid-wrapper">
+  <div class="product-grid-toolbar">
+    <span class="product-grid-toolbar__count">Mostrando {{ visibleProducts().length }} resultados</span>
+
+    <div class="product-grid-sort">
+      <button type="button" class="product-grid-sort__btn" (click)="toggleSort()">
+        <span class="product-grid-sort__label">Ordenar por:</span>
+        <span class="product-grid-sort__value">{{ sortLabel() }}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      @if (sortOpen()) {
+        <ul class="product-grid-sort__menu">
+          @for (option of sortOptions; track option) {
+            <li>
+              <button type="button" (click)="selectSort(option)">{{ option }}</button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </div>
+
+  @if (visibleProducts().length === 0) {
+    <p class="product-grid-empty">No encontramos productos para "{{ busqueda() }}".</p>
+  }
+
+  <div class="product-grid">
+    @for (product of visibleProducts(); track product.id) {
+      <a class="product-tile" [routerLink]="['/producto', product.id]">
+        <div class="product-tile__image">
+          @if (product.isNew) {
+            <span class="product-tile__badge">Nuevo</span>
+          }
+          <img [src]="product.image" [alt]="product.name" />
+          <button
+            class="product-tile__add-to-cart"
+            type="button"
+            (click)="$event.preventDefault(); $event.stopPropagation(); addToCart(product)"
+          >
+            Agregar al carrito
+          </button>
+        </div>
+        <div class="product-tile__info">
+          <span class="product-tile__brand">{{ product.brand }}</span>
+          <span class="product-tile__name">{{ product.name }}</span>
+          <span class="product-tile__price">{{ product.price }} Bs</span>
+        </div>
+      </a>
+    }
+  </div>
+
+  <div class="product-grid-load-more">
+    <button type="button" (click)="loadMore()" [disabled]="loadingMore()">
+      {{ loadingMore() ? 'Cargando...' : 'Cargar mas' }}
+    </button>
+  </div>
+</div>

@@ -1,0 +1,41 @@
+<section class="new-arrivals">
+  <div class="new-arrivals-header">
+    <h2>Novedades</h2>
+
+    <div class="new-arrivals-subrow">
+      <p>Descubre los ultimos productos que llegaron a nuestro catalogo.</p>
+      <a class="new-arrivals-link" routerLink="/tienda">
+        Ver todo
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <div class="new-arrivals-grid">
+    @for (product of products; track product.id) {
+      <a class="product-card" [routerLink]="['/producto', product.id]">
+        <div class="product-card__image">
+          <span class="product-card__badge">Nuevo</span>
+          <img [src]="product.image" [alt]="product.name" />
+          <button
+            class="product-card__add-to-cart"
+            type="button"
+            (click)="$event.preventDefault(); $event.stopPropagation(); addToCart(product)"
+          >
+            Agregar al carrito
+          </button>
+        </div>
+        <div class="product-card__info">
+          @if (product.brand) {
+            <span class="product-card__brand">{{ product.brand }}</span>
+          }
+          <span class="product-card__name">{{ product.name }}</span>
+          <span class="product-card__price">{{ product.price }} Bs</span>
+        </div>
+      </a>
+    }
+  </div>
+</section>

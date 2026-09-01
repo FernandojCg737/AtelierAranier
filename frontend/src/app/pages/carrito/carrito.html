@@ -1,0 +1,68 @@
+<section class="carrito-page">
+  <div class="carrito-page__header">
+    <h1>Carrito de compras</h1>
+    <p>Revisa tus articulos seleccionados antes de finalizar la compra.</p>
+  </div>
+
+  @if (cart.items().length === 0) {
+    <div class="carrito-empty">
+      <span class="carrito-empty__eyebrow">Carrito</span>
+      <h2>Tu carrito esta vacio</h2>
+      <p>Agrega productos a tu carrito para comenzar</p>
+      <a class="carrito-empty__btn" routerLink="/tienda">
+        <span>Continuar comprando</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
+        </svg>
+      </a>
+    </div>
+  } @else {
+    <div class="carrito-content">
+      <ul class="carrito-list">
+        @for (item of cart.items(); track item.id) {
+          <li class="carrito-item">
+            <img [src]="item.image" [alt]="item.name" />
+
+            <div class="carrito-item__info">
+              @if (item.brand) {
+                <span class="carrito-item__brand">{{ item.brand }}</span>
+              }
+              <span class="carrito-item__name">{{ item.name }}</span>
+              <span class="carrito-item__price">{{ item.price }} Bs</span>
+            </div>
+
+            <div class="carrito-item__qty">
+              <button type="button" (click)="decrease(item.id, item.quantity)" aria-label="Restar">−</button>
+              <span>{{ item.quantity }}</span>
+              <button type="button" (click)="increase(item.id, item.quantity)" aria-label="Sumar">+</button>
+            </div>
+
+            <span class="carrito-item__subtotal">{{ item.price * item.quantity }} Bs</span>
+
+            <button
+              type="button"
+              class="carrito-item__remove"
+              aria-label="Quitar del carrito"
+              (click)="cart.removeItem(item.id)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <line x1="5" y1="5" x2="19" y2="19" />
+                <line x1="19" y1="5" x2="5" y2="19" />
+              </svg>
+            </button>
+          </li>
+        }
+      </ul>
+
+      <div class="carrito-summary">
+        <div class="carrito-summary__row">
+          <span>Total ({{ cart.totalItems() }} articulos)</span>
+          <span class="carrito-summary__total">{{ cart.totalPrice() }} Bs</span>
+        </div>
+        <button type="button" class="carrito-summary__checkout" disabled>Finalizar compra (proximamente)</button>
+        <a class="carrito-summary__continue" routerLink="/tienda">Continuar comprando</a>
+      </div>
+    </div>
+  }
+</section>
