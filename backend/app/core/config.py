@@ -35,6 +35,10 @@ class Settings(BaseSettings):
 
     GOOGLE_CLIENT_ID: str = ""
 
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
+    SUPABASE_STORAGE_BUCKET: str = "productos"
+
     SMTP_HOST: str = "mailpit"
     SMTP_PORT: int = 1025
     SMTP_USER: str = ""

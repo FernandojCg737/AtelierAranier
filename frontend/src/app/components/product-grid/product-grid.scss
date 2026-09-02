@@ -81,8 +81,6 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1px;
-  background: #e2e2e0;
-  border: 1px solid #e2e2e0;
 
   @media (min-width: 640px) {
     grid-template-columns: repeat(3, 1fr);
@@ -136,6 +134,7 @@
   background: #fff;
   text-decoration: none;
   color: inherit;
+  box-shadow: 0 0 0 0.5px #e2e2e0;
 }
 
 .product-tile__image {
@@ -170,6 +169,15 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   padding: 4px 8px;
+
+  &--agotado {
+    background: #b3261e;
+  }
+}
+
+.product-tile__add-to-cart:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .product-tile__add-to-cart {
@@ -235,4 +243,13 @@
   font-size: 14px;
   font-weight: 800;
   color: var(--brand-dark);
+}
+
+.product-tile__temporada {
+  margin-top: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #b2b2b2;
 }

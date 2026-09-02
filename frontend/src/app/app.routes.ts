@@ -1,10 +1,15 @@
 import { Routes } from '@angular/router';
 import { AdminLayout } from './pages/admin/admin-layout/admin-layout';
 import { AdminBitacora } from './pages/admin/bitacora/bitacora';
+import { AdminCatalogo } from './pages/admin/catalogo/catalogo';
 import { AdminClientes } from './pages/admin/clientes/clientes';
 import { AdminHome } from './pages/admin/home/home';
+import { AdminInventario } from './pages/admin/inventario/inventario';
 import { AdminPerfil } from './pages/admin/perfil/perfil';
+import { AdminProductos } from './pages/admin/productos/productos';
+import { AdminProveedores } from './pages/admin/proveedores/proveedores';
 import { AdminSesiones } from './pages/admin/sesiones/sesiones';
+import { AdminTemporadas } from './pages/admin/temporadas/temporadas';
 import { AdminSucursales } from './pages/admin/sucursales/sucursales';
 import { AdminUsuarios } from './pages/admin/usuarios/usuarios';
 import { Carrito } from './pages/carrito/carrito';
@@ -38,6 +43,11 @@ export const routes: Routes = [
       { path: 'usuarios', component: AdminUsuarios, canActivate: [permisoGuard('CU02')] },
       { path: 'clientes', component: AdminClientes, canActivate: [permisoGuard('CU03')] },
       { path: 'sucursales', component: AdminSucursales, canActivate: [permisoGuard('CU04')] },
+      { path: 'productos', component: AdminProductos, canActivate: [permisoGuard('CU05')] },
+      { path: 'proveedores', component: AdminProveedores, canActivate: [permisoGuard('CU06')] },
+      { path: 'temporadas', component: AdminTemporadas, canActivate: [permisoGuard('CU07')] },
+      { path: 'catalogo', component: AdminCatalogo, canActivate: [permisoGuard('CU08')] },
+      { path: 'inventario', component: AdminInventario, canActivate: [permisoGuard('CU12')] },
       { path: 'perfil', component: AdminPerfil },
       { path: 'sesiones', component: AdminSesiones, canActivate: [permisoGuard('CU01')] },
       { path: 'bitacora', component: AdminBitacora, canActivate: [permisoGuard('CU19')] },

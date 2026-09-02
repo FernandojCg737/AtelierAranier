@@ -1,30 +1,25 @@
+import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import { CatalogoPublico } from '../../services/catalogo-publico';
+import { TiendaFiltros } from '../../services/tienda-filtros';
 
 interface Sucursal {
-  id: string;
+  id: number;
   nombre: string;
   direccion: string;
 }
 
-interface FiltroOpcion {
-  id: string;
-  label: string;
+interface Temporada {
+  id: number;
+  nombre: string;
 }
 
 const PRECIO_MIN = 0;
 const PRECIO_MAX = 3500;
-
-// TODO: placeholder de que marcas vende cada categoria. Reemplazar cuando el
-// catalogo real (Producto -> Categoria / Proveedor) este conectado al backend.
-const MARCAS_POR_CATEGORIA: Record<string, string[]> = {
-  camisas: ['tommy', 'calvin-klein', 'levis'],
-  chalecos: ['champion', 'calvin-klein', 'tommy'],
-  hoodie: ['nike', 'adidas', 'puma', 'champion', 'new-balance'],
-  pantalones: ['levis', 'nike', 'adidas', 'calvin-klein'],
-  poleras: ['nike', 'adidas', 'puma', 'jordan', 'champion', 'converse'],
-};
 
 @Component({
   selector: 'app-shop-filters',
@@ -33,76 +28,44 @@ const MARCAS_POR_CATEGORIA: Record<string, string[]> = {
   styleUrl: './shop-filters.scss',
 })
 export class ShopFilters implements OnInit {
+  private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly filtros = inject(TiendaFiltros);
+  private readonly catalogo = inject(CatalogoPublico);
 
-  protected readonly sucursales: Sucursal[] = [
-    { id: 'todas', nombre: 'Todas las Sucursales', direccion: '' },
-    {
-      id: 'equipetrol',
-      nombre: 'Sucursal Equipetrol',
-      direccion: 'Av. San Martin, 3er Anillo Interno, Equipetrol',
-    },
-    { id: 'las-palmas', nombre: 'Sucursal Las Palmas', direccion: 'Av. Beni, 2do Anillo, B. Las Palmas' },
-    {
-      id: 'norte',
-      nombre: 'Sucursal Norte',
-      direccion: 'Av. Cristo Redentor, entre 4to y 5to Anillo, Zona Norte',
-    },
-  ];
+  protected readonly temporadas = signal<Temporada[]>([]);
+  protected readonly temporadaSeleccionada = this.filtros.temporadaSeleccionada;
 
-  protected readonly filtrosRapidos: FiltroOpcion[] = [
-    { id: 'todos', label: 'Todos los productos' },
-    { id: 'ofertas', label: 'Ofertas y Descuentos' },
-    { id: 'nuevo', label: 'Lo mas nuevo' },
-  ];
+  protected readonly sucursales = signal<Sucursal[]>([]);
+  protected readonly sucursalSeleccionada = this.filtros.sucursalSeleccionada;
 
-  protected readonly categorias: FiltroOpcion[] = [
-    { id: 'todas', label: 'Todas' },
-    { id: 'camisas', label: 'Camisas' },
-    { id: 'chalecos', label: 'Chalecos' },
-    { id: 'hoodie', label: 'Hoodie' },
-    { id: 'pantalones', label: 'Pantalones' },
-    { id: 'poleras', label: 'Poleras' },
-  ];
+  protected readonly categorias = this.catalogo.categorias;
+  protected readonly categoriaSeleccionada = this.filtros.categoriaSeleccionada;
 
-  // TODO: placeholder de marcas que la tienda vende en todas sus sucursales.
-  // Ajustar cuando tengamos el catalogo real de proveedores conectado al backend.
-  protected readonly marcas: FiltroOpcion[] = [
-    { id: 'nike', label: 'Nike' },
-    { id: 'adidas', label: 'Adidas' },
-    { id: 'puma', label: 'Puma' },
-    { id: 'new-balance', label: 'New Balance' },
-    { id: 'converse', label: 'Converse' },
-    { id: 'jordan', label: 'Jordan' },
-    { id: 'champion', label: 'Champion' },
-    { id: 'levis', label: "Levi's" },
-    { id: 'tommy', label: 'Tommy Hilfiger' },
-    { id: 'calvin-klein', label: 'Calvin Klein' },
-  ];
+  protected readonly marcasVisibles = computed(() => {
+    const categoria = this.categoriaSeleccionada();
+    if (!categoria) return this.catalogo.marcas();
+
+    const marcasEnCategoria = new Set(
+      this.catalogo
+        .products()
+        .filter((p) => p.category === categoria)
+        .map((p) => p.brand)
+        .filter((b): b is string => !!b),
+    );
+    return this.catalogo.marcas().filter((m) => marcasEnCategoria.has(m));
+  });
+  protected readonly marcasSeleccionadas = this.filtros.marcasSeleccionadas;
+  protected readonly todasMarcasChecked = computed(() => this.marcasSeleccionadas().size === 0);
 
   protected readonly precioMin = PRECIO_MIN;
   protected readonly precioMax = PRECIO_MAX;
-
-  protected readonly selectedSucursal = signal('todas');
-  protected readonly selectedFiltrosRapidos = signal(new Set<string>(['todos']));
-  protected readonly selectedCategoria = signal('todas');
-  protected readonly selectedMarcas = signal(new Set<string>());
   protected readonly selectedPrecioMin = signal(PRECIO_MIN);
   protected readonly selectedPrecioMax = signal(PRECIO_MAX);
 
   protected readonly categoriasOpen = signal(true);
   protected readonly precioOpen = signal(true);
-
-  protected readonly marcasVisibles = computed<FiltroOpcion[]>(() => {
-    const categoria = this.selectedCategoria();
-    if (categoria === 'todas') return this.marcas;
-
-    const idsPermitidos = MARCAS_POR_CATEGORIA[categoria] ?? [];
-    return this.marcas.filter((m) => idsPermitidos.includes(m.id));
-  });
-
-  protected readonly todasMarcasChecked = computed(() => this.selectedMarcas().size === 0);
 
   protected readonly minPercent = computed(
     () => ((this.selectedPrecioMin() - PRECIO_MIN) / (PRECIO_MAX - PRECIO_MIN)) * 100,
@@ -112,83 +75,77 @@ export class ShopFilters implements OnInit {
   );
 
   ngOnInit(): void {
-    // Permite llegar desde el header con un filtro ya aplicado, ej.
-    // /tienda?categoria=poleras o /tienda?filtro=ofertas.
+    // Permite llegar desde el header con una categoria ya aplicada, ej.
+    // /tienda?categoria=poleras.
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const categoria = params.get('categoria');
-      if (categoria && this.categorias.some((c) => c.id === categoria)) {
-        this.selectCategoria(categoria);
-      }
-
-      const filtro = params.get('filtro');
-      if (filtro && this.filtrosRapidos.some((f) => f.id === filtro)) {
-        this.selectedFiltrosRapidos.set(new Set([filtro]));
-      }
+      if (categoria) this.selectCategoria(categoria);
     });
+
+    this.catalogo.load();
+
+    firstValueFrom(this.http.get<Temporada[]>(`${environment.apiUrl}/temporadas/publico`))
+      .then((res) => this.temporadas.set(res))
+      .catch(() => this.temporadas.set([]));
+
+    firstValueFrom(this.http.get<Sucursal[]>(`${environment.apiUrl}/sucursales/publico`))
+      .then((res) => this.sucursales.set(res))
+      .catch(() => this.sucursales.set([]));
   }
 
-  protected selectSucursal(id: string): void {
-    this.selectedSucursal.set(id);
+  protected seleccionarTemporada(nombre: string | null): void {
+    this.filtros.seleccionarTemporada(nombre);
   }
 
-  protected toggleFiltroRapido(id: string): void {
-    this.selectedFiltrosRapidos.update((set) => {
-      const next = new Set(set);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  protected selectSucursal(nombre: string | null): void {
+    this.filtros.seleccionarSucursal(nombre);
   }
 
-  protected selectCategoria(id: string): void {
-    this.selectedCategoria.set(id);
-
-    const idsPermitidos = id === 'todas' ? null : MARCAS_POR_CATEGORIA[id] ?? [];
-    if (idsPermitidos) {
-      this.selectedMarcas.update((set) => {
-        const next = new Set([...set].filter((m) => idsPermitidos.includes(m)));
-        return next;
-      });
-    }
+  protected selectCategoria(id: string | null): void {
+    this.filtros.seleccionarCategoria(id === 'todas' ? null : id);
   }
 
-  protected toggleMarca(id: string): void {
-    this.selectedMarcas.update((set) => {
-      const next = new Set(set);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  protected toggleMarca(nombre: string): void {
+    this.filtros.toggleMarca(nombre);
   }
 
   protected selectTodasMarcas(): void {
-    this.selectedMarcas.set(new Set());
+    this.filtros.limpiarMarcas();
+  }
+
+  private aplicarPrecio(): void {
+    const min = this.selectedPrecioMin() === PRECIO_MIN ? null : this.selectedPrecioMin();
+    const max = this.selectedPrecioMax() === PRECIO_MAX ? null : this.selectedPrecioMax();
+    this.filtros.setPrecio(min, max);
   }
 
   protected onMinRangeInput(value: string): void {
     const parsed = Math.min(Number(value), this.selectedPrecioMax());
     this.selectedPrecioMin.set(parsed);
+    this.aplicarPrecio();
   }
 
   protected onMaxRangeInput(value: string): void {
     const parsed = Math.max(Number(value), this.selectedPrecioMin());
     this.selectedPrecioMax.set(parsed);
+    this.aplicarPrecio();
   }
 
   protected onMinInputChange(value: string): void {
     const parsed = Math.max(PRECIO_MIN, Math.min(Number(value) || 0, this.selectedPrecioMax()));
     this.selectedPrecioMin.set(parsed);
+    this.aplicarPrecio();
   }
 
   protected onMaxInputChange(value: string): void {
     const parsed = Math.min(PRECIO_MAX, Math.max(Number(value) || 0, this.selectedPrecioMin()));
     this.selectedPrecioMax.set(parsed);
+    this.aplicarPrecio();
   }
 
   protected limpiarFiltros(): void {
-    this.selectedSucursal.set('todas');
-    this.selectedFiltrosRapidos.set(new Set(['todos']));
-    this.selectedCategoria.set('todas');
-    this.selectedMarcas.set(new Set());
     this.selectedPrecioMin.set(PRECIO_MIN);
     this.selectedPrecioMax.set(PRECIO_MAX);
+    this.filtros.limpiarTodo();
   }
 }

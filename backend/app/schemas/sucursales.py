@@ -36,3 +36,10 @@ class SucursalOut(BaseModel):
     fecha_creacion: date
 
     model_config = {"from_attributes": True}
+
+
+class SucursalPublicaOut(BaseModel):
+    id: int
+    nombre: str
+    direccion: str
+    horario_atencion: str | None

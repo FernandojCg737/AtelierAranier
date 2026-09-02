@@ -77,10 +77,11 @@
   background: #e2e2e0;
   border: 1px solid #e2e2e0;
   max-width: 1440px;
+  width: fit-content;
   margin: 0 auto;
 
   @media (min-width: 700px) {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(220px, 300px));
   }
 }
 
@@ -153,6 +154,15 @@
   font-weight: 800;
   letter-spacing: 0.02em;
   padding: 4px 9px;
+
+  &--agotado {
+    background: #6b6b6b;
+  }
+}
+
+.discount-card__add-to-cart:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .discount-card__info {

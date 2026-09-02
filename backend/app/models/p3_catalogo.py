@@ -62,6 +62,15 @@ class Coleccion(Base):
     productos: Mapped[list["Producto"]] = relationship(back_populates="coleccion")
 
 
+class Marca(Base):
+    __tablename__ = "marca"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nombre: Mapped[str] = mapped_column(String(100), unique=True)
+
+    productos: Mapped[list["Producto"]] = relationship(back_populates="marca")
+
+
 class Proveedor(Usuario):
     __tablename__ = "proveedor"
 
@@ -81,21 +90,38 @@ class Producto(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     categoria_id: Mapped[int] = mapped_column(ForeignKey("categoria.id"))
+    marca_id: Mapped[int] = mapped_column(ForeignKey("marca.id"))
     proveedor_id: Mapped[int] = mapped_column(ForeignKey("proveedor.id"))
     temporada_id: Mapped[int] = mapped_column(ForeignKey("temporada.id"))
     coleccion_id: Mapped[int] = mapped_column(ForeignKey("coleccion.id"))
     nombre: Mapped[str] = mapped_column(String(150))
     descripcion: Mapped[str | None] = mapped_column(Text)
     precio: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    precio_original: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     estado: Mapped[str] = mapped_column(String(20), default="activo")
 
     categoria: Mapped["Categoria"] = relationship(back_populates="productos")
+    marca: Mapped["Marca"] = relationship(back_populates="productos")
     proveedor: Mapped["Proveedor"] = relationship(back_populates="productos")
     temporada: Mapped["Temporada"] = relationship(back_populates="productos")
     coleccion: Mapped["Coleccion"] = relationship(back_populates="productos")
     inventarios: Mapped[list["Inventario"]] = relationship(back_populates="producto")
     items_linea: Mapped[list["ItemLinea"]] = relationship(back_populates="producto")
     recomendaciones: Mapped[list["Recomendacion"]] = relationship(back_populates="producto")
+    imagenes: Mapped[list["ProductoImagen"]] = relationship(
+        back_populates="producto", order_by="ProductoImagen.orden", cascade="all, delete-orphan"
+    )
+
+
+class ProductoImagen(Base):
+    __tablename__ = "producto_imagen"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    producto_id: Mapped[int] = mapped_column(ForeignKey("producto.id"))
+    url: Mapped[str] = mapped_column(String(500))
+    orden: Mapped[int] = mapped_column(default=0)
+
+    producto: Mapped["Producto"] = relationship(back_populates="imagenes")
 
 
 class Inventario(Base):

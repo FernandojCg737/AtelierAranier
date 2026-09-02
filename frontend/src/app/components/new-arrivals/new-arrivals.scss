@@ -74,15 +74,16 @@
 
 .new-arrivals-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 1px;
   background: #e2e2e0;
   border: 1px solid #e2e2e0;
   max-width: 1440px;
+  width: fit-content;
   margin: 0 auto;
 
   @media (min-width: 700px) {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(220px, 300px));
   }
 }
 
@@ -156,6 +157,15 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   padding: 4px 8px;
+
+  &--agotado {
+    background: #b3261e;
+  }
+}
+
+.product-card__add-to-cart:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .product-card__info {

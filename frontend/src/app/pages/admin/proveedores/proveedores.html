@@ -1,0 +1,176 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P3 · CU06</span>
+      <h1>Administrar Proveedores</h1>
+      <p>
+        Lista de proveedores registrados. Podes crear cuentas nuevas, editar sus datos, o activar/desactivar su
+        acceso.
+      </p>
+    </div>
+
+    <form class="admin-search" (submit)="$event.preventDefault(); search()">
+      <input
+        type="text"
+        placeholder="Buscar por nombre, correo o NIT..."
+        [value]="buscar()"
+        (input)="buscar.set($any($event.target).value)"
+      />
+      <button type="submit">Buscar</button>
+    </form>
+  </div>
+
+  <div class="admin-content__header">
+    <span></span>
+    <button type="button" class="admin-search__refresh" (click)="openCreate()">+ Nuevo Proveedor</button>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Proveedor</th>
+          <th>NIT</th>
+          <th>Contacto</th>
+          <th>Telefono</th>
+          <th>Estado</th>
+          <th>Registrado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td colspan="7" class="admin-table__empty">Cargando...</td>
+          </tr>
+        } @else if (proveedores().length === 0) {
+          <tr>
+            <td colspan="7" class="admin-table__empty">No hay proveedores registrados.</td>
+          </tr>
+        } @else {
+          @for (p of proveedores(); track p.id) {
+            <tr>
+              <td>
+                <div class="admin-table__user">
+                  <strong>{{ p.nombre }}</strong>
+                  <span>{{ p.email }}</span>
+                </div>
+              </td>
+              <td>{{ p.nit }}</td>
+              <td>{{ p.contacto_nombre || '-' }}</td>
+              <td>{{ p.telefono || '-' }}</td>
+              <td>
+                <span class="admin-badge" [class.is-inactive]="p.estado === 'inactivo'">{{ p.estado }}</span>
+              </td>
+              <td>{{ p.fecha_registro }}</td>
+              <td class="admin-table__actions">
+                <button type="button" (click)="editProveedor(p)">Editar</button>
+                <button type="button" class="is-danger" (click)="toggleEstado(p)">
+                  {{ p.estado === 'activo' ? 'Desactivar' : 'Activar' }}
+                </button>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (showCreateForm()) {
+  <div class="modal-overlay" (click)="closeCreate()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>Nuevo Proveedor</h2>
+      <p class="modal-hint">Se genera una contrasena temporal y se le envia por correo.</p>
+
+      <form (submit)="$event.preventDefault(); submitCreate()">
+        <label class="modal-field">
+          <span>Razon Social / Nombre</span>
+          <input type="text" [value]="cNombre()" (input)="cNombre.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Correo Electronico</span>
+          <input type="email" [value]="cEmail()" (input)="cEmail.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>NIT</span>
+          <input type="text" [value]="cNit()" (input)="cNit.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Nombre de Contacto</span>
+          <input type="text" [value]="cContactoNombre()" (input)="cContactoNombre.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Telefono</span>
+          <input type="tel" [value]="cTelefono()" (input)="cTelefono.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Direccion</span>
+          <input type="text" [value]="cDireccion()" (input)="cDireccion.set($any($event.target).value)" />
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="is-secondary" (click)="closeCreate()">Cancelar</button>
+          <button type="submit" [disabled]="createSaving()">{{ createSaving() ? 'Creando...' : 'Crear' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+@if (editingId(); as id) {
+  <div class="modal-overlay" (click)="closeEdit()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>Editar Proveedor</h2>
+
+      <form (submit)="$event.preventDefault(); submitEdit()">
+        <label class="modal-field">
+          <span>Razon Social / Nombre</span>
+          <input type="text" [value]="eNombre()" (input)="eNombre.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>NIT</span>
+          <input type="text" [value]="eNit()" (input)="eNit.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Nombre de Contacto</span>
+          <input type="text" [value]="eContactoNombre()" (input)="eContactoNombre.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Telefono</span>
+          <input type="tel" [value]="eTelefono()" (input)="eTelefono.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Direccion</span>
+          <input type="text" [value]="eDireccion()" (input)="eDireccion.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Estado</span>
+          <select [value]="eEstado()" (change)="eEstado.set($any($event.target).value)">
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="is-secondary" (click)="closeEdit()">Cancelar</button>
+          <button type="submit" [disabled]="editSaving()">{{ editSaving() ? 'Guardando...' : 'Guardar' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

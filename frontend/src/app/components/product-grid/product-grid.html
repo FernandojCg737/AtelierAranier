@@ -31,22 +31,28 @@
     @for (product of visibleProducts(); track product.id) {
       <a class="product-tile" [routerLink]="['/producto', product.id]">
         <div class="product-tile__image">
-          @if (product.isNew) {
+          @if (isAgotado(product)) {
+            <span class="product-tile__badge product-tile__badge--agotado">Agotado</span>
+          } @else if (product.isNew) {
             <span class="product-tile__badge">Nuevo</span>
           }
           <img [src]="product.image" [alt]="product.name" />
           <button
             class="product-tile__add-to-cart"
             type="button"
+            [disabled]="isAgotado(product)"
             (click)="$event.preventDefault(); $event.stopPropagation(); addToCart(product)"
           >
-            Agregar al carrito
+            {{ isAgotado(product) ? 'Sin stock' : 'Agregar al carrito' }}
           </button>
         </div>
         <div class="product-tile__info">
           <span class="product-tile__brand">{{ product.brand }}</span>
           <span class="product-tile__name">{{ product.name }}</span>
           <span class="product-tile__price">{{ product.price }} Bs</span>
+          @if (product.temporada) {
+            <span class="product-tile__temporada">{{ product.temporada }}</span>
+          }
         </div>
       </a>
     }

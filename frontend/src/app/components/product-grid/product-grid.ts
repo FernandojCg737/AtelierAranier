@@ -1,8 +1,10 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { PRODUCTS, Product } from '../../data/products';
+import { Product } from '../../data/products';
+import { CatalogoPublico, isAgotado } from '../../services/catalogo-publico';
 import { Cart } from '../../services/cart';
+import { TiendaFiltros } from '../../services/tienda-filtros';
 
 @Component({
   selector: 'app-product-grid',
@@ -14,6 +16,8 @@ export class ProductGrid implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly cart = inject(Cart);
+  private readonly catalogo = inject(CatalogoPublico);
+  private readonly filtros = inject(TiendaFiltros);
 
   protected readonly sortOpen = signal(false);
   protected readonly sortLabel = signal('Predeterminado');
@@ -25,29 +29,59 @@ export class ProductGrid implements OnInit {
     'Mas recientes',
   ];
 
-  protected readonly products: Product[] = PRODUCTS;
-
   protected readonly loadingMore = signal(false);
-
-  // TODO: placeholder: filtra el catalogo de prueba por nombre/marca en el
-  // cliente. Cuando exista el endpoint real de busqueda (tabla Producto),
-  // este mismo query param "buscar" se manda al backend en su lugar.
   protected readonly busqueda = signal('');
+  protected readonly isAgotado = isAgotado;
 
   protected readonly visibleProducts = computed<Product[]>(() => {
     const termino = this.busqueda().trim().toLowerCase();
-    if (!termino) return this.products;
+    const temporada = this.filtros.temporadaSeleccionada();
+    const categoria = this.filtros.categoriaSeleccionada();
+    const marcas = this.filtros.marcasSeleccionadas();
+    const sucursal = this.filtros.sucursalSeleccionada();
+    const precioMin = this.filtros.precioMin();
+    const precioMax = this.filtros.precioMax();
 
-    return this.products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(termino) || (p.brand ?? '').toLowerCase().includes(termino),
-    );
+    const productos = this.catalogo.products().filter((p) => {
+      const coincideBusqueda =
+        !termino || p.name.toLowerCase().includes(termino) || (p.brand ?? '').toLowerCase().includes(termino);
+      const coincideTemporada = !temporada || p.temporada === temporada;
+      const coincideCategoria = !categoria || p.category === categoria;
+      const coincideMarca = marcas.size === 0 || (p.brand ? marcas.has(p.brand) : false);
+      const coincideSucursal = !sucursal || p.branchesInStock.includes(sucursal);
+      const coincidePrecioMin = precioMin === null || p.price >= precioMin;
+      const coincidePrecioMax = precioMax === null || p.price <= precioMax;
+      return (
+        coincideBusqueda &&
+        coincideTemporada &&
+        coincideCategoria &&
+        coincideMarca &&
+        coincideSucursal &&
+        coincidePrecioMin &&
+        coincidePrecioMax
+      );
+    });
+
+    const ordenado = [...productos];
+    switch (this.sortLabel()) {
+      case 'Precio: menor a mayor':
+        ordenado.sort((a, b) => a.price - b.price);
+        break;
+      case 'Precio: mayor a menor':
+        ordenado.sort((a, b) => b.price - a.price);
+        break;
+      default:
+        break;
+    }
+    return ordenado;
   });
 
   ngOnInit(): void {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       this.busqueda.set(params.get('buscar') ?? '');
     });
+
+    this.catalogo.load();
   }
 
   protected toggleSort(): void {
@@ -68,6 +102,7 @@ export class ProductGrid implements OnInit {
   }
 
   protected addToCart(product: Product): void {
+    if (isAgotado(product)) return;
     this.cart.addItem({
       id: product.id,
       name: product.name,

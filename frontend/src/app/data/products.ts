@@ -14,6 +14,7 @@ export interface Product {
   gallery: string[];
   category: string;
   categoryLabel: string;
+  temporada?: string;
   isNew: boolean;
   colors: ProductColor[];
   sizes: string[];

@@ -48,17 +48,21 @@ def require_staff(usuario: Usuario = Depends(get_current_user)) -> Usuario:
     return usuario
 
 
-def require_permiso(codigo: str) -> Callable[[Usuario], Usuario]:
+def require_permiso(*codigos: str) -> Callable[[Usuario], Usuario]:
     # Administrador es superusuario por diseno: no depende de la tabla
     # rol_permiso, para que nunca pueda quedar sin acceso al panel por un
     # cambio accidental en la matriz de permisos (CU02).
+    # Acepta varios codigos (ej. CU05 o CU12) para endpoints compartidos por
+    # mas de un caso de uso; basta con tener uno de ellos.
     def _dependency(usuario: Usuario = Depends(require_staff)) -> Usuario:
         if usuario.tipo == "administrador":
             return usuario
 
-        codigos = {p.nombre for p in usuario.rol.permisos} if usuario.rol else set()
-        if codigo not in codigos:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, f"Tu rol no tiene permiso para acceder a {codigo}.")
+        codigos_usuario = {p.nombre for p in usuario.rol.permisos} if usuario.rol else set()
+        if not codigos_usuario & set(codigos):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN, f"Tu rol no tiene permiso para acceder a {' o '.join(codigos)}."
+            )
         return usuario
 
     return _dependency

@@ -1,0 +1,110 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P3 · CU12</span>
+      <h1>Controlar Inventario por Sucursal</h1>
+      <p>Agrega el inventario de una o mas sucursales para editar la cantidad de cada variante en stock.</p>
+    </div>
+
+    <div class="catalogo-picker">
+      <button type="button" class="admin-search__refresh" (click)="togglePicker()">+ Agregar Sucursal</button>
+
+      @if (showPicker()) {
+        <div class="catalogo-picker__menu">
+          @if (sucursalesParaAgregar().length === 0) {
+            <span class="catalogo-picker__empty">Ya agregaste el inventario de todas las sucursales.</span>
+          } @else {
+            @for (s of sucursalesParaAgregar(); track s.id) {
+              <button type="button" (click)="agregarCatalogo(s)">{{ s.nombre }}</button>
+            }
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  @if (catalogos().length === 0) {
+    <p class="catalogo-hint">Todavia no agregaste ningun inventario. Usa "+ Agregar Sucursal" para empezar.</p>
+  }
+
+  @for (cat of catalogos(); track cat.sucursal.id) {
+    <div class="catalogo-section">
+      <div class="catalogo-section__header">
+        <h2>{{ cat.sucursal.nombre }}</h2>
+        <button type="button" class="catalogo-section__remove" (click)="quitarCatalogo(cat.sucursal.id)">Quitar</button>
+      </div>
+
+      @if (cat.error) {
+        <div class="admin-error">{{ cat.error }}</div>
+      }
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Producto</th>
+              <th>Marca</th>
+              <th>Categoria</th>
+              <th>Precio</th>
+              <th>Variantes (Editable)</th>
+              <th>Cantidad Total</th>
+              <th>Disponibilidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (cat.loading) {
+              <tr>
+                <td colspan="8" class="admin-table__empty">Cargando...</td>
+              </tr>
+            } @else if (cat.productos.length === 0) {
+              <tr>
+                <td colspan="8" class="admin-table__empty">Esta sucursal no tiene productos registrados.</td>
+              </tr>
+            } @else {
+              @for (p of cat.productos; track p.id) {
+                <tr>
+                  <td>
+                    @if (p.imagen_url) {
+                      <img class="catalogo-thumb" [src]="p.imagen_url" [alt]="p.nombre" />
+                    }
+                  </td>
+                  <td><strong>{{ p.nombre }}</strong></td>
+                  <td>{{ p.marca_nombre }}</td>
+                  <td>{{ p.categoria_nombre }}</td>
+                  <td>Bs {{ p.precio }}</td>
+                  <td>
+                    <div class="variantes-list">
+                      @for (v of p.variantes; track v.id) {
+                        <div class="variante-row">
+                          <span>{{ v.talla_codigo }} / {{ v.color_nombre }}:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            class="variante-row__input"
+                            [value]="v.cantidad"
+                            (change)="actualizarCantidad(cat.sucursal.id, p, v, $any($event.target).value)"
+                          />
+                        </div>
+                      }
+                    </div>
+                  </td>
+                  <td>{{ p.cantidad_total }}</td>
+                  <td>
+                    <span class="admin-badge" [class.is-inactive]="!p.disponible">
+                      {{ p.disponible ? 'Disponible' : 'Agotado' }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>

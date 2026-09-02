@@ -15,17 +15,22 @@
   </div>
 
   <div class="new-arrivals-grid">
-    @for (product of products; track product.id) {
+    @for (product of products(); track product.id) {
       <a class="product-card" [routerLink]="['/producto', product.id]">
         <div class="product-card__image">
-          <span class="product-card__badge">Nuevo</span>
+          @if (isAgotado(product)) {
+            <span class="product-card__badge product-card__badge--agotado">Agotado</span>
+          } @else {
+            <span class="product-card__badge">Nuevo</span>
+          }
           <img [src]="product.image" [alt]="product.name" />
           <button
             class="product-card__add-to-cart"
             type="button"
+            [disabled]="isAgotado(product)"
             (click)="$event.preventDefault(); $event.stopPropagation(); addToCart(product)"
           >
-            Agregar al carrito
+            {{ isAgotado(product) ? 'Sin stock' : 'Agregar al carrito' }}
           </button>
         </div>
         <div class="product-card__info">

@@ -7,9 +7,18 @@ from app.api.deps import require_permiso
 from app.core.audit import log_bitacora
 from app.db.session import get_db
 from app.models import Sucursal, Usuario
-from app.schemas.sucursales import SucursalCreate, SucursalOut, SucursalUpdate
+from app.schemas.sucursales import SucursalCreate, SucursalOut, SucursalPublicaOut, SucursalUpdate
 
 router = APIRouter()
+
+
+@router.get("/publico", response_model=list[SucursalPublicaOut])
+def list_sucursales_publico(db: Session = Depends(get_db)) -> list[SucursalPublicaOut]:
+    sucursales = db.query(Sucursal).filter(Sucursal.estado == "activa").order_by(Sucursal.nombre).all()
+    return [
+        SucursalPublicaOut(id=s.id, nombre=s.nombre, direccion=s.direccion, horario_atencion=s.horario_atencion)
+        for s in sucursales
+    ]
 
 
 def _to_out(sucursal: Sucursal) -> SucursalOut:

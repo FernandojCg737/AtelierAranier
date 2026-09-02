@@ -31,7 +31,11 @@
       </div>
 
       <div class="producto-info">
-        <span class="producto-info__stock">En stock</span>
+        @if (isAgotado(p)) {
+          <span class="producto-info__stock producto-info__stock--agotado">Agotado</span>
+        } @else {
+          <span class="producto-info__stock">En stock</span>
+        }
 
         <h1>{{ p.name }}</h1>
 
@@ -86,8 +90,13 @@
           </div>
         }
 
-        <button type="button" class="producto-info__add-to-cart" (click)="addToCart()">
-          <span>{{ addedFeedback() ? 'Agregado' : 'Anadir al carrito' }}</span>
+        <button
+          type="button"
+          class="producto-info__add-to-cart"
+          [disabled]="isAgotado(p)"
+          (click)="addToCart()"
+        >
+          <span>{{ isAgotado(p) ? 'Sin stock' : addedFeedback() ? 'Agregado' : 'Anadir al carrito' }}</span>
           @if (!addedFeedback()) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -120,12 +129,18 @@
           @if (detallesOpen()) {
             <div class="producto-details__row">
               <span>Sucursales con Stock</span>
-              <span>{{ p.branchesInStock.join(', ') }}</span>
+              <span>{{ p.branchesInStock.length ? p.branchesInStock.join(', ') : 'Sin stock por el momento' }}</span>
             </div>
             <div class="producto-details__row">
               <span>Categoria</span>
               <span>{{ p.categoryLabel }}</span>
             </div>
+            @if (p.temporada) {
+              <div class="producto-details__row">
+                <span>Temporada</span>
+                <span>{{ p.temporada }}</span>
+              </div>
+            }
           }
         </div>
       </div>

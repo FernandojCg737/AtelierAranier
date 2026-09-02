@@ -33,11 +33,11 @@ export const ADMIN_MENU: AdminPackage[] = [
     code: 'P3',
     label: 'Gestion de Catalogo e Inventario',
     useCases: [
-      { code: 'CU05', label: 'Administrar Catalogo de Productos' },
-      { code: 'CU06', label: 'Administrar Proveedores' },
-      { code: 'CU07', label: 'Configurar Temporadas y Colecciones' },
-      { code: 'CU08', label: 'Consultar Catalogo y Disponibilidad' },
-      { code: 'CU12', label: 'Controlar Inventario por Sucursal' },
+      { code: 'CU05', label: 'Administrar Catalogo de Productos', route: '/admin/productos' },
+      { code: 'CU06', label: 'Administrar Proveedores', route: '/admin/proveedores' },
+      { code: 'CU07', label: 'Configurar Temporadas y Colecciones', route: '/admin/temporadas' },
+      { code: 'CU08', label: 'Consultar Catalogo y Disponibilidad', route: '/admin/catalogo' },
+      { code: 'CU12', label: 'Controlar Inventario por Sucursal', route: '/admin/inventario' },
     ],
   },
   {

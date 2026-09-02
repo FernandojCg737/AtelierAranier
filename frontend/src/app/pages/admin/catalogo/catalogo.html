@@ -1,0 +1,92 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P3 · CU08</span>
+      <h1>Consultar Catalogo y Disponibilidad</h1>
+      <p>Agrega el catalogo de una o mas sucursales para ver que productos tiene, cuantos y su disponibilidad.</p>
+    </div>
+
+    <form class="admin-search" (submit)="$event.preventDefault()">
+      <input
+        type="text"
+        placeholder="Buscar por nombre, marca, categoria, talla o color..."
+        [value]="busqueda()"
+        (input)="busqueda.set($any($event.target).value)"
+      />
+    </form>
+
+    <div class="catalogo-picker">
+      <button type="button" class="admin-search__refresh" (click)="togglePicker()">+ Agregar Catalogo</button>
+
+      @if (showPicker()) {
+        <div class="catalogo-picker__menu">
+          @if (sucursalesParaAgregar().length === 0) {
+            <span class="catalogo-picker__empty">Ya agregaste el catalogo de todas las sucursales.</span>
+          } @else {
+            @for (s of sucursalesParaAgregar(); track s.id) {
+              <button type="button" (click)="agregarCatalogo(s)">{{ s.nombre }}</button>
+            }
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  @if (catalogos().length === 0) {
+    <p class="catalogo-hint">Todavia no agregaste ningun catalogo. Usa "+ Agregar Catalogo" para empezar.</p>
+  }
+
+  @for (cat of catalogos(); track cat.sucursal.id) {
+    <div class="catalogo-section">
+      <div class="catalogo-section__header">
+        <h2>{{ cat.sucursal.nombre }}</h2>
+        <span class="catalogo-section__count">{{ filtrarProductos(cat.productos).length }} de {{ cat.productos.length }} productos</span>
+        <button type="button" class="catalogo-section__remove" (click)="quitarCatalogo(cat.sucursal.id)">Quitar</button>
+      </div>
+
+      @if (cat.error) {
+        <div class="admin-error">{{ cat.error }}</div>
+      }
+
+      @if (cat.loading) {
+        <p class="catalogo-hint">Cargando...</p>
+      } @else if (cat.productos.length === 0) {
+        <p class="catalogo-hint">Esta sucursal no tiene productos registrados.</p>
+      } @else if (filtrarProductos(cat.productos).length === 0) {
+        <p class="catalogo-hint">Ningun producto de esta sucursal coincide con "{{ busqueda() }}".</p>
+      } @else {
+        <div class="catalogo-grid">
+          @for (p of filtrarProductos(cat.productos); track p.id) {
+            <div class="catalogo-card">
+              <div class="catalogo-card__image">
+                @if (p.imagen_url) {
+                  <img [src]="p.imagen_url" [alt]="p.nombre" />
+                }
+                <span class="catalogo-card__badge" [class.is-inactive]="!p.disponible">
+                  {{ p.disponible ? 'Disponible' : 'Agotado' }}
+                </span>
+              </div>
+              <div class="catalogo-card__body">
+                <span class="catalogo-card__brand">{{ p.marca_nombre }}</span>
+                <span class="catalogo-card__name">{{ p.nombre }}</span>
+                <span class="catalogo-card__meta">{{ p.categoria_nombre }} · Bs {{ p.precio }}</span>
+
+                <div class="catalogo-card__variantes">
+                  @for (v of p.variantes; track v.id) {
+                    <span class="variante-chip">{{ v.talla_codigo }} / {{ v.color_nombre }}: {{ v.cantidad }}</span>
+                  }
+                </div>
+
+                <span class="catalogo-card__total">Stock total: <strong>{{ p.cantidad_total }}</strong></span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

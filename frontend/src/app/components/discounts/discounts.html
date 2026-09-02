@@ -16,17 +16,22 @@
   </div>
 
   <div class="discounts-grid">
-    @for (product of products; track product.id) {
+    @for (product of products(); track product.id) {
       <a class="discount-card" [routerLink]="['/producto', product.id]">
         <div class="discount-card__image">
-          <span class="discount-card__badge">{{ product.discountLabel }}</span>
+          @if (isAgotado(product)) {
+            <span class="discount-card__badge discount-card__badge--agotado">Agotado</span>
+          } @else {
+            <span class="discount-card__badge">{{ product.discountLabel }}</span>
+          }
           <img [src]="product.image" [alt]="product.name" />
           <button
             class="discount-card__add-to-cart"
             type="button"
+            [disabled]="isAgotado(product)"
             (click)="$event.preventDefault(); $event.stopPropagation(); addToCart(product)"
           >
-            Agregar al carrito
+            {{ isAgotado(product) ? 'Sin stock' : 'Agregar al carrito' }}
           </button>
         </div>
         <div class="discount-card__info">

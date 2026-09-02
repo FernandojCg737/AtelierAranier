@@ -1,0 +1,170 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P3 · CU07</span>
+      <h1>Configurar Temporadas y Colecciones</h1>
+      <p>Administra las temporadas de la tienda y las colecciones que pertenecen a cada una.</p>
+    </div>
+  </div>
+
+  <div class="admin-tabs">
+    <button type="button" [class.is-active]="topTab() === 'temporadas'" (click)="setTopTab('temporadas')">
+      Temporadas
+    </button>
+    <button type="button" [class.is-active]="topTab() === 'colecciones'" (click)="setTopTab('colecciones')">
+      Colecciones
+    </button>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  @if (topTab() === 'temporadas') {
+    <div class="admin-content__header admin-content__header--tight">
+      <span></span>
+      <button type="button" class="admin-search__refresh" (click)="openNewTemporada()">+ Nueva Temporada</button>
+    </div>
+
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Fecha Inicio</th>
+            <th>Fecha Fin</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading()) {
+            <tr>
+              <td colspan="4" class="admin-table__empty">Cargando...</td>
+            </tr>
+          } @else if (temporadas().length === 0) {
+            <tr>
+              <td colspan="4" class="admin-table__empty">No hay temporadas registradas.</td>
+            </tr>
+          } @else {
+            @for (t of temporadas(); track t.id) {
+              <tr>
+                <td><strong>{{ t.nombre }}</strong></td>
+                <td>{{ t.fecha_inicio }}</td>
+                <td>{{ t.fecha_fin }}</td>
+                <td class="admin-table__actions">
+                  <button type="button" (click)="editTemporada(t)">Editar</button>
+                  <button type="button" class="is-danger" (click)="removeTemporada(t)">Eliminar</button>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="admin-content__header admin-content__header--tight">
+      <span></span>
+      <button type="button" class="admin-search__refresh" (click)="openNewColeccion()">+ Nueva Coleccion</button>
+    </div>
+
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Temporada</th>
+            <th>Descripcion</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading()) {
+            <tr>
+              <td colspan="4" class="admin-table__empty">Cargando...</td>
+            </tr>
+          } @else if (colecciones().length === 0) {
+            <tr>
+              <td colspan="4" class="admin-table__empty">No hay colecciones registradas.</td>
+            </tr>
+          } @else {
+            @for (c of colecciones(); track c.id) {
+              <tr>
+                <td><strong>{{ c.nombre }}</strong></td>
+                <td>{{ c.temporada_nombre }}</td>
+                <td>{{ c.descripcion || '-' }}</td>
+                <td class="admin-table__actions">
+                  <button type="button" (click)="editColeccion(c)">Editar</button>
+                  <button type="button" class="is-danger" (click)="removeColeccion(c)">Eliminar</button>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (showTemporadaForm()) {
+  <div class="modal-overlay" (click)="closeTemporadaForm()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>{{ editingTemporadaId() ? 'Editar' : 'Nueva' }} Temporada</h2>
+
+      <form (submit)="$event.preventDefault(); submitTemporada()">
+        <label class="modal-field">
+          <span>Nombre</span>
+          <input type="text" [value]="tNombre()" (input)="tNombre.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Fecha Inicio</span>
+          <input type="date" [value]="tFechaInicio()" (input)="tFechaInicio.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Fecha Fin</span>
+          <input type="date" [value]="tFechaFin()" (input)="tFechaFin.set($any($event.target).value)" />
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="is-secondary" (click)="closeTemporadaForm()">Cancelar</button>
+          <button type="submit" [disabled]="savingTemporada()">{{ savingTemporada() ? 'Guardando...' : 'Guardar' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+@if (showColeccionForm()) {
+  <div class="modal-overlay" (click)="closeColeccionForm()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>{{ editingColeccionId() ? 'Editar' : 'Nueva' }} Coleccion</h2>
+
+      <form (submit)="$event.preventDefault(); submitColeccion()">
+        <label class="modal-field">
+          <span>Temporada</span>
+          <select (change)="cTemporadaId.set(+$any($event.target).value)">
+            @for (t of temporadas(); track t.id) {
+              <option [value]="t.id" [selected]="t.id === cTemporadaId()">{{ t.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="modal-field">
+          <span>Nombre</span>
+          <input type="text" [value]="cNombre()" (input)="cNombre.set($any($event.target).value)" />
+        </label>
+
+        <label class="modal-field">
+          <span>Descripcion</span>
+          <textarea rows="3" [value]="cDescripcion()" (input)="cDescripcion.set($any($event.target).value)"></textarea>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="is-secondary" (click)="closeColeccionForm()">Cancelar</button>
+          <button type="submit" [disabled]="savingColeccion()">{{ savingColeccion() ? 'Guardando...' : 'Guardar' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

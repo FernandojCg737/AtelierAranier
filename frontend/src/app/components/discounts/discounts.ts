@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { PRODUCTS, Product } from '../../data/products';
+import { Product } from '../../data/products';
+import { CatalogoPublico, isAgotado } from '../../services/catalogo-publico';
 import { Cart } from '../../services/cart';
 
 @Component({
@@ -9,12 +10,25 @@ import { Cart } from '../../services/cart';
   templateUrl: './discounts.html',
   styleUrl: './discounts.scss',
 })
-export class Discounts {
+export class Discounts implements OnInit {
   private readonly cart = inject(Cart);
+  private readonly catalogo = inject(CatalogoPublico);
 
-  protected readonly products: Product[] = PRODUCTS.filter((p) => p.discountLabel).slice(0, 3);
+  protected readonly isAgotado = isAgotado;
+
+  protected readonly products = computed<Product[]>(() =>
+    this.catalogo
+      .products()
+      .filter((p) => p.discountLabel)
+      .slice(0, 3),
+  );
+
+  ngOnInit(): void {
+    this.catalogo.load();
+  }
 
   protected addToCart(product: Product): void {
+    if (isAgotado(product)) return;
     this.cart.addItem({
       id: product.id,
       name: product.name,
