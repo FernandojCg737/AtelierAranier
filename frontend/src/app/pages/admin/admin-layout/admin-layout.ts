@@ -3,10 +3,10 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { Auth } from '../../../services/auth';
 import { ADMIN_MENU, AdminUseCase } from '../admin-menu';
 
-// CU17 (Actualizar Perfil de Usuario) es autoservicio: cualquier personal
+// CU15 (Actualizar Perfil de Usuario) es autoservicio: cualquier personal
 // autenticado puede editar su propio perfil, sin pasar por la matriz de
 // permisos de CU02.
-const SIEMPRE_PERMITIDO = new Set(['CU17']);
+const SIEMPRE_PERMITIDO = new Set(['CU15']);
 
 @Component({
   selector: 'app-admin-layout',

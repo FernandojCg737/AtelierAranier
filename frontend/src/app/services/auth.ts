@@ -58,11 +58,11 @@ export class Auth {
   }
 
   // A donde mandar al usuario justo despues de iniciar sesion. Quien tiene
-  // permiso de Bitacora (CU19) - tipicamente el Administrador - cae directo
+  // permiso de Bitacora (CU17) - tipicamente el Administrador - cae directo
   // ahi; el resto del personal cae en la landing del panel (accesos rapidos
   // segun su rol), y un Cliente va al inicio de la tienda.
   landingRoute(): string {
-    if (this.hasPermiso('CU19')) return '/admin/bitacora';
+    if (this.hasPermiso('CU17')) return '/admin/bitacora';
     if (this.isStaff()) return '/admin';
     return '/';
   }

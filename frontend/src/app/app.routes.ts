@@ -50,7 +50,7 @@ export const routes: Routes = [
       { path: 'inventario', component: AdminInventario, canActivate: [permisoGuard('CU12')] },
       { path: 'perfil', component: AdminPerfil },
       { path: 'sesiones', component: AdminSesiones, canActivate: [permisoGuard('CU01')] },
-      { path: 'bitacora', component: AdminBitacora, canActivate: [permisoGuard('CU19')] },
+      { path: 'bitacora', component: AdminBitacora, canActivate: [permisoGuard('CU17')] },
     ],
   },
 ];

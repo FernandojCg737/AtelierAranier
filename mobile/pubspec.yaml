@@ -35,8 +35,38 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
-  # Cliente HTTP para consumir la API de FastAPI
-  http: ^1.2.2
+  # Estado (equivalente a los signals/services de Angular)
+  flutter_riverpod: ^2.6.1
+
+  # Cliente HTTP con interceptors (adjunta JWT, maneja 401)
+  dio: ^5.7.0
+
+  # Ruteo con guards por redirect (equivalente a authGuard/adminGuard/permisoGuard)
+  go_router: ^14.6.2
+
+  # Almacenamiento seguro del token (equivalente a localStorage, pero cifrado)
+  flutter_secure_storage: ^9.2.2
+
+  # Tipografia Inter, igual que la web
+  google_fonts: ^6.2.1
+
+  # Cache de imagenes de producto (vienen de Supabase Storage)
+  cached_network_image: ^3.4.1
+
+  # Google Sign-In nativo
+  google_sign_in: ^6.2.2
+
+  # Abre el link de WhatsApp en Cotizaciones
+  url_launcher: ^6.3.1
+
+  # Persistencia local del carrito (sin backend de carrito todavia)
+  shared_preferences: ^2.3.3
+
+  # Video de fondo del hero, igual que en la web
+  video_player: ^2.9.2
+
+  # Seleccionar imagenes de la galeria para subir fotos de producto (CU05)
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -60,10 +90,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/logo.png
+    - assets/video/hero.mp4
+    - assets/video/tienda-hero.mp4
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

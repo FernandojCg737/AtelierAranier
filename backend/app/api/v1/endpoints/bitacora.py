@@ -15,7 +15,7 @@ def list_bitacora(
     page_size: int = Query(20, ge=1, le=100),
     buscar: str | None = Query(default=None),
     db: Session = Depends(get_db),
-    _usuario: Usuario = Depends(require_permiso("CU19")),
+    _usuario: Usuario = Depends(require_permiso("CU17")),
 ) -> BitacoraPage:
     query = db.query(Bitacora).join(Usuario, Usuario.id == Bitacora.usuario_id)
 
