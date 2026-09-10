@@ -231,6 +231,35 @@
   }
 }
 
+.producto-info__ar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid var(--brand-dark);
+  background: #fff;
+  color: var(--brand-dark);
+  padding: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    background: var(--brand-dark);
+    color: #fff;
+  }
+}
+
 .producto-info__whatsapp {
   display: flex;
   align-items: center;

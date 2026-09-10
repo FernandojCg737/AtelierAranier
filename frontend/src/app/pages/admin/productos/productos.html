@@ -217,6 +217,55 @@
         </div>
 
         <div class="imagenes-section">
+          <span class="modal-field__label">Probador de Realidad Aumentada (CU09)</span>
+          <p class="ar-hint">
+            Imagen de la prenda con fondo transparente, centrada, de frente. Debe ser PNG o WEBP
+            (JPG no soporta transparencia y no sirve para este campo).
+          </p>
+
+          @if (arCalibrando() && arPreviewUrl(); as preview) {
+            <div class="ar-calibracion">
+              <p class="ar-hint">
+                Haz clic primero en el <strong>hombro izquierdo</strong> de la prenda y despues en el
+                <strong>hombro derecho</strong> (el orden en la imagen no importa, se ordenan solos).
+                Clics marcados: {{ arClicks().length }}/2
+              </p>
+              <div class="ar-calibracion__stage">
+                <img [src]="preview" alt="Vista previa para calibrar" (click)="onCalibrarClick($event)" />
+                @for (punto of arClicks(); track $index) {
+                  <span class="ar-calibracion__punto" [style.left.%]="punto.x * 100" [style.top.%]="punto.y * 100"></span>
+                }
+              </div>
+              <div class="ar-calibracion__actions">
+                <button type="button" class="is-secondary" (click)="reiniciarCalibracion()" [disabled]="arClicks().length === 0">
+                  Reiniciar puntos
+                </button>
+                <button type="button" class="is-secondary" (click)="cancelarCalibracionAr()">Cancelar</button>
+                <button
+                  type="button"
+                  (click)="confirmarCalibracionAr()"
+                  [disabled]="arClicks().length !== 2 || uploadingArImagen()"
+                >
+                  {{ uploadingArImagen() ? 'Subiendo...' : 'Confirmar y subir' }}
+                </button>
+              </div>
+            </div>
+          } @else if (p.prenda_ar; as ar) {
+            <div class="imagenes-grid">
+              <div class="imagen-card imagen-card--ar">
+                <img [src]="ar.url" [alt]="p.nombre + ' (realidad aumentada)'" />
+                <button type="button" class="imagen-card__remove" (click)="eliminarPrendaAr()">Quitar</button>
+              </div>
+            </div>
+          } @else {
+            <label class="imagenes-upload">
+              <input type="file" accept="image/png,image/webp" (change)="onArFileSelected($event)" />
+              <span>+ Agregar imagen AR (PNG o WEBP transparente)</span>
+            </label>
+          }
+        </div>
+
+        <div class="imagenes-section">
           <span class="modal-field__label">Inventario por Sucursal</span>
 
           @if (stockError()) {

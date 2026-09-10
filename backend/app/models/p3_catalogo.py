@@ -111,6 +111,9 @@ class Producto(Base):
     imagenes: Mapped[list["ProductoImagen"]] = relationship(
         back_populates="producto", order_by="ProductoImagen.orden", cascade="all, delete-orphan"
     )
+    prenda_ar: Mapped["PrendaAr | None"] = relationship(
+        back_populates="producto", uselist=False, cascade="all, delete-orphan"
+    )
 
 
 class ProductoImagen(Base):
@@ -140,6 +143,27 @@ class Inventario(Base):
     color: Mapped["Color"] = relationship(back_populates="inventarios")
     sucursal: Mapped["Sucursal"] = relationship(back_populates="inventarios")
     movimientos: Mapped[list["MovimientoInventario"]] = relationship(back_populates="inventario")
+
+
+class PrendaAr(Base):
+    """Imagen con fondo transparente + anclas para el probador virtual (CU09)."""
+
+    __tablename__ = "prenda_ar"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    producto_id: Mapped[int] = mapped_column(ForeignKey("producto.id"), unique=True)
+    url: Mapped[str] = mapped_column(String(500))
+
+    # Anclas como fraccion (0.0-1.0) del ancho/alto de la imagen. Los valores
+    # por defecto asumen una prenda centrada tipo "flat lay" u hombro fantasma;
+    # se pueden ajustar por prenda si la foto no sigue ese encuadre.
+    ancla_hombro_izq_x: Mapped[Decimal] = mapped_column(Numeric(4, 3), default=Decimal("0.20"))
+    ancla_hombro_izq_y: Mapped[Decimal] = mapped_column(Numeric(4, 3), default=Decimal("0.15"))
+    ancla_hombro_der_x: Mapped[Decimal] = mapped_column(Numeric(4, 3), default=Decimal("0.80"))
+    ancla_hombro_der_y: Mapped[Decimal] = mapped_column(Numeric(4, 3), default=Decimal("0.15"))
+    ancla_torso_y: Mapped[Decimal] = mapped_column(Numeric(4, 3), default=Decimal("0.65"))
+
+    producto: Mapped["Producto"] = relationship(back_populates="prenda_ar")
 
 
 class MovimientoInventario(Base):

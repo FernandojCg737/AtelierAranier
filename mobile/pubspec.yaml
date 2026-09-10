@@ -68,6 +68,17 @@ dependencies:
   # Seleccionar imagenes de la galeria para subir fotos de producto (CU05)
   image_picker: ^1.1.2
 
+  # Probador AR en vivo (CU09, motor Decart): @decartai/sdk es un paquete
+  # JS sin equivalente Dart, asi que se reutiliza la misma pagina que ya
+  # funciona en la web dentro de un WebView, en vez de reimplementar el
+  # protocolo WebRTC de Decart a mano en Dart.
+  webview_flutter: ^4.10.0
+  # WebViewController.onPermissionRequest solo reenvia el pedido de la
+  # pagina al WebView; en Android 6+ el permiso de camara del SISTEMA
+  # operativo (runtime, no solo el <uses-permission> del manifest) tiene
+  # que estar concedido antes, o el grant() de la pagina no sirve de nada.
+  permission_handler: ^11.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -78,6 +89,28 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # Genera el icono de lanzador (y el legacy/Play Store) a partir de
+  # assets/icon/*.png — ver seccion `flutter_launcher_icons` mas abajo.
+  flutter_launcher_icons: ^0.14.3
+
+  # Genera la splash screen nativa (la que se ve entre tocar el icono y el
+  # primer frame de Flutter) con nuestro logo en vez del logo de Flutter.
+  flutter_native_splash: ^2.4.3
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#203C40"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/logo.png
+  android_12:
+    image: assets/logo.png
+    color: "#FFFFFF"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

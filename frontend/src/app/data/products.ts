@@ -3,6 +3,18 @@ export interface ProductColor {
   hex: string;
 }
 
+// Imagen con fondo transparente + anclas de hombros/torso (como fraccion
+// 0-1 del ancho/alto de la imagen) para el probador con realidad aumentada
+// (CU09). Ver backend/app/models/p3_catalogo.py::PrendaAr.
+export interface ArPrenda {
+  url: string;
+  anclaHombroIzqX: number;
+  anclaHombroIzqY: number;
+  anclaHombroDerX: number;
+  anclaHombroDerY: number;
+  anclaTorsoY: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -20,6 +32,12 @@ export interface Product {
   sizes: string[];
   branchesInStock: string[];
   description?: string;
+  arPrenda?: ArPrenda;
+  // Tiene al menos una foto de catalogo (no el placeholder generico): el
+  // probador con realidad aumentada (CU09) puede usarla como referencia
+  // aunque el producto no tenga una imagen dedicada con fondo transparente
+  // (arPrenda), asi que esto es lo que realmente habilita el boton.
+  hasPhotos?: boolean;
 }
 
 // TODO: placeholder generico (fotos libres de Pexels + nombres inventados,

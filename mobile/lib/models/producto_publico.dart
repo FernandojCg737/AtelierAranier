@@ -13,6 +13,7 @@ class ProductoPublico {
     required this.temporadaNombre,
     required this.imagenes,
     required this.sucursalesDisponibles,
+    required this.hasPhotos,
   });
 
   final int id;
@@ -26,6 +27,13 @@ class ProductoPublico {
   final List<String> imagenes;
   final List<String> sucursalesDisponibles;
 
+  // Habilita el boton del probador AR (CU09): mismo criterio que
+  // `crear_ar_sesion` en el backend (ver productos.py) y que `hasPhotos`
+  // en el frontend web -- tiene imagen AR dedicada, o al menos una foto de
+  // catalogo real (URL absoluta, no la placeholder relativa generica de
+  // antes de conectar el backend real).
+  final bool hasPhotos;
+
   bool get agotado => sucursalesDisponibles.isEmpty;
 
   bool get tieneDescuento => precioOriginal != null && precioOriginal! > precio;
@@ -38,6 +46,12 @@ class ProductoPublico {
   String? get imagenPrincipal => imagenes.isEmpty ? null : imagenes.first;
 
   factory ProductoPublico.fromJson(Map<String, dynamic> json) {
+    // hasPhotos se calcula sobre las URLs CRUDAS (antes de resolveImageUrl):
+    // una vez resueltas, hasta la placeholder generica queda con forma de
+    // URL absoluta (resuelta contra el origen del frontend), y perderiamos
+    // justo la distincion que nos interesa.
+    final imagenesRaw = (json['imagenes'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
+
     return ProductoPublico(
       id: json['id'] as int,
       nombre: json['nombre'] as String,
@@ -48,9 +62,11 @@ class ProductoPublico {
       marcaNombre: json['marca_nombre'] as String,
       categoriaNombre: json['categoria_nombre'] as String,
       temporadaNombre: json['temporada_nombre'] as String,
-      imagenes: (json['imagenes'] as List<dynamic>? ?? []).map((e) => resolveImageUrl(e.toString())).toList(),
+      imagenes: imagenesRaw.map(resolveImageUrl).toList(),
       sucursalesDisponibles:
           (json['sucursales_disponibles'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
+      hasPhotos: json['prenda_ar'] != null ||
+          (imagenesRaw.isNotEmpty && imagenesRaw.first.startsWith('http')),
     );
   }
 }

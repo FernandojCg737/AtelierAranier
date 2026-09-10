@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../models/producto_publico.dart';
+import 'ar_tryon_screen.dart';
 import 'cart_provider.dart';
 import 'catalogo_provider.dart';
 
@@ -129,6 +130,24 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
                             },
                       child: Text(p.agotado ? 'SIN STOCK' : (_added ? 'AGREGADO' : 'ANADIR AL CARRITO')),
                     ),
+                    if (p.hasPhotos) ...[
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => ArTryonScreen(productoId: p.id)),
+                          );
+                        },
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        label: const Text('PROBARME CON REALIDAD AUMENTADA'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          foregroundColor: AppColors.brandDark,
+                          side: const BorderSide(color: AppColors.brandDark),
+                          shape: const RoundedRectangleBorder(),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 20),
                     Row(
                       children: [

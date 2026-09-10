@@ -1,0 +1,50 @@
+<div class="ar-overlay">
+  <button type="button" class="ar-cerrar" (click)="cerrar()" aria-label="Cerrar probador">&times;</button>
+
+  <div class="ar-stage">
+    <video #video class="ar-video" autoplay playsinline muted></video>
+
+    @if (estado() === 'listo') {
+      <div class="ar-en-vivo">
+        <span class="ar-en-vivo__punto"></span>
+        En vivo
+      </div>
+      @if (segundosRestantes() <= avisoSeg) {
+        <div class="ar-aviso-tiempo">Se cierra en {{ segundosRestantes() }}s para cuidar los creditos de la API</div>
+      }
+    }
+    @if (estado() === 'cargando') {
+      <div class="ar-mensaje">
+        <p>Iniciando camara...</p>
+      </div>
+    }
+    @if (estado() === 'sin-permiso') {
+      <div class="ar-mensaje">
+        <p>No se pudo acceder a la camara.</p>
+        <p class="ar-mensaje-detalle">Da permiso de camara en tu navegador y vuelve a intentar.</p>
+      </div>
+    }
+    @if (estado() === 'conectando') {
+      <div class="ar-mensaje">
+        <p>Conectando con el probador en vivo...</p>
+      </div>
+    }
+    @if (estado() === 'reconectando') {
+      <div class="ar-mensaje ar-mensaje-flotante">
+        <p>Reconectando...</p>
+      </div>
+    }
+    @if (estado() === 'error') {
+      <div class="ar-mensaje">
+        <p>No se pudo iniciar el probador de realidad aumentada.</p>
+        <p class="ar-mensaje-detalle">Intenta de nuevo en unos segundos.</p>
+      </div>
+    }
+    @if (estado() === 'finalizado') {
+      <div class="ar-mensaje">
+        <p>Sesion finalizada para cuidar los creditos de la API.</p>
+        <button type="button" class="ar-seguir" (click)="seguirProbando()">Seguir probando</button>
+      </div>
+    }
+  </div>
+</div>

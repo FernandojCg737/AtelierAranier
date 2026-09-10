@@ -1,0 +1,145 @@
+.ar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ar-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ar-video {
+  max-width: 100%;
+  max-height: 100%;
+  background: #111;
+  // Efecto espejo: asi el cliente se ve como frente a un espejo real.
+  transform: scaleX(-1);
+}
+
+.ar-cerrar {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1001;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #203c40;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ar-en-vivo {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.9);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ar-en-vivo__punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  animation: ar-pulso 1.4s ease-in-out infinite;
+}
+
+@keyframes ar-pulso {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.ar-mensaje {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  color: #fff;
+  background: rgba(32, 60, 64, 0.85);
+
+  p {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+}
+
+.ar-mensaje-detalle {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: #ccc;
+}
+
+.ar-mensaje-flotante {
+  inset: auto;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  max-width: 90%;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+}
+
+.ar-aviso-tiempo {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  padding: 8px 16px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.ar-seguir {
+  margin-top: 8px;
+  padding: 10px 24px;
+  border: none;
+  background: #fff;
+  color: #203c40;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}

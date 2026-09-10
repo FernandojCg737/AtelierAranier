@@ -1,6 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Solo estaba en los manifests de debug/profile (los que agrega
+         Flutter por defecto): un build de release sin esto no puede hacer
+         ninguna llamada de red (login, catalogo, todo), no solo el
+         probador AR. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Probador de realidad aumentada (CU09): activa la camara frontal
+         para detectar el cuerpo del cliente y superponer la prenda. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.front" android:required="false" />
     <application
-        android:label="mobile_app"
+        android:label="Atelier-Aranier"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

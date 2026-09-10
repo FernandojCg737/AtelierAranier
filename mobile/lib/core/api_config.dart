@@ -1,17 +1,37 @@
 import 'dart:io' show Platform;
 
+/// Cambiar a `false` para apuntar contra el backend LOCAL (docker compose
+/// en la maquina, `10.0.2.2`/`localhost`) en vez del backend real de
+/// produccion. En `true`, la app usa la base de datos real (Supabase, no
+/// el Postgres local de docker) para todo -- catalogo, login, etc.
+const bool usarBackendProduccion = true;
+
+const String _backendProduccionUrl = 'https://atelieraranier-backend.onrender.com';
+
 /// URL base de la API de FastAPI según la plataforma de ejecución.
 ///
 /// - Emulador Android: 10.0.2.2 apunta al localhost de la máquina host.
 /// - iOS simulator / desktop / web: localhost funciona directo.
-/// - Dispositivo físico: reemplazar por la IP de la máquina en la red local,
-///   o por la URL pública una vez desplegado el backend (ej. en Render).
+/// - Dispositivo físico: reemplazar por la IP de la máquina en la red local
+///   (si `usarBackendProduccion` esta en `false`).
 String get apiBaseUrl {
+  if (usarBackendProduccion) return '$_backendProduccionUrl/api/v1';
   if (Platform.isAndroid) {
     return 'http://10.0.2.2:8000/api/v1';
   }
   return 'http://localhost:8000/api/v1';
 }
+
+/// Probador CU09 (WebView -> pagina servida por el backend, ver
+/// `backend/app/main.py::ar_embed`): SIEMPRE apunta al backend real de
+/// produccion (https), nunca a `apiBaseUrl`. getUserMedia solo esta
+/// disponible en un "contexto seguro" (https, o el literal "localhost");
+/// `http://10.0.2.2:8000` (el backend local en el emulador) NO califica y
+/// el navegador ni expone la API, asi que en dev el probador tampoco
+/// funcionaria igual. Usar siempre el backend real evita ese problema en
+/// cualquier dispositivo con internet, sin depender de tener el backend
+/// corriendo en la maquina.
+String arEmbedUrl(int productoId) => '$_backendProduccionUrl/ar-embed/$productoId';
 
 /// URL base del frontend Angular. Algunas imagenes de producto (las que
 /// vienen de los assets estaticos del frontend, ej. "/img/productos/x.jpg")

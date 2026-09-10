@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -9,6 +10,32 @@ class ImagenOut(BaseModel):
     orden: int
 
     model_config = {"from_attributes": True}
+
+
+class PrendaArOut(BaseModel):
+    url: str
+    ancla_hombro_izq_x: Decimal
+    ancla_hombro_izq_y: Decimal
+    ancla_hombro_der_x: Decimal
+    ancla_hombro_der_y: Decimal
+    ancla_torso_y: Decimal
+
+    model_config = {"from_attributes": True}
+
+
+class PrendaArUpsert(BaseModel):
+    ancla_hombro_izq_x: Decimal = Field(default=Decimal("0.20"), ge=0, le=1)
+    ancla_hombro_izq_y: Decimal = Field(default=Decimal("0.15"), ge=0, le=1)
+    ancla_hombro_der_x: Decimal = Field(default=Decimal("0.80"), ge=0, le=1)
+    ancla_hombro_der_y: Decimal = Field(default=Decimal("0.15"), ge=0, le=1)
+    ancla_torso_y: Decimal = Field(default=Decimal("0.65"), ge=0, le=1)
+
+
+class ArSesionOut(BaseModel):
+    token: str
+    expira_en: Any = None
+    imagen_url: str
+    prompt: str
 
 
 class ProductoCreate(BaseModel):
@@ -51,6 +78,7 @@ class ProductoOut(BaseModel):
     coleccion_nombre: str
     imagenes: list[ImagenOut]
     sucursales_disponibles: list[DisponibilidadOut]
+    prenda_ar: PrendaArOut | None = None
 
     model_config = {"from_attributes": True}
 
@@ -119,3 +147,4 @@ class ProductoPublicoOut(BaseModel):
     temporada_nombre: str
     imagenes: list[str]
     sucursales_disponibles: list[str]
+    prenda_ar: PrendaArOut | None = None

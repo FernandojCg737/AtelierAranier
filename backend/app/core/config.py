@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: str = ""
     SUPABASE_STORAGE_BUCKET: str = "productos"
 
+    # CU09: probador de realidad aumentada (Decart lucy-vton). La key
+    # permanente vive solo en el backend; el frontend solo recibe tokens
+    # de cliente de corta duracion (10 min) generados a partir de ella.
+    DECART_API_KEY: str = ""
+
     SMTP_HOST: str = "mailpit"
     SMTP_PORT: int = 1025
     SMTP_USER: str = ""

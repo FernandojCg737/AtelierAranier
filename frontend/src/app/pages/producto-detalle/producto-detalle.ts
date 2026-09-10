@@ -4,9 +4,19 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { ArTryon } from '../../components/ar-tryon/ar-tryon';
 import { Product } from '../../data/products';
-import { isAgotado } from '../../services/catalogo-publico';
+import { isAgotado, toArPrenda } from '../../services/catalogo-publico';
 import { Cart } from '../../services/cart';
+
+interface PrendaArApi {
+  url: string;
+  ancla_hombro_izq_x: string;
+  ancla_hombro_izq_y: string;
+  ancla_hombro_der_x: string;
+  ancla_hombro_der_y: string;
+  ancla_torso_y: string;
+}
 
 interface ProductoPublico {
   id: number;
@@ -19,6 +29,7 @@ interface ProductoPublico {
   temporada_nombre: string;
   imagenes: string[];
   sucursales_disponibles: string[];
+  prenda_ar: PrendaArApi | null;
 }
 
 const WHATSAPP_NUMERO = '59173766956';
@@ -47,12 +58,17 @@ function toProduct(p: ProductoPublico): Product {
     sizes: [],
     branchesInStock: p.sucursales_disponibles,
     description: p.descripcion ?? undefined,
+    // Mismo criterio que crear_ar_sesion en el backend: cae a la primera
+    // foto de catalogo solo si es una URL absoluta (subida real), no la
+    // placeholder relativa generica de antes de conectar el backend real.
+    arPrenda: toArPrenda(p.prenda_ar),
+    hasPhotos: !!p.prenda_ar || (p.imagenes[0]?.startsWith('http') ?? false),
   };
 }
 
 @Component({
   selector: 'app-producto-detalle',
-  imports: [RouterLink],
+  imports: [RouterLink, ArTryon],
   templateUrl: './producto-detalle.html',
   styleUrl: './producto-detalle.scss',
 })
@@ -69,6 +85,7 @@ export class ProductoDetalle implements OnInit {
   protected readonly activeImage = signal<string>('');
   protected readonly detallesOpen = signal(true);
   protected readonly addedFeedback = signal(false);
+  protected readonly arAbierto = signal(false);
 
   protected readonly whatsappUrl = computed(() => {
     const p = this.product();
@@ -102,6 +119,14 @@ export class ProductoDetalle implements OnInit {
 
   protected selectSize(size: string): void {
     this.selectedSize.set(size);
+  }
+
+  protected abrirAr(): void {
+    this.arAbierto.set(true);
+  }
+
+  protected cerrarAr(): void {
+    this.arAbierto.set(false);
   }
 
   protected selectImage(src: string): void {

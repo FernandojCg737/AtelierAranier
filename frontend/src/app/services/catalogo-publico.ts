@@ -2,7 +2,16 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Product } from '../data/products';
+import { ArPrenda, Product } from '../data/products';
+
+interface PrendaArApi {
+  url: string;
+  ancla_hombro_izq_x: string;
+  ancla_hombro_izq_y: string;
+  ancla_hombro_der_x: string;
+  ancla_hombro_der_y: string;
+  ancla_torso_y: string;
+}
 
 interface ProductoPublico {
   id: number;
@@ -15,6 +24,19 @@ interface ProductoPublico {
   temporada_nombre: string;
   imagenes: string[];
   sucursales_disponibles: string[];
+  prenda_ar: PrendaArApi | null;
+}
+
+export function toArPrenda(raw: PrendaArApi | null): ArPrenda | undefined {
+  if (!raw) return undefined;
+  return {
+    url: raw.url,
+    anclaHombroIzqX: Number(raw.ancla_hombro_izq_x),
+    anclaHombroIzqY: Number(raw.ancla_hombro_izq_y),
+    anclaHombroDerX: Number(raw.ancla_hombro_der_x),
+    anclaHombroDerY: Number(raw.ancla_hombro_der_y),
+    anclaTorsoY: Number(raw.ancla_torso_y),
+  };
 }
 
 const PLACEHOLDER_IMAGE = '/img/productos/producto-1.jpg';
@@ -49,6 +71,14 @@ function toProduct(p: ProductoPublico): Product {
     sizes: [],
     branchesInStock: p.sucursales_disponibles,
     description: p.descripcion ?? undefined,
+    // El backend (ver crear_ar_sesion) usa prenda_ar si existe, si no cae a
+    // la primera foto de catalogo, pero solo si es una URL absoluta (subida
+    // real a Supabase) -- algunos productos todavia tienen la foto
+    // placeholder generica de antes de conectar el backend real (ruta
+    // relativa /img/productos/..., no sirve como referencia). El gate del
+    // boton tiene que reflejar exactamente ese mismo criterio.
+    arPrenda: toArPrenda(p.prenda_ar),
+    hasPhotos: !!p.prenda_ar || (p.imagenes[0]?.startsWith('http') ?? false),
   };
 }
 

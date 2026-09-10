@@ -1,10 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, status
+from decimal import Decimal
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import require_permiso
 from app.core.audit import log_bitacora, set_client_ip_for_trigger
-from app.core.storage import delete_producto_imagen, upload_producto_imagen
+from app.core.decart import construir_prompt_ar, crear_token_cliente_decart
+from app.core.storage import (
+    delete_prenda_ar_imagen,
+    delete_producto_imagen,
+    upload_prenda_ar_imagen,
+    upload_producto_imagen,
+)
 from app.db.session import get_db
 from app.models import (
     Categoria,
@@ -21,6 +29,7 @@ from app.models import (
     Usuario,
 )
 from app.schemas.productos import (
+    ArSesionOut,
     CatalogoBaseOut,
     DisponibilidadOut,
     ImagenOut,
@@ -30,6 +39,8 @@ from app.schemas.productos import (
     MarcaCreate,
     MarcaOut,
     OpcionOut,
+    PrendaArOut,
+    PrendaArUpsert,
     ProductoCreate,
     ProductoOut,
     ProductoPublicoOut,
@@ -75,6 +86,7 @@ def _to_out(producto: Producto) -> ProductoOut:
         coleccion_nombre=producto.coleccion.nombre,
         imagenes=[ImagenOut.model_validate(i) for i in producto.imagenes],
         sucursales_disponibles=_disponibilidad_admin(producto),
+        prenda_ar=PrendaArOut.model_validate(producto.prenda_ar) if producto.prenda_ar else None,
     )
 
 
@@ -88,6 +100,7 @@ def _get_producto_or_404(db: Session, producto_id: int) -> Producto:
             joinedload(Producto.temporada),
             joinedload(Producto.coleccion),
             joinedload(Producto.imagenes),
+            joinedload(Producto.prenda_ar),
             joinedload(Producto.inventarios).joinedload(Inventario.sucursal),
         )
         .filter(Producto.id == producto_id)
@@ -151,6 +164,7 @@ def _to_publico(producto: Producto) -> ProductoPublicoOut:
         temporada_nombre=producto.temporada.nombre,
         imagenes=[i.url for i in producto.imagenes],
         sucursales_disponibles=_sucursales_disponibles(producto),
+        prenda_ar=PrendaArOut.model_validate(producto.prenda_ar) if producto.prenda_ar else None,
     )
 
 
@@ -163,6 +177,7 @@ def list_productos_publico(db: Session = Depends(get_db)) -> list[ProductoPublic
             joinedload(Producto.categoria),
             joinedload(Producto.temporada),
             joinedload(Producto.imagenes),
+            joinedload(Producto.prenda_ar),
             joinedload(Producto.inventarios).joinedload(Inventario.sucursal),
         )
         .filter(Producto.estado == "activo")
@@ -179,6 +194,7 @@ def get_producto_publico(producto_id: int, db: Session = Depends(get_db)) -> Pro
             joinedload(Producto.categoria),
             joinedload(Producto.temporada),
             joinedload(Producto.imagenes),
+            joinedload(Producto.prenda_ar),
             joinedload(Producto.inventarios).joinedload(Inventario.sucursal),
         )
         .filter(Producto.id == producto_id, Producto.estado == "activo")
@@ -187,6 +203,60 @@ def get_producto_publico(producto_id: int, db: Session = Depends(get_db)) -> Pro
     if producto is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Producto no encontrado.")
     return _to_publico(producto)
+
+
+@router.post("/{producto_id}/ar-sesion", response_model=ArSesionOut)
+def crear_ar_sesion(producto_id: int, db: Session = Depends(get_db)) -> ArSesionOut:
+    """Arranca una sesion del probador de realidad aumentada en vivo (CU09,
+    motor Decart lucy-vton): genera un token de cliente de corta duracion
+    (la key permanente nunca sale del backend) y arma el prompt de la
+    prenda para que el frontend abra la conexion WebRTC directamente
+    contra Decart.
+
+    A diferencia del probador 2D/3D anterior (que necesitaba una imagen
+    con fondo transparente y anclas de hombros calibradas a mano), Decart
+    genera la superposicion el mismo con solo una imagen de referencia y
+    el prompt: no hace falta un recorte especial. Por eso, si el producto
+    no tiene una imagen AR dedicada (prenda_ar), usamos su primera foto de
+    catalogo como referencia en su lugar, para que el probador funcione en
+    cualquier producto sin trabajo manual adicional. La imagen dedicada
+    sigue siendo la mejor opcion (foto limpia, sin fondo ni modelo) pero
+    ya no es un requisito."""
+    producto = (
+        db.query(Producto)
+        .options(
+            joinedload(Producto.prenda_ar),
+            joinedload(Producto.categoria),
+            joinedload(Producto.marca),
+            joinedload(Producto.imagenes),
+        )
+        .filter(Producto.id == producto_id, Producto.estado == "activo")
+        .first()
+    )
+    imagen_url = producto.prenda_ar.url if producto and producto.prenda_ar else None
+    if imagen_url is None and producto and producto.imagenes:
+        candidata = producto.imagenes[0].url
+        # Decart necesita una URL absoluta (la va a pedir el mismo por
+        # fetch desde el navegador del cliente). Algunos productos de
+        # catalogo todavia tienen la foto placeholder generica de antes de
+        # conectar el backend real (ruta relativa tipo /img/productos/...,
+        # servida por Angular, no una imagen subida): esas no sirven como
+        # referencia, asi que se ignoran en vez de mandarlas rotas.
+        if candidata.startswith("http://") or candidata.startswith("https://"):
+            imagen_url = candidata
+    if producto is None or imagen_url is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Este producto no tiene fotos para el probador de realidad aumentada.",
+        )
+
+    token = crear_token_cliente_decart()
+    return ArSesionOut(
+        token=token.get("apiKey", ""),
+        expira_en=token.get("expiresAt"),
+        imagen_url=imagen_url,
+        prompt=construir_prompt_ar(producto),
+    )
 
 
 @router.get("", response_model=list[ProductoOut])
@@ -202,6 +272,7 @@ def list_productos(
         joinedload(Producto.temporada),
         joinedload(Producto.coleccion),
         joinedload(Producto.imagenes),
+        joinedload(Producto.prenda_ar),
         joinedload(Producto.inventarios).joinedload(Inventario.sucursal),
     )
     if buscar:
@@ -424,3 +495,80 @@ def delete_imagen(
     delete_producto_imagen(url)
 
     log_bitacora(db, admin, "ACTUALIZAR", "producto", producto_id, "Se elimino una imagen del producto", request)
+
+
+@router.post("/{producto_id}/ar-imagen", response_model=PrendaArOut, status_code=status.HTTP_201_CREATED)
+async def upsert_prenda_ar(
+    producto_id: int,
+    request: Request,
+    file: UploadFile,
+    ancla_hombro_izq_x: Decimal = Form(default=Decimal("0.20")),
+    ancla_hombro_izq_y: Decimal = Form(default=Decimal("0.15")),
+    ancla_hombro_der_x: Decimal = Form(default=Decimal("0.80")),
+    ancla_hombro_der_y: Decimal = Form(default=Decimal("0.15")),
+    ancla_torso_y: Decimal = Form(default=Decimal("0.65")),
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(require_permiso("CU05")),
+) -> PrendaArOut:
+    """Sube (o reemplaza) la imagen con fondo transparente para el probador
+    virtual con realidad aumentada (CU09). Las anclas son opcionales: si no
+    se envian, se usan los valores por defecto pensados para una foto
+    centrada tipo "flat lay"."""
+    datos = PrendaArUpsert(
+        ancla_hombro_izq_x=ancla_hombro_izq_x,
+        ancla_hombro_izq_y=ancla_hombro_izq_y,
+        ancla_hombro_der_x=ancla_hombro_der_x,
+        ancla_hombro_der_y=ancla_hombro_der_y,
+        ancla_torso_y=ancla_torso_y,
+    )
+    producto = _get_producto_or_404(db, producto_id)
+    content = await file.read()
+    url = upload_prenda_ar_imagen(producto_id, content, file.content_type or "")
+
+    if producto.prenda_ar is not None:
+        delete_prenda_ar_imagen(producto.prenda_ar.url)
+
+    result = db.execute(
+        text(
+            "SELECT sp_upsert_prenda_ar(:producto_id, :url, :ai_x, :ai_y, :ad_x, :ad_y, :torso_y)"
+        ),
+        {
+            "producto_id": producto_id,
+            "url": url,
+            "ai_x": datos.ancla_hombro_izq_x,
+            "ai_y": datos.ancla_hombro_izq_y,
+            "ad_x": datos.ancla_hombro_der_x,
+            "ad_y": datos.ancla_hombro_der_y,
+            "torso_y": datos.ancla_torso_y,
+        },
+    )
+    result.scalar_one()
+    db.commit()
+
+    log_bitacora(
+        db, admin, "ACTUALIZAR", "producto", producto_id,
+        f"Se configuro el probador de realidad aumentada para: {producto.nombre}", request,
+    )
+    return PrendaArOut(url=url, **datos.model_dump())
+
+
+@router.delete("/{producto_id}/ar-imagen", status_code=status.HTTP_204_NO_CONTENT)
+def delete_prenda_ar(
+    producto_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(require_permiso("CU05")),
+) -> None:
+    producto = _get_producto_or_404(db, producto_id)
+    if producto.prenda_ar is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Este producto no tiene imagen de realidad aumentada.")
+
+    url = producto.prenda_ar.url
+    db.execute(text("SELECT sp_eliminar_prenda_ar(:producto_id)"), {"producto_id": producto_id})
+    db.commit()
+    delete_prenda_ar_imagen(url)
+
+    log_bitacora(
+        db, admin, "ACTUALIZAR", "producto", producto_id,
+        f"Se elimino el probador de realidad aumentada de: {producto.nombre}", request,
+    )
