@@ -314,94 +314,38 @@ export class AdminProductos implements OnInit {
   }
 
   // ---------- CU09: imagen para el probador de realidad aumentada ----------
-  // Las anclas (hombro izq/der) se calibran a mano con 2 clics sobre la
-  // imagen, porque las fotos que suben los admins tienen encuadres muy
-  // distintos entre si (una foto "flat lay" alta no es lo mismo que un
-  // recorte cuadrado) y una ancla por defecto no sirve para todas.
+  // El motor (Decart) solo necesita la foto de la prenda + un prompt de
+  // texto que arma el backend solo: no hace falta calibrar anclas de
+  // hombros a mano (eso era del overlay 2D/3D anterior).
 
-  protected readonly arCalibrando = signal(false);
-  protected readonly arPreviewUrl = signal<string | null>(null);
-  protected readonly arPreviewFile = signal<File | null>(null);
-  protected readonly arClicks = signal<{ x: number; y: number }[]>([]);
-
-  protected onArFileSelected(event: Event): void {
+  protected async onArFileSelected(event: Event): Promise<void> {
+    const producto = this.editingProducto();
     const input = event.target as HTMLInputElement;
     const files = input.files;
-    if (!files || files.length === 0) return;
+    if (!producto || !files || files.length === 0) return;
 
     const file = files[0];
-    if (file.type !== 'image/png' && file.type !== 'image/webp') {
-      this.formError.set(
-        'La imagen de realidad aumentada debe ser PNG o WEBP con fondo transparente (JPG no soporta transparencia).',
-      );
+    if (!['image/png', 'image/webp', 'image/jpeg'].includes(file.type)) {
+      this.formError.set('La imagen debe ser JPG, PNG o WEBP.');
       input.value = '';
       return;
     }
-
-    this.formError.set('');
-    this.arPreviewFile.set(file);
-    this.arPreviewUrl.set(URL.createObjectURL(file));
-    this.arClicks.set([]);
-    this.arCalibrando.set(true);
-    input.value = '';
-  }
-
-  protected onCalibrarClick(event: MouseEvent): void {
-    if (this.arClicks().length >= 2) return;
-    const el = event.currentTarget as HTMLImageElement;
-    const rect = el.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width;
-    const y = (event.clientY - rect.top) / rect.height;
-    this.arClicks.update((puntos) => [...puntos, { x, y }]);
-  }
-
-  protected reiniciarCalibracion(): void {
-    this.arClicks.set([]);
-  }
-
-  protected cancelarCalibracionAr(): void {
-    const url = this.arPreviewUrl();
-    if (url) URL.revokeObjectURL(url);
-    this.arCalibrando.set(false);
-    this.arPreviewUrl.set(null);
-    this.arPreviewFile.set(null);
-    this.arClicks.set([]);
-  }
-
-  protected async confirmarCalibracionAr(): Promise<void> {
-    const producto = this.editingProducto();
-    const file = this.arPreviewFile();
-    const puntos = this.arClicks();
-    if (!producto || !file || puntos.length !== 2) return;
-
-    // El primer clic es el hombro que quede mas a la izquierda en la
-    // imagen (no importa el orden en que el admin haga clic).
-    const [a, b] = puntos;
-    const izq = a.x <= b.x ? a : b;
-    const der = a.x <= b.x ? b : a;
-    const torsoY = Math.min(0.95, Math.max(izq.y, der.y) + 0.3);
 
     this.uploadingArImagen.set(true);
     this.formError.set('');
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('ancla_hombro_izq_x', izq.x.toFixed(4));
-      formData.append('ancla_hombro_izq_y', izq.y.toFixed(4));
-      formData.append('ancla_hombro_der_x', der.x.toFixed(4));
-      formData.append('ancla_hombro_der_y', der.y.toFixed(4));
-      formData.append('ancla_torso_y', torsoY.toFixed(4));
-
       const prendaAr = await firstValueFrom(
         this.http.post<PrendaAr>(`${environment.apiUrl}/productos/${producto.id}/ar-imagen`, formData),
       );
       this.editingProducto.set({ ...producto, prenda_ar: prendaAr });
       await this.loadProductos();
-      this.cancelarCalibracionAr();
     } catch (err) {
       this.formError.set(this.extractError(err));
     } finally {
       this.uploadingArImagen.set(false);
+      input.value = '';
     }
   }
 

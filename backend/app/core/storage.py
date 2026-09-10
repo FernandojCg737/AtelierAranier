@@ -43,6 +43,7 @@ def upload_producto_imagen(producto_id: int, content: bytes, content_type: str) 
 AR_ALLOWED_CONTENT_TYPES = {
     "image/png": "png",
     "image/webp": "webp",
+    "image/jpeg": "jpg",
 }
 
 
@@ -50,7 +51,7 @@ def upload_prenda_ar_imagen(producto_id: int, content: bytes, content_type: str)
     if content_type not in AR_ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "La imagen de realidad aumentada debe ser PNG o WEBP con fondo transparente (JPG no soporta transparencia).",
+            "La imagen debe ser JPG, PNG o WEBP.",
         )
     if len(content) > MAX_IMAGE_BYTES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "La imagen supera el tamano maximo de 5MB.")
