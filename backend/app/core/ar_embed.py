@@ -146,8 +146,10 @@ async function conectarDecart() {{
       model,
       onRemoteStream: (remoteStream) => {{ video.srcObject = remoteStream; }},
       initialState: {{ prompt: {{ text: sesion.prompt, enhance: false }} }},
-      resolution: "1080p",
-      preferredVideoCodec: "h264",
+      // NOTA: "resolution: 1080p" + "preferredVideoCodec: h264" se probaron
+      // para subir la calidad pero dejaban la conexion colgada en
+      // "connected" sin llegar nunca a "generating" (probado en vivo).
+      // Revertido a los defaults del SDK.
     }});
 
     if (detenido) {{

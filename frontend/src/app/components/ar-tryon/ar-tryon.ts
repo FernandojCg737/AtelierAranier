@@ -106,14 +106,12 @@ export class ArTryon implements OnDestroy {
           if (video) video.srcObject = remoteStream;
         },
         initialState: { prompt: { text: sesion.prompt, enhance: false } },
-        // Pide la mayor resolucion de salida que el servidor de Decart
-        // soporta para este modelo (el modelo genera nativo en 720p; esto
-        // le pide que escale a 1080p en vez de quedarse en 720p).
-        resolution: '1080p',
-        // h264 tiene aceleracion por hardware en mas dispositivos que vp8/vp9,
-        // asi que decodifica mas fluido (menos placas/lag) en el celular o
-        // laptop del cliente.
-        preferredVideoCodec: 'h264',
+        // NOTA: se probo "resolution: '1080p'" + "preferredVideoCodec: 'h264'"
+        // para subir la calidad, pero causo que la conexion se quede colgada
+        // en "connected" sin nunca llegar a "generating" (probado en vivo,
+        // sin ese override si funciona) -- lucy-vton-latest genera nativo en
+        // 720p y aparentemente no acepta bien el pedido de escalar a 1080p.
+        // Revertido a los defaults del SDK hasta confirmar la causa exacta.
       });
 
       if (this.detenido) {
