@@ -157,17 +157,15 @@ export class ArTryon implements OnDestroy {
       // Referencia visual de la prenda (la foto del producto, con fondo
       // transparente): el modelo la usa para saber exactamente que
       // sustituir sobre el cuerpo detectado, ademas del prompt de texto.
-      // DIAGNOSTICO TEMPORAL: setImage() deshabilitado a proposito para ver
-      // si SIN mandar imagen/prompt la conexion sí llega a "generating".
-      // Si llega, el disparador del bucle de reconexion es esta llamada (o
-      // la imagen especifica). Si sigue igual sin esto, no es setImage.
-      console.log('[AR] DIAGNOSTICO: saltando setImage a proposito');
-      // try {
-      //   await rtClient.setImage(sesion.imagen_url, { prompt: sesion.prompt, enhance: false });
-      //   console.log('[AR] setImage OK');
-      // } catch (err) {
-      //   console.error('[AR] setImage fallo (no fatal, sigue con el prompt inicial):', err);
-      // }
+      // (Diagnostico confirmado: el bucle de reconexion pasa IGUAL sin esto,
+      // asi que no es la causa -- reactivado.)
+      console.log('[AR] llamando setImage con', sesion.imagen_url);
+      try {
+        await rtClient.setImage(sesion.imagen_url, { prompt: sesion.prompt, enhance: false });
+        console.log('[AR] setImage OK');
+      } catch (err) {
+        console.error('[AR] setImage fallo (no fatal, sigue con el prompt inicial):', err);
+      }
     } catch (err) {
       console.error('[AR] connect() fallo:', err);
       this.estado.set('error');
