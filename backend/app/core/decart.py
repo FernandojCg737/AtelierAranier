@@ -55,13 +55,18 @@ def construir_prompt_ar(producto: Producto) -> str:
     de la BD tal cual (en espanol, ej. "poleras", "Polera oversize de
     algodon") no dice nada al modelo y en la practica hace que ignore esa
     parte del prompt y alucine detalles como el largo de manga en vez de
-    confiar en la imagen de referencia. En lugar de traducir (fragil e
-    incompleto para cualquier categoria futura), la instruccion principal
-    es que respete exactamente lo que se ve en la imagen: manga, cuello,
-    calce y color tal cual la referencia."""
+    confiar en la imagen de referencia.
+
+    OJO con la redaccion: una version anterior decia "Do not invent or
+    change any detail of the garment" pensando en "no le inventes detalles
+    a LA PRENDA DE REFERENCIA", pero es ambiguo -- el modelo lo puede leer
+    como "no cambies la prenda que la persona ya tiene puesta" (osea, lo
+    contrario de lo que queremos) y por eso no sustituia nada, solo pasaba
+    la camara sin tocar. Redactado para que "reemplazar por completo" sea
+    imposible de malinterpretar."""
     return (
-        f'Substitute the current garment with the exact garment shown in '
-        f'the reference image, "{producto.nombre}". Match the reference '
-        f"image precisely: same sleeve length, neckline, fit, silhouette "
-        f"and color. Do not invent or change any detail of the garment."
-    )[:300]
+        f'Replace the persons current top completely with the garment shown '
+        f'in the reference image, "{producto.nombre}". The new garment must '
+        f"fully cover and replace what they are wearing now -- none of "
+        f"their original clothing should remain visible."
+    )[:280]
