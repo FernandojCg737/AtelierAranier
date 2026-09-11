@@ -100,7 +100,9 @@ export class ArTryon implements OnDestroy {
 
     try {
       const client = createDecartClient({ apiKey: sesion.token });
-      const model = models.realtime('lucy-vton-latest');
+      // Version fija en vez del alias "latest": si "latest" esta apuntando
+      // a un rollout inestable en este momento, esto lo evita.
+      const model = models.realtime('lucy-vton-3.5');
 
       const rtClient = await client.realtime.connect(this.stream, {
         model,
