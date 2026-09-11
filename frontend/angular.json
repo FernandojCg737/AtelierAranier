@@ -27,6 +27,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "frame-metadata-worker.js",
+                "input": "node_modules/@decartai/sdk/dist/realtime/browser",
+                "output": "."
               }
             ],
             "styles": [
