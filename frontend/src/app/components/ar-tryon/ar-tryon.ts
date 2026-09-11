@@ -49,6 +49,7 @@ export class ArTryon implements OnDestroy {
 
   private readonly http = inject(HttpClient);
   private readonly videoRef = viewChild<ElementRef<HTMLVideoElement>>('video');
+  private readonly localVideoRef = viewChild<ElementRef<HTMLVideoElement>>('localVideo');
 
   protected readonly estado = signal<Estado>('cargando');
   protected readonly segundosRestantes = signal(SESION_MAX_SEG);
@@ -79,6 +80,23 @@ export class ArTryon implements OnDestroy {
     if (this.detenido) {
       this.pararCamara();
       return;
+    }
+
+    // Sin esto, el track de la camara nunca se "reproduce" en ningun lado
+    // localmente (solo mostramos el video YA transformado que vuelve del
+    // servidor) -- en varios navegadores un track que nadie esta
+    // consumiendo/renderizando no llega a producir frames de forma
+    // confiable, lo que dejaba la sesion colgada sin nunca poder generar
+    // ("could not determine track dimensions" en la consola era la pista).
+    const localVideo = this.localVideoRef()?.nativeElement;
+    if (localVideo) {
+      localVideo.srcObject = this.stream;
+      try {
+        await localVideo.play();
+      } catch {
+        // Autoplay bloqueado no deberia pasar (esta muted), pero si pasa
+        // seguimos igual: el intento de conectar es lo importante.
+      }
     }
 
     await this.conectarDecart();

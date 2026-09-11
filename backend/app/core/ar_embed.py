@@ -15,6 +15,7 @@ def render_ar_embed_html(producto_id: int) -> str:
   html, body {{ margin: 0; padding: 0; background: #000; height: 100%; overflow: hidden; }}
   #stage {{ position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }}
   #video {{ max-width: 100%; max-height: 100%; background: #111; transform: scaleX(-1); }}
+  #video-local {{ position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }}
   .mensaje {{
     position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 8px; padding: 24px; text-align: center; color: #fff;
@@ -49,6 +50,7 @@ def render_ar_embed_html(producto_id: int) -> str:
 <body>
 <div id="stage">
   <video id="video" autoplay playsinline muted></video>
+  <video id="video-local" autoplay playsinline muted></video>
   <div id="en-vivo" class="en-vivo" hidden><span class="en-vivo__punto"></span>En vivo</div>
   <div id="aviso-tiempo" class="aviso-tiempo" hidden></div>
   <div id="msg-cargando" class="mensaje"><p>Iniciando camara...</p></div>
@@ -75,6 +77,7 @@ const SESION_MAX_SEG = 180;
 const AVISO_SEG = 20;
 
 const video = document.getElementById("video");
+const videoLocal = document.getElementById("video-local");
 const pantallas = {{
   cargando: document.getElementById("msg-cargando"),
   "sin-permiso": document.getElementById("msg-sin-permiso"),
@@ -187,6 +190,11 @@ async function iniciar() {{
     stream.getTracks().forEach((t) => t.stop());
     return;
   }}
+  // Sin reproducir el track localmente en algun lado, varios navegadores no
+  // lo mantienen produciendo frames de forma confiable (la sesion se
+  // quedaba colgada sin nunca poder generar).
+  videoLocal.srcObject = stream;
+  try {{ await videoLocal.play(); }} catch {{}}
   await conectarDecart();
 }}
 

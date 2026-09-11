@@ -26,6 +26,17 @@
   transform: scaleX(-1);
 }
 
+.ar-video-local {
+  // Oculto pero SIN display:none / visibility:hidden -- eso puede hacer que
+  // el navegador deje de decodificar el track, justo lo que queremos
+  // evitar. 1x1px + opacity 0 lo mantiene "reproduciendose" de verdad.
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .ar-cerrar {
   position: absolute;
   top: 16px;
