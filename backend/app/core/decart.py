@@ -49,6 +49,21 @@ def crear_token_cliente_decart() -> dict:
     return resp.json()
 
 
+# Que region del cuerpo sustituir, segun la categoria real del catalogo
+# (nombres tal cual en la BD, en minuscula). El prompt necesita saber si es
+# "top" o "pants" -- decirle "top" para un pantalon confunde al modelo (le
+# pide cambiar la parte de arriba mientras la imagen de referencia muestra
+# un pantalon) y no sustituye nada. Categorias sin mapear (ej. accesorios)
+# caen al generico "outfit".
+_CATEGORIA_A_REGION = {
+    "poleras": "top",
+    "chaquetas": "top",
+    "chompa": "top",
+    "hoodie": "top",
+    "pantalones": "pants",
+}
+
+
 def construir_prompt_ar(producto: Producto) -> str:
     """Arma el prompt descriptivo que Decart usa para saber que prenda
     sustituir. El modelo espera ingles: meter ahi la categoria/descripcion
@@ -76,10 +91,19 @@ def construir_prompt_ar(producto: Producto) -> str:
     para "escribir" sobre la prenda (se veia un logo/texto deformado tipo
     "POLERC" en la remera generada). Se saca el nombre del prompt por
     completo: la imagen de referencia ya dice todo lo que hace falta, y asi
-    no hay ningun texto entre comillas que el modelo intente dibujar."""
+    no hay ningun texto entre comillas que el modelo intente dibujar.
+
+    Cuarta vuelta: el prompt decia siempre "top" (parte de arriba) sin
+    importar la categoria real -- para un pantalon eso le pedia al modelo
+    cambiar la remera mientras la referencia mostraba un pantalon, y no
+    sustituia nada. Ahora se elige "top" o "pants" segun la categoria real
+    del producto."""
+    region = "outfit"
+    if producto.categoria is not None:
+        region = _CATEGORIA_A_REGION.get(producto.categoria.nombre.strip().lower(), "outfit")
     return (
-        f'Replace the persons current top completely with the garment shown '
-        f'in the reference image. The new garment must fully cover and '
-        f"replace what they are wearing now -- none of their original "
+        f"Replace the persons current {region} completely with the garment "
+        f"shown in the reference image. The new garment must fully cover "
+        f"and replace what they are wearing now -- none of their original "
         f"clothing should remain visible."
     )[:280]
