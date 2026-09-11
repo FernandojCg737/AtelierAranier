@@ -69,12 +69,17 @@ def construir_prompt_ar(producto: Producto) -> str:
     SOLO la textura/color de la referencia (para que no arrastre arrugas o
     estampado de la ropa original de la persona) -- pero esa version mas
     larga hizo que el modelo dejara de sustituir la prenda por completo
-    (volvio al bug anterior). Revertido a la version corta que si sustituye
-    bien; el arrastre de textura queda como limitacion cosmetica conocida
-    en vez de arriesgar romper la sustitucion de nuevo."""
+    (volvio al bug anterior).
+
+    Tercera vuelta: el nombre del producto iba entre comillas en el prompt
+    ("Polera Blanca Oversize") -- el modelo lo tomaba como texto literal
+    para "escribir" sobre la prenda (se veia un logo/texto deformado tipo
+    "POLERC" en la remera generada). Se saca el nombre del prompt por
+    completo: la imagen de referencia ya dice todo lo que hace falta, y asi
+    no hay ningun texto entre comillas que el modelo intente dibujar."""
     return (
         f'Replace the persons current top completely with the garment shown '
-        f'in the reference image, "{producto.nombre}". The new garment must '
-        f"fully cover and replace what they are wearing now -- none of "
-        f"their original clothing should remain visible."
+        f'in the reference image. The new garment must fully cover and '
+        f"replace what they are wearing now -- none of their original "
+        f"clothing should remain visible."
     )[:280]
