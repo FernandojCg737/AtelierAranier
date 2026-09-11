@@ -122,19 +122,20 @@ export class ArTryon implements OnDestroy {
       // a un rollout inestable en este momento, esto lo evita.
       const model = models.realtime('lucy-vton-3.5');
 
+      // NOTA: el ejemplo oficial de Decart conecta SIN initialState y recien
+      // manda prompt+imagen juntos con setImage() una sola vez -- nosotros
+      // mandabamos initialState.prompt SIN imagen al conectar (la imagen
+      // recien llegaba despues con setImage). Es probable que pedirle al
+      // modelo VTON que arranque con solo texto y sin imagen de referencia
+      // lo deje en un estado invalido que termina cerrando la conexion en
+      // bucle. Se saca initialState: setImage() ya manda prompt+imagen
+      // juntos, replicando el patron que funciona en el ejemplo oficial.
       const rtClient = await client.realtime.connect(this.stream, {
         model,
         onRemoteStream: (remoteStream) => {
           const video = this.videoRef()?.nativeElement;
           if (video) video.srcObject = remoteStream;
         },
-        initialState: { prompt: { text: sesion.prompt, enhance: false } },
-        // NOTA: se probo "resolution: '1080p'" + "preferredVideoCodec: 'h264'"
-        // para subir la calidad, pero causo que la conexion se quede colgada
-        // en "connected" sin nunca llegar a "generating" (probado en vivo,
-        // sin ese override si funciona) -- lucy-vton-latest genera nativo en
-        // 720p y aparentemente no acepta bien el pedido de escalar a 1080p.
-        // Revertido a los defaults del SDK hasta confirmar la causa exacta.
       });
 
       if (this.detenido) {

@@ -145,14 +145,13 @@ async function conectarDecart() {{
     const client = createDecartClient({{ apiKey: sesion.token }});
     const model = models.realtime("lucy-vton-3.5");
 
+    // Sin initialState: el ejemplo oficial conecta "en blanco" y manda
+    // prompt+imagen juntos con setImage() una sola vez. Mandar solo texto
+    // sin imagen al conectar dejaba al modelo VTON en un estado invalido
+    // (bucle de reconexion sin llegar nunca a "generating").
     const cliente = await client.realtime.connect(stream, {{
       model,
       onRemoteStream: (remoteStream) => {{ video.srcObject = remoteStream; }},
-      initialState: {{ prompt: {{ text: sesion.prompt, enhance: false }} }},
-      // NOTA: "resolution: 1080p" + "preferredVideoCodec: h264" se probaron
-      // para subir la calidad pero dejaban la conexion colgada en
-      // "connected" sin llegar nunca a "generating" (probado en vivo).
-      // Revertido a los defaults del SDK.
     }});
 
     if (detenido) {{
