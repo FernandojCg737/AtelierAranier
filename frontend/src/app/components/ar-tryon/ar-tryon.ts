@@ -66,7 +66,10 @@ export class ArTryon implements OnDestroy {
   private async iniciar(): Promise<void> {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        // 1280x720: resolucion nativa del modelo (lucy-vton-latest). Se
+        // probo pedir 1920x1080 a la camara para "mejorar calidad" pero
+        // dejaba la sesion colgada en "connected" sin nunca generar.
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
     } catch {
