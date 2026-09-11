@@ -102,8 +102,8 @@ def construir_prompt_ar(producto: Producto) -> str:
     if producto.categoria is not None:
         region = _CATEGORIA_A_REGION.get(producto.categoria.nombre.strip().lower(), "outfit")
     return (
-        f"Replace the persons current {region} completely with the garment "
-        f"shown in the reference image. The new garment must fully cover "
-        f"and replace what they are wearing now -- none of their original "
-        f"clothing should remain visible."
+        f"Replace the persons current {region} completely with the exact "
+        f"garment shown in the reference image, using its exact design, "
+        f"color and print. The new garment must fully cover and replace "
+        f"what they are wearing now."
     )[:280]
