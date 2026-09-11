@@ -65,15 +65,16 @@ def construir_prompt_ar(producto: Producto) -> str:
     la camara sin tocar. Redactado para que "reemplazar por completo" sea
     imposible de malinterpretar.
 
-    Segunda vuelta: una vez que si sustituia, el modelo arrastraba textura
-    del look original (arrugas, estampado de la remera de la persona) hacia
-    la prenda nueva -- se agrega una instruccion explicita de usar SOLO la
-    textura/color/estampado de la imagen de referencia, nada de la ropa
-    original."""
+    Segunda vuelta: se probo agregar una instruccion extra pidiendo usar
+    SOLO la textura/color de la referencia (para que no arrastre arrugas o
+    estampado de la ropa original de la persona) -- pero esa version mas
+    larga hizo que el modelo dejara de sustituir la prenda por completo
+    (volvio al bug anterior). Revertido a la version corta que si sustituye
+    bien; el arrastre de textura queda como limitacion cosmetica conocida
+    en vez de arriesgar romper la sustitucion de nuevo."""
     return (
         f'Replace the persons current top completely with the garment shown '
-        f'in the reference image, "{producto.nombre}". Fully cover what '
-        f"they are wearing now -- none of the original clothing, its "
-        f"texture, print or wrinkles should remain visible. Use only the "
-        f"reference image's own texture, color and pattern."
-    )[:400]
+        f'in the reference image, "{producto.nombre}". The new garment must '
+        f"fully cover and replace what they are wearing now -- none of "
+        f"their original clothing should remain visible."
+    )[:280]
