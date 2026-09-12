@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ArFoto } from '../../components/ar-foto/ar-foto';
 import { ArTryon } from '../../components/ar-tryon/ar-tryon';
+import { ReservaForm } from '../../components/reserva-form/reserva-form';
 import { Product } from '../../data/products';
 import { Auth } from '../../services/auth';
 import { isAgotado, toArPrenda } from '../../services/catalogo-publico';
@@ -70,7 +71,7 @@ function toProduct(p: ProductoPublico): Product {
 
 @Component({
   selector: 'app-producto-detalle',
-  imports: [RouterLink, ArTryon, ArFoto],
+  imports: [RouterLink, ArTryon, ArFoto, ReservaForm],
   templateUrl: './producto-detalle.html',
   styleUrl: './producto-detalle.scss',
 })
@@ -92,6 +93,7 @@ export class ProductoDetalle implements OnInit {
   protected readonly arMenuAbierto = signal(false);
   protected readonly arAbierto = signal(false);
   protected readonly arFotoAbierto = signal(false);
+  protected readonly reservaAbierta = signal(false);
 
   protected readonly whatsappUrl = computed(() => {
     const p = this.product();
@@ -155,6 +157,20 @@ export class ProductoDetalle implements OnInit {
 
   protected cerrarArFoto(): void {
     this.arFotoAbierto.set(false);
+  }
+
+  protected abrirReserva(): void {
+    // CU10: igual que probarse la prenda, reservar requiere sesion
+    // iniciada (la reserva queda ligada al cliente que la hizo).
+    if (!this.auth.currentUser()) {
+      void this.router.navigate(['/login']);
+      return;
+    }
+    this.reservaAbierta.set(true);
+  }
+
+  protected cerrarReserva(): void {
+    this.reservaAbierta.set(false);
   }
 
   protected selectImage(src: string): void {

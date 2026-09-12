@@ -45,7 +45,7 @@ export const ADMIN_MENU: AdminPackage[] = [
     label: 'Gestion de Reservas y Ventas',
     useCases: [
       { code: 'CU09', label: 'Visualizar Prenda con Realidad Aumentada', route: '/admin/ar-uso' },
-      { code: 'CU10', label: 'Gestion de Reservas' },
+      { code: 'CU10', label: 'Gestion de Reservas', route: '/admin/reservas' },
       { code: 'CU11', label: 'Gestion de Ventas' },
       { code: 'CU13', label: 'Administrar Carrito de Compras' },
     ],

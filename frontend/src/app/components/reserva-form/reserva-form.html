@@ -1,0 +1,75 @@
+<div class="reserva-overlay" (click)="cerrar()">
+  <div class="reserva-modal" (click)="$event.stopPropagation()">
+    <button type="button" class="reserva-cerrar" (click)="cerrar()" aria-label="Cerrar">&times;</button>
+
+    <h2>Reservar para probar en tienda</h2>
+    <p class="reserva-subtitulo">{{ productoNombre() }}</p>
+
+    @if (estado() === 'cargando') {
+      <p class="reserva-mensaje">Cargando disponibilidad...</p>
+    }
+
+    @if (estado() === 'sin-stock') {
+      <p class="reserva-mensaje">Este producto no tiene stock disponible en ninguna sucursal por ahora.</p>
+    }
+
+    @if (estado() === 'error') {
+      <p class="reserva-mensaje">No pudimos cargar la disponibilidad. Intenta de nuevo en unos segundos.</p>
+    }
+
+    @if (estado() === 'formulario' || estado() === 'enviando') {
+      <form (submit)="$event.preventDefault(); enviar()">
+        @if (errorMsg()) {
+          <div class="reserva-error">{{ errorMsg() }}</div>
+        }
+
+        <label class="reserva-campo">
+          <span>Sucursal, talla y color</span>
+          <select [value]="claveSeleccionada()" (change)="onOpcionChange($any($event.target).value)">
+            @for (o of opciones(); track clave(o)) {
+              <option [value]="clave(o)">
+                {{ o.sucursal_nombre }} · {{ o.talla_codigo }} · {{ o.color_nombre }} ({{ o.cantidad }} disponibles)
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="reserva-campo">
+          <span>Cantidad</span>
+          <input
+            type="number"
+            min="1"
+            [max]="opcionActual()?.cantidad ?? 1"
+            [value]="cantidad()"
+            (input)="cantidad.set(+$any($event.target).value)"
+          />
+        </label>
+
+        <label class="reserva-campo">
+          <span>Fecha y hora en que iras a la sucursal</span>
+          <input
+            type="datetime-local"
+            [min]="minDatetime"
+            [value]="horario()"
+            (input)="horario.set($any($event.target).value)"
+            required
+          />
+        </label>
+
+        <button type="submit" class="reserva-enviar" [disabled]="estado() === 'enviando' || !horario()">
+          {{ estado() === 'enviando' ? 'Reservando...' : 'Confirmar reserva' }}
+        </button>
+      </form>
+    }
+
+    @if (estado() === 'listo') {
+      <div class="reserva-exito">
+        <p>Tu reserva quedo registrada.</p>
+        <p class="reserva-mensaje-detalle">
+          Te esperamos en la sucursal el dia y hora que elegiste. Podes ver el estado en "Mis reservas".
+        </p>
+        <button type="button" class="reserva-enviar" (click)="cerrar()">Listo</button>
+      </div>
+    }
+  </div>
+</div>

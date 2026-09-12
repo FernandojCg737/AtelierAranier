@@ -171,11 +171,14 @@ class MovimientoInventario(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     inventario_id: Mapped[int] = mapped_column(ForeignKey("inventario.id"))
-    empleado_id: Mapped[int] = mapped_column(ForeignKey("empleado.id"))
+    # Nulo cuando el movimiento lo dispara el sistema (CU10: retener stock
+    # al reservar, liberarlo si la reserva vence sin pagar) en vez de una
+    # accion puntual de un empleado.
+    empleado_id: Mapped[int | None] = mapped_column(ForeignKey("empleado.id"))
     tipo: Mapped[str] = mapped_column(String(20))
     cantidad: Mapped[int] = mapped_column()
     fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     documento_referencia: Mapped[str | None] = mapped_column(String(100))
 
     inventario: Mapped["Inventario"] = relationship(back_populates="movimientos")
-    empleado: Mapped["Empleado"] = relationship(back_populates="movimientos_inventario")
+    empleado: Mapped["Empleado | None"] = relationship(back_populates="movimientos_inventario")

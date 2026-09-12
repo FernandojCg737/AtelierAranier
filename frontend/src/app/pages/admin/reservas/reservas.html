@@ -1,0 +1,170 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P4 · CU10</span>
+      <h1>Gestion de Reservas</h1>
+      <p>Reservas de clientes para probarse/recoger prendas en sucursal.</p>
+    </div>
+
+    <div class="admin-filtros">
+      <select [value]="filtroEstado()" (change)="filtroEstado.set($any($event.target).value); filtrar()">
+        <option value="">Todos los estados</option>
+        <option value="pendiente">Pendiente</option>
+        <option value="confirmada">Confirmada</option>
+        <option value="completada">Completada</option>
+        <option value="cancelada">Cancelada</option>
+        <option value="vencida">Vencida</option>
+      </select>
+
+      <select [value]="filtroSucursal()" (change)="filtroSucursal.set($any($event.target).value); filtrar()">
+        <option value="">Todas las sucursales</option>
+        @for (s of sucursales(); track s.id) {
+          <option [value]="s.id">{{ s.nombre }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Sucursal</th>
+          <th>Reservado el</th>
+          <th>Horario</th>
+          <th>Prendas</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td colspan="7" class="admin-table__empty">Cargando...</td>
+          </tr>
+        } @else if (items().length === 0) {
+          <tr>
+            <td colspan="7" class="admin-table__empty">No hay reservas para estos filtros.</td>
+          </tr>
+        } @else {
+          @for (r of items(); track r.id) {
+            <tr>
+              <td>
+                <div class="admin-table__user">
+                  <strong>{{ r.cliente_nombre }}</strong>
+                  <span>{{ r.cliente_email }}</span>
+                </div>
+              </td>
+              <td>{{ r.sucursal_nombre }}</td>
+              <td>{{ r.fecha_creacion | date: "d MMM 'de' yyyy, h:mm a" : '-0400' }}</td>
+              <td>{{ r.horario_atencion | date: "d MMM 'de' yyyy, h:mm a" : '-0400' }}</td>
+              <td>
+                <ul class="reservas-detalles">
+                  @for (d of r.detalles; track d.id) {
+                    <li>{{ d.cantidad }}x {{ d.producto_nombre }} ({{ d.talla_codigo }}, {{ d.color_nombre }})</li>
+                  }
+                </ul>
+              </td>
+              <td><span class="admin-badge admin-badge--{{ r.estado }}">{{ r.estado }}</span></td>
+              <td>
+                <div class="reservas-acciones">
+                  @if (r.estado === 'pendiente') {
+                    <button type="button" [disabled]="procesando() === r.id" (click)="confirmar(r)">Confirmar</button>
+                  }
+                  @if (r.estado === 'pendiente' || r.estado === 'confirmada') {
+                    <button type="button" class="is-secondary" [disabled]="procesando() === r.id" (click)="cancelar(r)">
+                      Cancelar
+                    </button>
+                  }
+                  @if (r.estado === 'confirmada') {
+                    <button type="button" [disabled]="procesando() === r.id" (click)="completar(r)">Entregar</button>
+                  }
+                  <button type="button" class="is-secondary" [disabled]="procesando() === r.id" (click)="abrirEditar(r)">
+                    Editar
+                  </button>
+                  <button type="button" class="is-danger" [disabled]="procesando() === r.id" (click)="eliminar(r)">
+                    Eliminar
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="admin-pagination">
+    <button type="button" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">Anterior</button>
+    <span>Pagina {{ page() }} de {{ totalPages }}</span>
+    <button type="button" [disabled]="page() >= totalPages" (click)="goToPage(page() + 1)">Siguiente</button>
+  </div>
+
+  @if (editando(); as r) {
+    <div class="reservas-overlay" (click)="cerrarEditar()">
+      <div class="reservas-modal" (click)="$event.stopPropagation()">
+        <h2>Editar reserva #{{ r.id }}</h2>
+        <p class="reservas-modal__subtitulo">{{ r.cliente_nombre }}</p>
+
+        @if (editError()) {
+          <div class="admin-error">{{ editError() }}</div>
+        }
+
+        <form (submit)="$event.preventDefault(); guardarEdicion()">
+          <label class="reservas-campo">
+            <span>Sucursal</span>
+            <select [value]="editSucursalId()" (change)="editSucursalId.set(+$any($event.target).value)">
+              @for (s of sucursales(); track s.id) {
+                <option [value]="s.id">{{ s.nombre }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="reservas-campo">
+            <span>Talla</span>
+            <select [value]="editTallaId()" (change)="editTallaId.set(+$any($event.target).value)">
+              @for (t of tallas(); track t.id) {
+                <option [value]="t.id">{{ t.nombre }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="reservas-campo">
+            <span>Color</span>
+            <select [value]="editColorId()" (change)="editColorId.set(+$any($event.target).value)">
+              @for (c of colores(); track c.id) {
+                <option [value]="c.id">{{ c.nombre }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="reservas-campo">
+            <span>Cantidad</span>
+            <input type="number" min="1" [value]="editCantidad()" (input)="editCantidad.set(+$any($event.target).value)" />
+          </label>
+
+          <label class="reservas-campo">
+            <span>Horario</span>
+            <input
+              type="datetime-local"
+              [value]="editHorario()"
+              (input)="editHorario.set($any($event.target).value)"
+            />
+          </label>
+
+          <div class="reservas-modal__acciones">
+            <button type="button" class="is-secondary" (click)="cerrarEditar()">Cancelar</button>
+            <button type="submit" [disabled]="editGuardando()">
+              {{ editGuardando() ? 'Guardando...' : 'Guardar cambios' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>

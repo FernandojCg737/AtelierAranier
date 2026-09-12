@@ -8,6 +8,7 @@ import { AdminHome } from './pages/admin/home/home';
 import { AdminInventario } from './pages/admin/inventario/inventario';
 import { AdminPerfil } from './pages/admin/perfil/perfil';
 import { AdminProductos } from './pages/admin/productos/productos';
+import { AdminReservas } from './pages/admin/reservas/reservas';
 import { AdminProveedores } from './pages/admin/proveedores/proveedores';
 import { AdminSesiones } from './pages/admin/sesiones/sesiones';
 import { AdminTemporadas } from './pages/admin/temporadas/temporadas';
@@ -53,6 +54,7 @@ export const routes: Routes = [
       { path: 'sesiones', component: AdminSesiones, canActivate: [permisoGuard('CU01')] },
       { path: 'bitacora', component: AdminBitacora, canActivate: [permisoGuard('CU17')] },
       { path: 'ar-uso', component: AdminArUso, canActivate: [permisoGuard('CU09')] },
+      { path: 'reservas', component: AdminReservas, canActivate: [permisoGuard('CU10')] },
     ],
   },
 ];

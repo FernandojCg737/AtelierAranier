@@ -1,0 +1,8 @@
+Agrega Editar y Eliminar reservas al panel de admin de CU10, y acorta el boton del cliente a solo "Reservar"
+
+- PUT /reservas/{id}: edicion completa (sucursal, talla, color, cantidad, horario), atomica con el stock retenido
+- DELETE /reservas/{id}: elimina la reserva, liberando su stock si estaba activa
+- Admin: botones Editar/Eliminar en cada fila, modal de edicion
+- Boton del cliente: "Reservar para probar en tienda" cambia a "Reservar"
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>

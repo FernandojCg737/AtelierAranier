@@ -10,6 +10,7 @@ from app.api.v1.endpoints.empleados import router as empleados_router
 from app.api.v1.endpoints.perfil import router as perfil_router
 from app.api.v1.endpoints.productos import router as productos_router
 from app.api.v1.endpoints.proveedores import router as proveedores_router
+from app.api.v1.endpoints.reservas import router as reservas_router
 from app.api.v1.endpoints.roles import router as roles_router
 from app.api.v1.endpoints.sesiones import router as sesiones_router
 from app.api.v1.endpoints.sucursales import router as sucursales_router
@@ -31,6 +32,7 @@ api_router.include_router(productos_router, prefix="/productos", tags=["producto
 api_router.include_router(temporadas_router, prefix="/temporadas", tags=["temporadas"])
 api_router.include_router(colecciones_router, prefix="/colecciones", tags=["colecciones"])
 api_router.include_router(catalogo_router, prefix="/catalogo", tags=["catalogo"])
+api_router.include_router(reservas_router, prefix="/reservas", tags=["reservas"])
 
 
 @api_router.get("/ping", tags=["health"])
