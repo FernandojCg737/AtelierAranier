@@ -1,6 +1,6 @@
 .new-arrivals {
   padding: 48px 20px;
-  background: #f7f7f5;
+  background: #fff;
 
   @media (min-width: 960px) {
     padding: 72px 40px;
@@ -75,9 +75,14 @@
 .new-arrivals-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 1px;
-  background: #e2e2e0;
-  border: 1px solid #e2e2e0;
+  // Antes el "grout" entre tarjetas se hacia pintando el contenedor entero
+  // de gris y dejando solo 1px de gap para que se viera como linea -- pero
+  // ese fondo se pintaba en TODO el ancho del contenedor, incluida la parte
+  // sin tarjetas (cuando hay menos productos que columnas posibles, o al
+  // centrar con justify-content). Ahora el espacio entre tarjetas es un gap
+  // de verdad (sin fondo debajo) y cada tarjeta pone su propio borde --
+  // asi nunca puede sobrar gris donde no hay producto.
+  gap: 16px;
   max-width: 1440px;
   // "width: fit-content" con "auto-fit" es la trampa clasica de CSS Grid:
   // en vez de dejar que el navegador ajuste cuantas columnas entran segun
@@ -88,6 +93,7 @@
   // cuantas columnas entran por fila.
   width: 100%;
   margin: 0 auto;
+  justify-content: center;
 
   @media (min-width: 700px) {
     grid-template-columns: repeat(auto-fit, minmax(220px, 300px));
@@ -95,6 +101,7 @@
 }
 
 .product-card {
+  border: 1px solid #e2e2e0;
   display: block;
   min-width: 0;
   background: #fff;

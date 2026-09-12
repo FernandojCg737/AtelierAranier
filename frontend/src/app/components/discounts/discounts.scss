@@ -1,6 +1,6 @@
 .discounts {
   padding: 48px 20px;
-  background: #f7f7f5;
+  background: #fff;
 
   @media (min-width: 960px) {
     padding: 72px 40px;
@@ -8,11 +8,6 @@
 }
 
 .discounts-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  column-gap: 24px;
-  row-gap: 12px;
   max-width: 1440px;
   margin: 0 auto 28px;
 
@@ -21,7 +16,7 @@
   }
 
   h2 {
-    margin: 0;
+    margin: 0 0 12px;
     font-size: clamp(32px, 7vw, 56px);
     font-weight: 800;
     font-style: italic;
@@ -29,14 +24,19 @@
     letter-spacing: -0.02em;
     color: var(--brand-dark);
     line-height: 1;
-    flex-shrink: 0;
   }
+}
+
+.discounts-subrow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .discounts-subtitle {
   margin: 0;
-  flex: 1;
-  min-width: 200px;
   max-width: 420px;
   font-size: 13px;
   font-weight: 700;
@@ -51,7 +51,6 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  margin-left: auto;
   color: var(--brand-dark);
   text-decoration: none;
   font-size: 12px;
@@ -73,15 +72,19 @@
 .discounts-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1px;
-  background: #e2e2e0;
-  border: 1px solid #e2e2e0;
+  // Antes el "grout" entre tarjetas se hacia pintando el contenedor entero
+  // de gris y dejando solo 1px de gap -- pero ese fondo se pintaba en TODO
+  // el ancho del contenedor, incluida la parte sin tarjetas. Ahora el
+  // espacio entre tarjetas es un gap de verdad y cada tarjeta pone su
+  // propio borde.
+  gap: 16px;
   max-width: 1440px;
   // Mismo fix que new-arrivals.scss: "fit-content" + "auto-fit" hace que el
   // navegador intente meter todo en una sola fila en vez de ajustar
   // columnas al ancho real de pantalla.
   width: 100%;
   margin: 0 auto;
+  justify-content: center;
 
   @media (min-width: 700px) {
     grid-template-columns: repeat(auto-fit, minmax(220px, 300px));
@@ -91,6 +94,7 @@
 .discount-card {
   display: block;
   min-width: 0;
+  border: 1px solid #e2e2e0;
   background: #fff;
   text-decoration: none;
   color: inherit;
