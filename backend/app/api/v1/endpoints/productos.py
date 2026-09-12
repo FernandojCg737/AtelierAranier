@@ -14,7 +14,6 @@ from app.core.decart import (
     obtener_resultado_trabajo_foto,
 )
 from app.core.storage import (
-    ALLOWED_CONTENT_TYPES,
     MAX_IMAGE_BYTES,
     delete_prenda_ar_imagen,
     delete_producto_imagen,
@@ -316,13 +315,17 @@ async def crear_ar_foto(
             "Este producto no tiene fotos para el probador de realidad aumentada.",
         )
 
-    if file.content_type not in ALLOWED_CONTENT_TYPES:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La foto debe ser JPG, PNG o WEBP.")
+    # No se filtra por content-type aca: ese valor lo manda el navegador y
+    # no es confiable (varia entre dispositivos, y las fotos de iPhone
+    # suelen ser HEIC aunque el navegador diga otra cosa). El formato real
+    # se valida mas abajo, dentro de enviar_trabajo_foto_ar, abriendo el
+    # archivo con Pillow -- eso detecta el formato por el contenido real,
+    # no por lo que declare el navegador.
     content = await file.read()
     if len(content) > MAX_IMAGE_BYTES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "La foto supera el tamano maximo de 5MB.")
 
-    job_id = enviar_trabajo_foto_ar(content, file.content_type or "", imagen_url, construir_prompt_ar(producto))
+    job_id = enviar_trabajo_foto_ar(content, imagen_url, construir_prompt_ar(producto))
     _registrar_uso_ar(db, usuario, producto_id, "virtual")
     return ArFotoTrabajoOut(job_id=job_id)
 

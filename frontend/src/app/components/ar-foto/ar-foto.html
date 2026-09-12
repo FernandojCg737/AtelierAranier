@@ -13,7 +13,7 @@
         </button>
 
         <label class="ar-foto-opcion">
-          <input type="file" accept="image/jpeg,image/png,image/webp" (change)="onFileSelected($event)" hidden />
+          <input type="file" accept="image/*,.heic,.heif" (change)="onFileSelected($event)" hidden />
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="17 8 12 3 7 8" />
@@ -55,7 +55,7 @@
     @if (estado() === 'error') {
       <div class="ar-mensaje">
         <p>No se pudo generar el resultado.</p>
-        <p class="ar-mensaje-detalle">Probá con otra foto (JPG, PNG o WEBP) en unos segundos.</p>
+        <p class="ar-mensaje-detalle">Probá con otra foto en unos segundos.</p>
         <button type="button" class="ar-seguir" (click)="reintentar()">Intentar de nuevo</button>
       </div>
     }

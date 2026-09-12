@@ -1,14 +1,48 @@
+import io
 import os
 import subprocess
 import tempfile
 
+import pillow_heif
 import requests
 from fastapi import HTTPException, status
+from PIL import Image
 
 from app.core.config import settings
 from app.models import Producto
 
 DECART_API_BASE = "https://api.decart.ai"
+
+# Registra el "opener" de HEIC/HEIF en Pillow (formato por defecto de la
+# camara del iPhone) -- sin esto Pillow no sabe leer esos archivos.
+pillow_heif.register_heif_opener()
+
+
+def normalizar_foto_a_jpeg(contenido: bytes) -> bytes:
+    """El modo VIRTUAL fallaba para algunos usuarios porque confiabamos en
+    el content-type que manda el navegador para decidir si la foto es
+    valida -- pero ese valor no es confiable (varia entre dispositivos, y
+    en muchos casos las fotos del iPhone son HEIC, un formato que ni el
+    navegador reporta bien ni ffmpeg puede leer directo).
+
+    En vez de aceptar/rechazar por content-type, se intenta abrir el
+    archivo con Pillow (que detecta el formato real por el contenido, no
+    por lo que diga el navegador) y se re-guarda siempre como JPEG. Esto
+    acepta transparentemente cualquier formato que Pillow entienda (JPG,
+    PNG, WEBP, HEIC/HEIF, BMP, etc.) y le entrega a ffmpeg algo que sabe
+    leer con seguridad."""
+    try:
+        imagen = Image.open(io.BytesIO(contenido))
+        imagen = imagen.convert("RGB")
+    except Exception:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "No pudimos leer esa foto. Probá con otra (JPG, PNG, WEBP o HEIC de iPhone).",
+        )
+
+    salida = io.BytesIO()
+    imagen.save(salida, format="JPEG", quality=92)
+    return salida.getvalue()
 
 
 def crear_token_cliente_decart() -> dict:
@@ -86,13 +120,13 @@ def _convertir_foto_a_video(foto_bytes: bytes) -> bytes:
             return f.read()
 
 
-def enviar_trabajo_foto_ar(persona_bytes: bytes, persona_content_type: str, referencia_url: str, prompt: str) -> str:
+def enviar_trabajo_foto_ar(persona_bytes: bytes, referencia_url: str, prompt: str) -> str:
     """Modo VIRTUAL (CU09): a diferencia del probador en vivo (WebRTC en
-    tiempo real), esto sube una foto de la persona (convertida a un video
-    minimo, ver _convertir_foto_a_video) + la imagen de referencia de la
-    prenda al modo "cola" de lucy-vton-3.5 -- el mismo modelo especializado
-    en VTON que usa el modo ONLINE. Devuelve el job_id para consultar
-    despues."""
+    tiempo real), esto sube una foto de la persona (normalizada a JPEG y
+    despues convertida a un video minimo, ver normalizar_foto_a_jpeg y
+    _convertir_foto_a_video) + la imagen de referencia de la prenda al
+    modo "cola" de lucy-vton-3.5 -- el mismo modelo especializado en VTON
+    que usa el modo ONLINE. Devuelve el job_id para consultar despues."""
     if not settings.DECART_API_KEY:
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -103,6 +137,7 @@ def enviar_trabajo_foto_ar(persona_bytes: bytes, persona_content_type: str, refe
     if not ref_resp.ok:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo obtener la imagen de referencia de la prenda.")
 
+    persona_bytes = normalizar_foto_a_jpeg(persona_bytes)
     video_bytes = _convertir_foto_a_video(persona_bytes)
 
     resp = requests.post(

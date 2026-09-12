@@ -25,7 +25,12 @@ interface ArFotoEstado {
 
 type Estado = 'eligiendo' | 'camara' | 'subiendo' | 'procesando' | 'listo' | 'error';
 
-const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp'];
+// El "content-type" que reporta el navegador no es confiable (varia entre
+// dispositivos, y las fotos de iPhone son HEIC aunque a veces el navegador
+// reporte otra cosa) -- por eso el filtro aca es solo una guia liviana
+// ("esto es una imagen?"), no la validacion real. El backend normaliza
+// cualquier formato que Pillow entienda (incluido HEIC) a JPEG.
+const EXTENSIONES_IMAGEN = /\.(jpe?g|png|webp|heic|heif|bmp|gif|tiff?)$/i;
 const POLL_MS = 2500;
 
 // Probador CU09, modo VIRTUAL: a diferencia de app-ar-tryon (camara en vivo
@@ -118,7 +123,8 @@ export class ArFoto implements OnDestroy {
     const files = input.files;
     if (!files || files.length === 0) return;
     const file = files[0];
-    if (!TIPOS_PERMITIDOS.includes(file.type)) {
+    const pareceImagen = file.type.startsWith('image/') || EXTENSIONES_IMAGEN.test(file.name);
+    if (!pareceImagen) {
       this.estado.set('error');
       input.value = '';
       return;
