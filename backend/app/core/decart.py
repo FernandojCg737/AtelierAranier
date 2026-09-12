@@ -1,3 +1,7 @@
+import os
+import subprocess
+import tempfile
+
 import requests
 from fastapi import HTTPException, status
 
@@ -47,6 +51,127 @@ def crear_token_cliente_decart() -> dict:
             "No se pudo iniciar la sesion del probador de realidad aumentada.",
         )
     return resp.json()
+
+
+def _convertir_foto_a_video(foto_bytes: bytes) -> bytes:
+    """El modo cola de lucy-vton (el mismo modelo especializado que da buen
+    resultado en el probador en vivo) rechaza fotos fijas de plano
+    ("Invalid video file provided") -- solo acepta video. Se arma un video
+    minimo (1 segundo, el mismo frame repetido) a partir de la foto para
+    poder usar ese modelo igual, en vez de lucy-image-2 (edicion de imagen
+    generica, sin entrenamiento especifico de VTON, que daba resultados
+    mucho peores en la prueba real)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        entrada = os.path.join(tmp, "in.jpg")
+        salida = os.path.join(tmp, "out.mp4")
+        with open(entrada, "wb") as f:
+            f.write(foto_bytes)
+        resultado = subprocess.run(
+            [
+                "ffmpeg", "-y", "-loop", "1", "-i", entrada,
+                "-c:v", "libx264", "-t", "1", "-r", "20",
+                "-pix_fmt", "yuv420p",
+                # Ancho/alto pares (requisito de yuv420p), sin forzar una
+                # relacion de aspecto especifica -- la mayoria de fotos de
+                # celular son verticales, no 16:9.
+                "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+                salida,
+            ],
+            capture_output=True,
+            timeout=30,
+        )
+        if resultado.returncode != 0 or not os.path.exists(salida):
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo preparar la foto para el modelo.")
+        with open(salida, "rb") as f:
+            return f.read()
+
+
+def enviar_trabajo_foto_ar(persona_bytes: bytes, persona_content_type: str, referencia_url: str, prompt: str) -> str:
+    """Modo VIRTUAL (CU09): a diferencia del probador en vivo (WebRTC en
+    tiempo real), esto sube una foto de la persona (convertida a un video
+    minimo, ver _convertir_foto_a_video) + la imagen de referencia de la
+    prenda al modo "cola" de lucy-vton-3.5 -- el mismo modelo especializado
+    en VTON que usa el modo ONLINE. Devuelve el job_id para consultar
+    despues."""
+    if not settings.DECART_API_KEY:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "El probador de realidad aumentada no esta configurado.",
+        )
+
+    ref_resp = requests.get(referencia_url, timeout=15)
+    if not ref_resp.ok:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo obtener la imagen de referencia de la prenda.")
+
+    video_bytes = _convertir_foto_a_video(persona_bytes)
+
+    resp = requests.post(
+        f"{DECART_API_BASE}/v1/jobs/lucy-vton-3.5",
+        headers={"X-API-KEY": settings.DECART_API_KEY},
+        files={
+            "data": ("foto.mp4", video_bytes, "video/mp4"),
+            "reference_image": (
+                "referencia.png",
+                ref_resp.content,
+                ref_resp.headers.get("content-type", "image/png"),
+            ),
+        },
+        data={"prompt": prompt, "enhance_prompt": "false"},
+        timeout=30,
+    )
+    if not resp.ok:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo iniciar la generacion de la foto.")
+
+    job_id = resp.json().get("job_id")
+    if not job_id:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Respuesta invalida del servicio de IA.")
+    return job_id
+
+
+def consultar_estado_trabajo_foto(job_id: str) -> dict:
+    resp = requests.get(
+        f"{DECART_API_BASE}/v1/jobs/{job_id}",
+        headers={"X-API-KEY": settings.DECART_API_KEY},
+        timeout=15,
+    )
+    if not resp.ok:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo consultar el estado de la generacion.")
+    return resp.json()
+
+
+def _extraer_frame_de_video(video_bytes: bytes) -> bytes:
+    """El resultado de lucy-vton-3.5 en modo cola es un video (porque la
+    entrada tambien lo es, ver _convertir_foto_a_video) -- se saca un frame
+    de la mitad del clip (no el primero, que a veces sale con artefactos de
+    arranque) para devolver una FOTO como pidio el cliente, no un video."""
+    with tempfile.TemporaryDirectory() as tmp:
+        entrada = os.path.join(tmp, "in.mp4")
+        salida = os.path.join(tmp, "out.jpg")
+        with open(entrada, "wb") as f:
+            f.write(video_bytes)
+        resultado = subprocess.run(
+            ["ffmpeg", "-y", "-ss", "0.5", "-i", entrada, "-frames:v", "1", "-q:v", "2", salida],
+            capture_output=True,
+            timeout=30,
+        )
+        if resultado.returncode != 0 or not os.path.exists(salida):
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo extraer la foto del resultado.")
+        with open(salida, "rb") as f:
+            return f.read()
+
+
+def obtener_resultado_trabajo_foto(job_id: str) -> tuple[bytes, str]:
+    resp = requests.get(
+        f"{DECART_API_BASE}/v1/jobs/{job_id}/content",
+        headers={"X-API-KEY": settings.DECART_API_KEY},
+        timeout=30,
+    )
+    if not resp.ok:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo obtener el resultado de la generacion.")
+    content_type = resp.headers.get("content-type", "")
+    if content_type.startswith("video/"):
+        return _extraer_frame_de_video(resp.content), "image/jpeg"
+    return resp.content, content_type or "image/png"
 
 
 # Que region del cuerpo sustituir, segun la categoria real del catalogo

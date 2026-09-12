@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.endpoints.ar_uso import router as ar_uso_router
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.bitacora import router as bitacora_router
 from app.api.v1.endpoints.catalogo import router as catalogo_router
@@ -18,6 +19,7 @@ api_router = APIRouter()
 
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(bitacora_router, prefix="/bitacora", tags=["bitacora"])
+api_router.include_router(ar_uso_router, prefix="/ar-uso", tags=["ar-uso"])
 api_router.include_router(sesiones_router, prefix="/sesiones", tags=["sesiones"])
 api_router.include_router(sucursales_router, prefix="/sucursales", tags=["sucursales"])
 api_router.include_router(perfil_router, prefix="/perfil", tags=["perfil"])

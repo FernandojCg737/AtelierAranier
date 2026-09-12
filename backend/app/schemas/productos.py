@@ -38,6 +38,16 @@ class ArSesionOut(BaseModel):
     prompt: str
 
 
+class ArFotoTrabajoOut(BaseModel):
+    job_id: str
+
+
+class ArFotoEstadoOut(BaseModel):
+    estado: str
+    listo: bool
+    error: bool = False
+
+
 class ProductoCreate(BaseModel):
     nombre: str = Field(min_length=2, max_length=150)
     descripcion: str | None = None

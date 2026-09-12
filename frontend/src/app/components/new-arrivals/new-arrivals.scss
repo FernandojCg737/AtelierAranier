@@ -79,7 +79,14 @@
   background: #e2e2e0;
   border: 1px solid #e2e2e0;
   max-width: 1440px;
-  width: fit-content;
+  // "width: fit-content" con "auto-fit" es la trampa clasica de CSS Grid:
+  // en vez de dejar que el navegador ajuste cuantas columnas entran segun
+  // el ancho real de pantalla, el contenedor se calcula a su "max-content"
+  // e intenta meter TODAS las tarjetas en una sola fila -- causaba el
+  // scroll horizontal y que no se viera responsivo en celular. Con
+  // "width: 100%" el grid usa el ancho disponible de verdad para decidir
+  // cuantas columnas entran por fila.
+  width: 100%;
   margin: 0 auto;
 
   @media (min-width: 700px) {

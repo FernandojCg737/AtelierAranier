@@ -1,0 +1,67 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P4 · CU09</span>
+      <h1>Visualizar Prenda con Realidad Aumentada</h1>
+      <p>Registro de cada uso del probador: quien lo uso, que prenda, en que modo y cuando.</p>
+    </div>
+
+    <form class="admin-search" (submit)="$event.preventDefault(); search()">
+      <input
+        type="text"
+        placeholder="Buscar por cliente o producto..."
+        [value]="buscar()"
+        (input)="buscar.set($any($event.target).value)"
+      />
+      <button type="submit">Buscar</button>
+    </form>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Producto</th>
+          <th>Modo</th>
+          <th>Fecha y hora</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td colspan="4" class="admin-table__empty">Cargando...</td>
+          </tr>
+        } @else if (items().length === 0) {
+          <tr>
+            <td colspan="4" class="admin-table__empty">Todavia no hay usos registrados.</td>
+          </tr>
+        } @else {
+          @for (item of items(); track item.id) {
+            <tr>
+              <td>
+                <div class="admin-table__user">
+                  <strong>{{ item.usuario_nombre }}</strong>
+                  <span>{{ item.usuario_email }}</span>
+                </div>
+              </td>
+              <td>{{ item.producto_nombre }}</td>
+              <td><span class="admin-badge">{{ item.modo === 'online' ? 'ONLINE' : 'VIRTUAL' }}</span></td>
+              <td>{{ item.fecha | date: "d MMM 'de' yyyy, h:mm a" : '-0400' }}</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="admin-pagination">
+    <button type="button" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">Anterior</button>
+    <span>Pagina {{ page() }} de {{ totalPages }}</span>
+    <button type="button" [disabled]="page() >= totalPages" (click)="goToPage(page() + 1)">Siguiente</button>
+  </div>
+</div>

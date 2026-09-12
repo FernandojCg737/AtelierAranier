@@ -1,0 +1,63 @@
+<div class="ar-overlay">
+  <button type="button" class="ar-cerrar" (click)="cerrar()" aria-label="Cerrar probador">&times;</button>
+
+  <div class="ar-foto-stage">
+    @if (estado() === 'eligiendo') {
+      <div class="ar-foto-opciones">
+        <button type="button" class="ar-foto-opcion" (click)="iniciarCamara()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+            <circle cx="12" cy="13" r="4" />
+          </svg>
+          <span>Tomar una foto</span>
+        </button>
+
+        <label class="ar-foto-opcion">
+          <input type="file" accept="image/jpeg,image/png,image/webp" (change)="onFileSelected($event)" hidden />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span>Subir desde el dispositivo</span>
+        </label>
+      </div>
+      <p class="ar-foto-ayuda">De frente, medio cuerpo o cuerpo entero.</p>
+    }
+
+    @if (estado() === 'camara') {
+      <div class="ar-foto-camara">
+        <video #camaraVideo class="ar-foto-camara__video" autoplay playsinline muted></video>
+        <div class="ar-foto-camara__acciones">
+          <button type="button" class="ar-seguir" (click)="capturarFoto()">Capturar</button>
+          <button type="button" class="ar-foto-cancelar" (click)="cancelarCamara()">Cancelar</button>
+        </div>
+      </div>
+    }
+
+    @if (estado() === 'subiendo' || estado() === 'procesando') {
+      <div class="ar-foto-cargando">
+        @if (previewUrl(); as preview) {
+          <img [src]="preview" alt="Tu foto" class="ar-foto-preview" />
+        }
+        <div class="ar-foto-spinner"></div>
+        <p>{{ estado() === 'subiendo' ? 'Subiendo tu foto...' : 'Generando el resultado, puede tardar unos segundos...' }}</p>
+      </div>
+    }
+
+    @if (estado() === 'listo' && resultadoUrl(); as resultado) {
+      <div class="ar-foto-resultado">
+        <img [src]="resultado" alt="Resultado con la prenda puesta" />
+        <button type="button" class="ar-seguir" (click)="reintentar()">Probar con otra foto</button>
+      </div>
+    }
+
+    @if (estado() === 'error') {
+      <div class="ar-mensaje">
+        <p>No se pudo generar el resultado.</p>
+        <p class="ar-mensaje-detalle">Probá con otra foto (JPG, PNG o WEBP) en unos segundos.</p>
+        <button type="button" class="ar-seguir" (click)="reintentar()">Intentar de nuevo</button>
+      </div>
+    }
+  </div>
+</div>

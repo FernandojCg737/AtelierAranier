@@ -1,13 +1,21 @@
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import require_permiso
+from app.api.deps import get_current_user, require_permiso
 from app.core.audit import log_bitacora, set_client_ip_for_trigger
-from app.core.decart import construir_prompt_ar, crear_token_cliente_decart
+from app.core.decart import (
+    construir_prompt_ar,
+    consultar_estado_trabajo_foto,
+    crear_token_cliente_decart,
+    enviar_trabajo_foto_ar,
+    obtener_resultado_trabajo_foto,
+)
 from app.core.storage import (
+    ALLOWED_CONTENT_TYPES,
+    MAX_IMAGE_BYTES,
     delete_prenda_ar_imagen,
     delete_producto_imagen,
     upload_prenda_ar_imagen,
@@ -27,8 +35,11 @@ from app.models import (
     Talla,
     Temporada,
     Usuario,
+    UsoArPrenda,
 )
 from app.schemas.productos import (
+    ArFotoEstadoOut,
+    ArFotoTrabajoOut,
     ArSesionOut,
     CatalogoBaseOut,
     DisponibilidadOut,
@@ -205,24 +216,8 @@ def get_producto_publico(producto_id: int, db: Session = Depends(get_db)) -> Pro
     return _to_publico(producto)
 
 
-@router.post("/{producto_id}/ar-sesion", response_model=ArSesionOut)
-def crear_ar_sesion(producto_id: int, db: Session = Depends(get_db)) -> ArSesionOut:
-    """Arranca una sesion del probador de realidad aumentada en vivo (CU09,
-    motor Decart lucy-vton): genera un token de cliente de corta duracion
-    (la key permanente nunca sale del backend) y arma el prompt de la
-    prenda para que el frontend abra la conexion WebRTC directamente
-    contra Decart.
-
-    A diferencia del probador 2D/3D anterior (que necesitaba una imagen
-    con fondo transparente y anclas de hombros calibradas a mano), Decart
-    genera la superposicion el mismo con solo una imagen de referencia y
-    el prompt: no hace falta un recorte especial. Por eso, si el producto
-    no tiene una imagen AR dedicada (prenda_ar), usamos su primera foto de
-    catalogo como referencia en su lugar, para que el probador funcione en
-    cualquier producto sin trabajo manual adicional. La imagen dedicada
-    sigue siendo la mejor opcion (foto limpia, sin fondo ni modelo) pero
-    ya no es un requisito."""
-    producto = (
+def _cargar_producto_para_ar(db: Session, producto_id: int) -> Producto | None:
+    return (
         db.query(Producto)
         .options(
             joinedload(Producto.prenda_ar),
@@ -233,17 +228,58 @@ def crear_ar_sesion(producto_id: int, db: Session = Depends(get_db)) -> ArSesion
         .filter(Producto.id == producto_id, Producto.estado == "activo")
         .first()
     )
-    imagen_url = producto.prenda_ar.url if producto and producto.prenda_ar else None
-    if imagen_url is None and producto and producto.imagenes:
+
+
+def _resolver_imagen_referencia(producto: Producto) -> str | None:
+    """A diferencia del probador 2D/3D anterior (que necesitaba una imagen
+    con fondo transparente y anclas de hombros calibradas a mano), Decart
+    genera la superposicion el mismo con solo una imagen de referencia y
+    el prompt: no hace falta un recorte especial. Por eso, si el producto
+    no tiene una imagen AR dedicada (prenda_ar), usamos su primera foto de
+    catalogo como referencia en su lugar, para que el probador funcione en
+    cualquier producto sin trabajo manual adicional. La imagen dedicada
+    sigue siendo la mejor opcion (foto limpia, sin fondo ni modelo) pero
+    ya no es un requisito."""
+    if producto.prenda_ar is not None:
+        return producto.prenda_ar.url
+    if producto.imagenes:
         candidata = producto.imagenes[0].url
         # Decart necesita una URL absoluta (la va a pedir el mismo por
-        # fetch desde el navegador del cliente). Algunos productos de
-        # catalogo todavia tienen la foto placeholder generica de antes de
-        # conectar el backend real (ruta relativa tipo /img/productos/...,
-        # servida por Angular, no una imagen subida): esas no sirven como
-        # referencia, asi que se ignoran en vez de mandarlas rotas.
+        # fetch). Algunos productos de catalogo todavia tienen la foto
+        # placeholder generica de antes de conectar el backend real (ruta
+        # relativa tipo /img/productos/..., servida por Angular, no una
+        # imagen subida): esas no sirven como referencia, asi que se
+        # ignoran en vez de mandarlas rotas.
         if candidata.startswith("http://") or candidata.startswith("https://"):
-            imagen_url = candidata
+            return candidata
+    return None
+
+
+def _registrar_uso_ar(db: Session, usuario: Usuario, producto_id: int, modo: str) -> None:
+    """CU09: deja constancia de quien probo que prenda, en que modo (online
+    = camara en vivo, virtual = foto) y cuando -- se ve en el dashboard de
+    administracion (P4 > CU09). Se registra al iniciar el intento (no al
+    terminar): asi queda igual el registro aunque la generacion en si falle
+    despues, que es lo que de verdad importa para auditar "quien lo uso"."""
+    db.add(UsoArPrenda(usuario_id=usuario.id, producto_id=producto_id, modo=modo))
+    db.commit()
+
+
+@router.post("/{producto_id}/ar-sesion", response_model=ArSesionOut)
+def crear_ar_sesion(
+    producto_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+) -> ArSesionOut:
+    """Arranca una sesion del probador de realidad aumentada en vivo (CU09,
+    modo ONLINE): genera un token de cliente de corta duracion (la key
+    permanente nunca sale del backend) y arma el prompt de la prenda para
+    que el frontend abra la conexion WebRTC directamente contra Decart.
+
+    Requiere sesion iniciada (cualquier cliente registrado, no hace falta
+    ser personal): asi queda registrado quien probo cada prenda."""
+    producto = _cargar_producto_para_ar(db, producto_id)
+    imagen_url = _resolver_imagen_referencia(producto) if producto else None
     if producto is None or imagen_url is None:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
@@ -251,12 +287,63 @@ def crear_ar_sesion(producto_id: int, db: Session = Depends(get_db)) -> ArSesion
         )
 
     token = crear_token_cliente_decart()
+    _registrar_uso_ar(db, usuario, producto_id, "online")
     return ArSesionOut(
         token=token.get("apiKey", ""),
         expira_en=token.get("expiresAt"),
         imagen_url=imagen_url,
         prompt=construir_prompt_ar(producto),
     )
+
+
+@router.post("/{producto_id}/ar-foto", response_model=ArFotoTrabajoOut, status_code=status.HTTP_201_CREATED)
+async def crear_ar_foto(
+    producto_id: int,
+    file: UploadFile,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+) -> ArFotoTrabajoOut:
+    """Modo VIRTUAL (CU09): el cliente sube una foto suya en vez de abrir la
+    camara en vivo. Se manda esa foto + la imagen de referencia de la
+    prenda a un trabajo en cola de Decart (lucy-vton-3.5) y se devuelve el
+    job_id para que el frontend consulte el resultado. Requiere sesion
+    iniciada, igual que el modo ONLINE."""
+    producto = _cargar_producto_para_ar(db, producto_id)
+    imagen_url = _resolver_imagen_referencia(producto) if producto else None
+    if producto is None or imagen_url is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Este producto no tiene fotos para el probador de realidad aumentada.",
+        )
+
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La foto debe ser JPG, PNG o WEBP.")
+    content = await file.read()
+    if len(content) > MAX_IMAGE_BYTES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La foto supera el tamano maximo de 5MB.")
+
+    job_id = enviar_trabajo_foto_ar(content, file.content_type or "", imagen_url, construir_prompt_ar(producto))
+    _registrar_uso_ar(db, usuario, producto_id, "virtual")
+    return ArFotoTrabajoOut(job_id=job_id)
+
+
+@router.get("/ar-foto/{job_id}", response_model=ArFotoEstadoOut)
+def estado_ar_foto(job_id: str) -> ArFotoEstadoOut:
+    """Estado del trabajo en cola (modo VIRTUAL). El frontend hace polling
+    a este endpoint hasta que "listo" sea true, y ahi pide el resultado."""
+    datos = consultar_estado_trabajo_foto(job_id)
+    estado = str(datos.get("status", "desconocido"))
+    return ArFotoEstadoOut(
+        estado=estado,
+        listo=estado.lower() in ("completed", "succeeded", "success"),
+        error=estado.lower() in ("failed", "error", "cancelled"),
+    )
+
+
+@router.get("/ar-foto/{job_id}/resultado")
+def resultado_ar_foto(job_id: str) -> Response:
+    contenido, content_type = obtener_resultado_trabajo_foto(job_id)
+    return Response(content=contenido, media_type=content_type)
 
 
 @router.get("", response_model=list[ProductoOut])

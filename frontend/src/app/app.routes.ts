@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { AdminLayout } from './pages/admin/admin-layout/admin-layout';
+import { AdminArUso } from './pages/admin/ar-uso/ar-uso';
 import { AdminBitacora } from './pages/admin/bitacora/bitacora';
 import { AdminCatalogo } from './pages/admin/catalogo/catalogo';
 import { AdminClientes } from './pages/admin/clientes/clientes';
@@ -51,6 +52,7 @@ export const routes: Routes = [
       { path: 'perfil', component: AdminPerfil },
       { path: 'sesiones', component: AdminSesiones, canActivate: [permisoGuard('CU01')] },
       { path: 'bitacora', component: AdminBitacora, canActivate: [permisoGuard('CU17')] },
+      { path: 'ar-uso', component: AdminArUso, canActivate: [permisoGuard('CU09')] },
     ],
   },
 ];

@@ -165,6 +165,23 @@ class Pago(Base):
     transaccion: Mapped["Transaccion | None"] = relationship(back_populates="pago")
 
 
+class UsoArPrenda(Base):
+    """Registro de cada uso del probador de realidad aumentada (CU09): quien
+    lo uso, que prenda, en que modo (online = camara en vivo, virtual = foto)
+    y cuando. Se muestra en el dashboard de administracion (P4 > CU09)."""
+
+    __tablename__ = "uso_ar_prenda"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuario.id"))
+    producto_id: Mapped[int] = mapped_column(ForeignKey("producto.id"))
+    modo: Mapped[str] = mapped_column(String(20))
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    usuario: Mapped["Usuario"] = relationship()
+    producto: Mapped["Producto"] = relationship()
+
+
 class Transaccion(Base):
     __tablename__ = "transaccion"
 

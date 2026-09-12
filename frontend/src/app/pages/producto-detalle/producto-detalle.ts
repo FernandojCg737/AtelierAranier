@@ -1,11 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { ArFoto } from '../../components/ar-foto/ar-foto';
 import { ArTryon } from '../../components/ar-tryon/ar-tryon';
 import { Product } from '../../data/products';
+import { Auth } from '../../services/auth';
 import { isAgotado, toArPrenda } from '../../services/catalogo-publico';
 import { Cart } from '../../services/cart';
 
@@ -68,15 +70,17 @@ function toProduct(p: ProductoPublico): Product {
 
 @Component({
   selector: 'app-producto-detalle',
-  imports: [RouterLink, ArTryon],
+  imports: [RouterLink, ArTryon, ArFoto],
   templateUrl: './producto-detalle.html',
   styleUrl: './producto-detalle.scss',
 })
 export class ProductoDetalle implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly cart = inject(Cart);
+  protected readonly auth = inject(Auth);
 
   protected readonly product = signal<Product | undefined>(undefined);
   protected readonly isAgotado = isAgotado;
@@ -85,7 +89,9 @@ export class ProductoDetalle implements OnInit {
   protected readonly activeImage = signal<string>('');
   protected readonly detallesOpen = signal(true);
   protected readonly addedFeedback = signal(false);
+  protected readonly arMenuAbierto = signal(false);
   protected readonly arAbierto = signal(false);
+  protected readonly arFotoAbierto = signal(false);
 
   protected readonly whatsappUrl = computed(() => {
     const p = this.product();
@@ -121,12 +127,34 @@ export class ProductoDetalle implements OnInit {
     this.selectedSize.set(size);
   }
 
-  protected abrirAr(): void {
+  protected toggleArMenu(): void {
+    // CU09: probarse una prenda (online o virtual) requiere sesion iniciada
+    // -- asi queda registrado quien probo cada prenda para el dashboard de
+    // administracion (P4 > CU09). Si no hay sesion, manda a loguearse (o
+    // registrarse, desde ahi) en vez de abrir el menu de opciones.
+    if (!this.auth.currentUser()) {
+      void this.router.navigate(['/login']);
+      return;
+    }
+    this.arMenuAbierto.set(!this.arMenuAbierto());
+  }
+
+  protected abrirArOnline(): void {
+    this.arMenuAbierto.set(false);
     this.arAbierto.set(true);
   }
 
   protected cerrarAr(): void {
     this.arAbierto.set(false);
+  }
+
+  protected abrirArFoto(): void {
+    this.arMenuAbierto.set(false);
+    this.arFotoAbierto.set(true);
+  }
+
+  protected cerrarArFoto(): void {
+    this.arFotoAbierto.set(false);
   }
 
   protected selectImage(src: string): void {

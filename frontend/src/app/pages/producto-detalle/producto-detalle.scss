@@ -231,6 +231,11 @@
   }
 }
 
+.producto-info__ar-group {
+  position: relative;
+  width: 100%;
+}
+
 .producto-info__ar {
   display: flex;
   align-items: center;
@@ -257,6 +262,42 @@
   &:hover {
     background: var(--brand-dark);
     color: #fff;
+  }
+}
+
+.producto-info__ar-opciones {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.producto-info__ar-opcion {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  color: var(--brand-dark);
+  padding: 12px 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  strong {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+  }
+
+  span {
+    font-size: 11px;
+    color: #777;
+    text-align: center;
+  }
+
+  &:hover {
+    border-color: var(--brand-dark);
+    background: #fff;
   }
 }
 

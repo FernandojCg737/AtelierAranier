@@ -77,7 +77,10 @@
   background: #e2e2e0;
   border: 1px solid #e2e2e0;
   max-width: 1440px;
-  width: fit-content;
+  // Mismo fix que new-arrivals.scss: "fit-content" + "auto-fit" hace que el
+  // navegador intente meter todo en una sola fila en vez de ajustar
+  // columnas al ancho real de pantalla.
+  width: 100%;
   margin: 0 auto;
 
   @media (min-width: 700px) {
