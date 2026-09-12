@@ -34,3 +34,4 @@ Thumbs.db
 # Claude Code / documentacion interna (no va al repo)
 .claude/
 docs/
+.git-commit-msg.txt

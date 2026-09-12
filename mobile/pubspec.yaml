@@ -109,7 +109,11 @@ flutter_native_splash:
   color: "#FFFFFF"
   image: assets/logo.png
   android_12:
-    image: assets/logo.png
+    # En Android 12+ el ícono central SIEMPRE se recorta a un círculo (regla
+    # del sistema operativo, no configurable) -- "splash_icon.png" es el
+    # mismo logo pero con mucho mas margen alrededor para que ese recorte
+    # no le coma el texto.
+    image: assets/splash_icon.png
     color: "#FFFFFF"
 
 # For information on the generic Dart part of this file, see the

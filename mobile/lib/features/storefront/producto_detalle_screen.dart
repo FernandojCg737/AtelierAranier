@@ -10,6 +10,7 @@ import 'ar_foto_screen.dart';
 import 'ar_tryon_screen.dart';
 import 'cart_provider.dart';
 import 'catalogo_provider.dart';
+import 'reserva_form_screen.dart';
 
 class ProductoDetalleScreen extends ConsumerStatefulWidget {
   const ProductoDetalleScreen({super.key, required this.productoId});
@@ -72,6 +73,18 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
     } else {
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArFotoScreen(productoId: productoId)));
     }
+  }
+
+  // CU10 requiere sesion iniciada (la reserva queda ligada al cliente que
+  // la hizo, igual que CU09).
+  void _abrirReserva(int productoId, String productoNombre) {
+    if (!ref.read(authProvider).isAuthenticated) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ReservaFormScreen(productoId: productoId, productoNombre: productoNombre)),
+    );
   }
 
   @override
@@ -182,6 +195,20 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
                         onPressed: () => _abrirProbadorAr(p.id),
                         icon: const Icon(Icons.camera_alt_outlined),
                         label: const Text('PROBARME CON REALIDAD AUMENTADA'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          foregroundColor: AppColors.brandDark,
+                          side: const BorderSide(color: AppColors.brandDark),
+                          shape: const RoundedRectangleBorder(),
+                        ),
+                      ),
+                    ],
+                    if (!p.agotado) ...[
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: () => _abrirReserva(p.id, p.nombre),
+                        icon: const Icon(Icons.calendar_today_outlined),
+                        label: const Text('RESERVAR'),
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(48),
                           foregroundColor: AppColors.brandDark,
