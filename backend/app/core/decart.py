@@ -18,6 +18,9 @@ DECART_API_BASE = "https://api.decart.ai"
 pillow_heif.register_heif_opener()
 
 
+MAX_LADO_FOTO_PX = 1280
+
+
 def normalizar_foto_a_jpeg(contenido: bytes) -> bytes:
     """El modo VIRTUAL fallaba para algunos usuarios porque confiabamos en
     el content-type que manda el navegador para decidir si la foto es
@@ -30,7 +33,14 @@ def normalizar_foto_a_jpeg(contenido: bytes) -> bytes:
     por lo que diga el navegador) y se re-guarda siempre como JPEG. Esto
     acepta transparentemente cualquier formato que Pillow entienda (JPG,
     PNG, WEBP, HEIC/HEIF, BMP, etc.) y le entrega a ffmpeg algo que sabe
-    leer con seguridad."""
+    leer con seguridad.
+
+    Tambien se achica al lado mas largo a MAX_LADO_FOTO_PX: una foto de
+    celular moderna (12+ MP) decodificada entera en memoria, mas el video
+    que arma ffmpeg a partir de ella, se comen la memoria del plan Free de
+    Render (512MB) y el proceso termina reiniciandose solo. El modelo de
+    Decart igual la reduce a su resolucion nativa (1280x720), asi que no
+    se pierde nada mandandola mas chica."""
     try:
         imagen = Image.open(io.BytesIO(contenido))
         imagen = imagen.convert("RGB")
@@ -40,8 +50,14 @@ def normalizar_foto_a_jpeg(contenido: bytes) -> bytes:
             "No pudimos leer esa foto. Probá con otra (JPG, PNG, WEBP o HEIC de iPhone).",
         )
 
+    ancho, alto = imagen.size
+    lado_mayor = max(ancho, alto)
+    if lado_mayor > MAX_LADO_FOTO_PX:
+        escala = MAX_LADO_FOTO_PX / lado_mayor
+        imagen = imagen.resize((round(ancho * escala), round(alto * escala)), Image.LANCZOS)
+
     salida = io.BytesIO()
-    imagen.save(salida, format="JPEG", quality=92)
+    imagen.save(salida, format="JPEG", quality=88)
     return salida.getvalue()
 
 
@@ -103,7 +119,13 @@ def _convertir_foto_a_video(foto_bytes: bytes) -> bytes:
         resultado = subprocess.run(
             [
                 "ffmpeg", "-y", "-loop", "1", "-i", entrada,
-                "-c:v", "libx264", "-t", "1", "-r", "20",
+                "-c:v", "libx264",
+                # "ultrafast": este video se descarta apenas se manda, no
+                # hace falta comprimirlo bien -- solo bajar el uso de CPU y
+                # memoria del proceso de codificacion (el plan Free de
+                # Render tiene 512MB, justo lo que se estaba agotando).
+                "-preset", "ultrafast",
+                "-t", "1", "-r", "20",
                 "-pix_fmt", "yuv420p",
                 # Ancho/alto pares (requisito de yuv420p), sin forzar una
                 # relacion de aspecto especifica -- la mayoria de fotos de
