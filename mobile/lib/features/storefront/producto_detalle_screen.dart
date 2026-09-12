@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../models/producto_publico.dart';
+import '../auth/auth_provider.dart';
+import '../auth/login_screen.dart';
+import 'ar_foto_screen.dart';
 import 'ar_tryon_screen.dart';
 import 'cart_provider.dart';
 import 'catalogo_provider.dart';
@@ -26,6 +29,49 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
   void initState() {
     super.initState();
     _future = ref.read(catalogoRepositoryProvider).getProducto(widget.productoId);
+  }
+
+  // CU09 requiere sesion iniciada (queda registrado quien probo cada
+  // prenda para el dashboard de administracion) -- igual que en la web.
+  // Con sesion, se elige entre ONLINE (camara en vivo) y VIRTUAL (subir
+  // una foto), tambien igual que en la web.
+  Future<void> _abrirProbadorAr(int productoId) async {
+    if (!ref.read(authProvider).isAuthenticated) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+
+    final modo = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.videocam_outlined, color: AppColors.brandDark),
+              title: const Text('ONLINE', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Camara en vivo'),
+              onTap: () => Navigator.of(ctx).pop('online'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined, color: AppColors.brandDark),
+              title: const Text('VIRTUAL', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Subir o tomar una foto'),
+              onTap: () => Navigator.of(ctx).pop('virtual'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || modo == null) return;
+
+    if (modo == 'online') {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArTryonScreen(productoId: productoId)));
+    } else {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArFotoScreen(productoId: productoId)));
+    }
   }
 
   @override
@@ -133,11 +179,7 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
                     if (p.hasPhotos) ...[
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => ArTryonScreen(productoId: p.id)),
-                          );
-                        },
+                        onPressed: () => _abrirProbadorAr(p.id),
                         icon: const Icon(Icons.camera_alt_outlined),
                         label: const Text('PROBARME CON REALIDAD AUMENTADA'),
                         style: OutlinedButton.styleFrom(

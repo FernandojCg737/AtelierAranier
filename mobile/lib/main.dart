@@ -48,6 +48,18 @@ class _AtelierAranierAppState extends ConsumerState<AtelierAranierApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Mientras se chequea si hay sesion guardada (bootstrap), se muestra
+    // el logo + un spinner en vez de saltar directo a Home -- sin esto se
+    // alcanza a ver un parpadeo de contenido antes de que el router
+    // termine de decidir a donde navegar.
+    if (ref.watch(authProvider).bootstrapping) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        home: const _BootstrapSplash(),
+      );
+    }
+
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
@@ -56,6 +68,27 @@ class _AtelierAranierAppState extends ConsumerState<AtelierAranierApp> {
       theme: AppTheme.light(),
       routerConfig: router,
       scaffoldMessengerKey: _messengerKey,
+    );
+  }
+}
+
+class _BootstrapSplash extends StatelessWidget {
+  const _BootstrapSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.brandDark,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/logo.png', width: 220),
+            const SizedBox(height: 40),
+            const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+          ],
+        ),
+      ),
     );
   }
 }

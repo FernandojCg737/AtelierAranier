@@ -75,6 +75,11 @@ import {{ createDecartClient, models }} from "https://cdn.jsdelivr.net/npm/@deca
 const PRODUCTO_ID = {producto_id};
 const SESION_MAX_SEG = 180;
 const AVISO_SEG = 20;
+// CU09 requiere sesion iniciada (para registrar quien probo cada prenda);
+// esta pagina la carga el WebView de la app movil con una navegacion
+// normal (no podemos ponerle el header Authorization ahi), asi que el
+// token viaja como query param y se lee aca para mandarlo en el fetch.
+const TOKEN = new URLSearchParams(location.search).get("token");
 
 const video = document.getElementById("video");
 const videoLocal = document.getElementById("video-local");
@@ -130,7 +135,10 @@ function finalizarPorTiempo() {{
 async function conectarDecart() {{
   let sesion;
   try {{
-    const res = await fetch(`/api/v1/productos/${{PRODUCTO_ID}}/ar-sesion`, {{ method: "POST" }});
+    const res = await fetch(`/api/v1/productos/${{PRODUCTO_ID}}/ar-sesion`, {{
+      method: "POST",
+      headers: TOKEN ? {{ Authorization: `Bearer ${{TOKEN}}` }} : {{}},
+    }});
     if (!res.ok) throw new Error("sesion");
     sesion = await res.json();
   }} catch {{

@@ -31,7 +31,17 @@ String get apiBaseUrl {
 /// funcionaria igual. Usar siempre el backend real evita ese problema en
 /// cualquier dispositivo con internet, sin depender de tener el backend
 /// corriendo en la maquina.
-String arEmbedUrl(int productoId) => '$_backendProduccionUrl/ar-embed/$productoId';
+/// CU09 ahora requiere sesion iniciada (para registrar quien probo cada
+/// prenda) -- el token va como query param porque esta pagina la carga el
+/// WebView con `loadRequest` (una navegacion normal, no un fetch nuestro
+/// donde podamos poner el header Authorization); el JS de la pagina lo lee
+/// de `location.search` y lo manda el como header en su propio fetch a
+/// `/ar-sesion`. Ver `ar_embed.py` del lado del backend.
+String arEmbedUrl(int productoId, {String? token}) {
+  final base = '$_backendProduccionUrl/ar-embed/$productoId';
+  if (token == null || token.isEmpty) return base;
+  return '$base?token=${Uri.encodeQueryComponent(token)}';
+}
 
 /// URL base del frontend Angular. Algunas imagenes de producto (las que
 /// vienen de los assets estaticos del frontend, ej. "/img/productos/x.jpg")

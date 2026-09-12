@@ -3,6 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../core/api_config.dart';
+import '../../core/secure_storage.dart';
 
 /// Probador virtual con realidad aumentada (CU09): mismo motor que la web
 /// (Decart lucy-vton, en vivo por WebRTC). `@decartai/sdk` es un paquete
@@ -41,11 +42,17 @@ class _ArTryonScreenState extends State<ArTryonScreen> {
       return;
     }
 
+    // CU09 requiere sesion iniciada (queda registrado quien probo cada
+    // prenda); esta pantalla ya solo se abre si hay sesion (ver el chequeo
+    // en producto_detalle_screen.dart antes de navegar aca), pero el token
+    // se lee igual aca porque quien arma la URL final es esta pantalla.
+    final token = await SecureStorage().readToken();
+
     final controller = WebViewController(onPermissionRequest: (request) => request.grant())
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
       ..setOnConsoleMessage((message) => debugPrint('[ar-embed] ${message.message}'))
-      ..loadRequest(Uri.parse(arEmbedUrl(widget.productoId)));
+      ..loadRequest(Uri.parse(arEmbedUrl(widget.productoId, token: token)));
 
     if (!mounted) return;
     setState(() => _controller = controller);
