@@ -7,6 +7,7 @@ import 'dart:io' show Platform;
 const bool usarBackendProduccion = true;
 
 const String _backendProduccionUrl = 'https://atelieraranier-backend.onrender.com';
+const String _frontendProduccionUrl = 'https://atelieraranier-frontend.onrender.com';
 
 /// URL base de la API de FastAPI según la plataforma de ejecución.
 ///
@@ -48,7 +49,13 @@ String arEmbedUrl(int productoId, {String? token}) {
 /// son rutas RELATIVAS: en un navegador se resuelven solas contra el
 /// dominio de la pagina, pero una app nativa no tiene "origen" propio y
 /// necesita la URL absoluta. Ver `resolveImageUrl`.
+///
+/// En `usarBackendProduccion = true` siempre es el frontend real -- nunca
+/// `10.0.2.2`, que solo existe dentro del emulador Android y no significa
+/// nada en un dispositivo fisico (ahi las imagenes con ruta relativa
+/// simplemente no cargaban).
 String get webAssetsBaseUrl {
+  if (usarBackendProduccion) return _frontendProduccionUrl;
   if (Platform.isAndroid) {
     return 'http://10.0.2.2:4200';
   }
