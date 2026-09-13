@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/reserva.dart';
 import '../auth/auth_provider.dart';
 
 class DisponibilidadItem {
@@ -71,6 +72,14 @@ class ReservasRepository {
       ],
     });
   }
+
+  // ---------- Mi cuenta (dashboard del cliente) ----------
+  Future<List<Reserva>> misReservas() async {
+    final res = await _dio.get('/reservas/mias');
+    return (res.data as List<dynamic>).map((e) => Reserva.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> cancelar(int reservaId) => _dio.post('/reservas/$reservaId/cancelar');
 }
 
 final reservasRepositoryProvider = Provider<ReservasRepository>((ref) {

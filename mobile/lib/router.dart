@@ -26,12 +26,10 @@ import 'features/auth/perfil_screen.dart';
 import 'features/auth/recuperar_password_screen.dart';
 import 'features/auth/registro_screen.dart';
 import 'features/chatbot/chatbot_screen.dart';
-import 'features/notificaciones/notificaciones_screen.dart';
 import 'features/storefront/carrito_screen.dart';
 import 'features/storefront/checkout_screen.dart';
 import 'features/storefront/cotizaciones_screen.dart';
 import 'features/storefront/home_screen.dart';
-import 'features/storefront/mis_compras_screen.dart';
 import 'features/storefront/producto_detalle_screen.dart';
 import 'features/storefront/tienda_screen.dart';
 import 'root_shell.dart';
@@ -55,8 +53,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final loc = state.matchedLocation;
       final isAuthRoute = loc == '/login' || loc == '/registro' || loc == '/recuperar';
-      final requiresAuth =
-          loc == '/perfil' || loc == '/checkout' || loc == '/mis-compras' || loc == '/notificaciones' || loc == '/chatbot';
+      final requiresAuth = loc == '/perfil' || loc == '/checkout' || loc == '/chatbot';
       final isAdminArea = loc == '/admin' || loc.startsWith('/admin/');
 
       if (requiresAuth && !auth.isAuthenticated) return '/login';
@@ -81,8 +78,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/cotizaciones', builder: (context, state) => const CotizacionesScreen()),
       GoRoute(path: '/checkout', builder: (context, state) => const CheckoutScreen()),
-      GoRoute(path: '/mis-compras', builder: (context, state) => const MisComprasScreen()),
-      GoRoute(path: '/notificaciones', builder: (context, state) => const NotificacionesScreen()),
       GoRoute(path: '/chatbot', builder: (context, state) => const ChatbotScreen()),
       GoRoute(
         path: '/producto/:id',
