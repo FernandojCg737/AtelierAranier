@@ -30,6 +30,10 @@
 		<string>Usamos la camara para el probador de realidad aumentada: te mostramos como te queda la prenda en tiempo real.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Para el probador de realidad aumentada (modo VIRTUAL) necesitamos acceder a tus fotos para que elijas una.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Usamos el microfono para que puedas dictarle tu pregunta al asistente virtual.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>Convertimos lo que decis en texto para mandarle la pregunta al asistente virtual.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

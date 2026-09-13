@@ -74,4 +74,4 @@ String resolveImageUrl(String url) {
 /// mismo proyecto de Google Cloud (paquete `com.atelieraranier.mobile_app`
 /// + huella SHA-1 del keystore de debug/release) — sin eso Google devuelve
 /// error 10 (DEVELOPER_ERROR) aunque el codigo este bien.
-const googleServerClientId = '1077780230270-le9ifqpmlmbd4bj7j82gqsq9fr5cf2tu.apps.googleusercontent.com';
+const googleServerClientId = '358122795142-b9uf3oe7i98lg2bjkhcj6habdrh1mqcp.apps.googleusercontent.com';

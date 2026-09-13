@@ -53,19 +53,22 @@ const adminMenu = <AdminPackage>[
     useCases: [
       AdminUseCase(code: 'CU09', label: 'Visualizar Prenda con Realidad Aumentada'),
       AdminUseCase(code: 'CU10', label: 'Gestion de Reservas'),
-      AdminUseCase(code: 'CU11', label: 'Gestion de Ventas'),
-      AdminUseCase(code: 'CU13', label: 'Administrar Carrito de Compras'),
+      AdminUseCase(code: 'CU11', label: 'Gestion de Ventas', route: '/admin/ventas'),
+      AdminUseCase(code: 'CU13', label: 'Administrar Carrito de Compras', route: '/admin/carritos'),
     ],
   ),
   AdminPackage(
     code: 'P5',
     label: 'Gestion de Experiencia y Analitica',
     useCases: [
-      AdminUseCase(code: 'CU14', label: 'Enviar Notificaciones'),
+      AdminUseCase(code: 'CU14', label: 'Enviar Notificaciones', route: '/admin/notificaciones'),
+      // CU16 (Reportes y Dashboards con graficos/exportar) se dejo fuera de
+      // mobile a proposito -- esa tarea es mucho mas comoda en pantalla
+      // grande, sigue disponible en la web.
       AdminUseCase(code: 'CU16', label: 'Gestion Reportes y Dashboards'),
-      AdminUseCase(code: 'CU18', label: 'Recomendar Prendas por IA'),
-      AdminUseCase(code: 'CU19', label: 'Atender Cliente con Chatbot'),
-      AdminUseCase(code: 'CU20', label: 'Reputacion y Calificaciones'),
+      AdminUseCase(code: 'CU18', label: 'Recomendar Prendas por IA', route: '/admin/recomendaciones'),
+      AdminUseCase(code: 'CU19', label: 'Atender Cliente con Chatbot', route: '/admin/chatbot'),
+      AdminUseCase(code: 'CU20', label: 'Reputacion y Calificaciones', route: '/admin/calificaciones'),
     ],
   ),
 ];

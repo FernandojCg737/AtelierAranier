@@ -6,9 +6,9 @@ import '../../core/theme.dart';
 import '../../models/producto_publico.dart';
 import '../auth/auth_provider.dart';
 import '../auth/login_screen.dart';
+import 'agregar_carrito_screen.dart';
 import 'ar_foto_screen.dart';
 import 'ar_tryon_screen.dart';
-import 'cart_provider.dart';
 import 'catalogo_provider.dart';
 import 'reserva_form_screen.dart';
 
@@ -24,7 +24,6 @@ class ProductoDetalleScreen extends ConsumerStatefulWidget {
 class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
   late Future<ProductoPublico> _future;
   int _activeImage = 0;
-  bool _added = false;
 
   @override
   void initState() {
@@ -73,6 +72,17 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
     } else {
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArFotoScreen(productoId: productoId)));
     }
+  }
+
+  // CU11 requiere sesion iniciada (el carrito queda ligado al cliente).
+  void _abrirAgregarCarrito(int productoId, String productoNombre) {
+    if (!ref.read(authProvider).isAuthenticated) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AgregarCarritoScreen(productoId: productoId, productoNombre: productoNombre)),
+    );
   }
 
   // CU10 requiere sesion iniciada (la reserva queda ligada al cliente que
@@ -172,22 +182,8 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
                     Text(p.descripcion ?? 'Este producto no tiene una descripcion detallada todavia.'),
                     const Divider(height: 32),
                     ElevatedButton(
-                      onPressed: p.agotado
-                          ? null
-                          : () {
-                              ref.read(cartProvider.notifier).addItem(
-                                id: p.id.toString(),
-                                name: p.nombre,
-                                brand: p.marcaNombre,
-                                price: p.precio,
-                                image: imagenes.isEmpty ? '' : imagenes.first,
-                              );
-                              setState(() => _added = true);
-                              Future.delayed(const Duration(milliseconds: 1600), () {
-                                if (mounted) setState(() => _added = false);
-                              });
-                            },
-                      child: Text(p.agotado ? 'SIN STOCK' : (_added ? 'AGREGADO' : 'ANADIR AL CARRITO')),
+                      onPressed: p.agotado ? null : () => _abrirAgregarCarrito(p.id, p.nombre),
+                      child: Text(p.agotado ? 'SIN STOCK' : 'ANADIR AL CARRITO'),
                     ),
                     if (p.hasPhotos) ...[
                       const SizedBox(height: 10),

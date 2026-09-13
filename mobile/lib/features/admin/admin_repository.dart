@@ -1,19 +1,26 @@
 import 'package:dio/dio.dart';
 
 import '../../models/bitacora_item.dart';
+import '../../models/calificacion_admin.dart';
+import '../../models/carrito_admin.dart';
 import '../../models/catalogo_base.dart';
 import '../../models/catalogo_producto.dart';
+import '../../models/chat_mensaje.dart';
+import '../../models/chatbot_usuario.dart';
 import '../../models/cliente_admin.dart';
 import '../../models/coleccion.dart';
 import '../../models/empleado.dart';
 import '../../models/inventario_item.dart';
+import '../../models/notificacion_admin.dart';
 import '../../models/opcion.dart';
 import '../../models/producto_admin.dart';
 import '../../models/proveedor.dart';
+import '../../models/recomendacion_admin.dart';
 import '../../models/rol.dart';
 import '../../models/sucursal_admin.dart';
 import '../../models/temporada.dart';
 import '../../models/usuario.dart';
+import '../../models/venta_admin.dart';
 
 /// Todas las llamadas HTTP del panel admin (CU01,02,03,04,05,06,07,08,12,19),
 /// en un solo repositorio dado el volumen de entidades — mismos endpoints
@@ -316,5 +323,63 @@ class AdminRepository {
   Future<List<CatalogoProducto>> getCatalogoProductosPorSucursal(int sucursalId) async {
     final res = await _dio.get('/catalogo/sucursales/$sucursalId/productos');
     return (res.data as List<dynamic>).map((e) => CatalogoProducto.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // ---------------------------------------------------------------- CU11
+  Future<VentaAdminPage> getVentas({int page = 1, int pageSize = 20, String? tipo, String? estadoPago}) async {
+    final res = await _dio.get('/ventas', queryParameters: {
+      'page': page,
+      'page_size': pageSize,
+      if (tipo != null && tipo.isNotEmpty) 'tipo': tipo,
+      if (estadoPago != null && estadoPago.isNotEmpty) 'estado_pago': estadoPago,
+    });
+    return VentaAdminPage.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  // ---------------------------------------------------------------- CU13
+  Future<List<CarritoAdmin>> getCarritosActivos() async {
+    final res = await _dio.get('/carritos');
+    return (res.data as List<dynamic>).map((e) => CarritoAdmin.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // ---------------------------------------------------------------- CU14
+  Future<NotificacionAdminPage> getNotificaciones({int page = 1, int pageSize = 20, String? tipoEvento}) async {
+    final res = await _dio.get('/notificaciones', queryParameters: {
+      'page': page,
+      'page_size': pageSize,
+      if (tipoEvento != null && tipoEvento.isNotEmpty) 'tipo_evento': tipoEvento,
+    });
+    return NotificacionAdminPage.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  // ---------------------------------------------------------------- CU18
+  Future<RecomendacionPage> getRecomendaciones({int page = 1, int pageSize = 20, String? origen}) async {
+    final res = await _dio.get('/recomendaciones', queryParameters: {
+      'page': page,
+      'page_size': pageSize,
+      if (origen != null && origen.isNotEmpty) 'origen': origen,
+    });
+    return RecomendacionPage.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  // ---------------------------------------------------------------- CU19
+  Future<List<ChatbotUsuario>> getChatbotUsuarios() async {
+    final res = await _dio.get('/chatbot');
+    return (res.data as List<dynamic>).map((e) => ChatbotUsuario.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<ChatMensaje>> getChatbotTranscripcion(int clienteId) async {
+    final res = await _dio.get('/chatbot/cliente/$clienteId');
+    return (res.data as List<dynamic>).map((e) => ChatMensaje.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // ---------------------------------------------------------------- CU20
+  Future<CalificacionPage> getCalificaciones({int page = 1, int pageSize = 20, int? estrellas}) async {
+    final res = await _dio.get('/calificaciones', queryParameters: {
+      'page': page,
+      'page_size': pageSize,
+      if (estrellas != null) 'estrellas': estrellas,
+    });
+    return CalificacionPage.fromJson(res.data as Map<String, dynamic>);
   }
 }

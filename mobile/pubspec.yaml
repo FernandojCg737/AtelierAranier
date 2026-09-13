@@ -68,6 +68,13 @@ dependencies:
   # Seleccionar imagenes de la galeria para subir fotos de producto (CU05)
   image_picker: ^1.1.2
 
+  # CU19: reconocimiento de voz (dictar la pregunta al chatbot) -- equivalente
+  # nativo del Web Speech API que usa la web, que no existe en Flutter.
+  speech_to_text: ^7.0.0
+
+  # CU19: sintesis de voz (que el bot conteste hablado).
+  flutter_tts: ^4.2.0
+
   # Probador AR en vivo (CU09, motor Decart): @decartai/sdk es un paquete
   # JS sin equivalente Dart, asi que se reutiliza la misma pagina que ya
   # funciona en la web dentro de un WebView, en vez de reimplementar el
@@ -129,6 +136,7 @@ flutter:
 
   assets:
     - assets/logo.png
+    - assets/qr-transferencia.png
     - assets/video/hero.mp4
     - assets/video/tienda-hero.mp4
 

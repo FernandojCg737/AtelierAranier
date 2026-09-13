@@ -5,23 +5,33 @@ import 'package:go_router/go_router.dart';
 import 'features/admin/admin_menu.dart';
 import 'features/admin/admin_shell.dart';
 import 'features/admin/bitacora/bitacora_screen.dart';
+import 'features/admin/calificaciones/calificaciones_admin_screen.dart';
+import 'features/admin/carritos/carritos_screen.dart';
 import 'features/admin/catalogo/catalogo_screen.dart';
+import 'features/admin/chatbot/chatbot_admin_screen.dart';
 import 'features/admin/clientes/clientes_screen.dart';
 import 'features/admin/inventario/inventario_screen.dart';
+import 'features/admin/notificaciones/notificaciones_admin_screen.dart';
 import 'features/admin/productos/productos_screen.dart';
 import 'features/admin/proveedores/proveedores_screen.dart';
+import 'features/admin/recomendaciones/recomendaciones_admin_screen.dart';
 import 'features/admin/sesiones/sesiones_screen.dart';
 import 'features/admin/sucursales/sucursales_screen.dart';
 import 'features/admin/temporadas/temporadas_screen.dart';
 import 'features/admin/usuarios/usuarios_screen.dart';
+import 'features/admin/ventas/ventas_screen.dart';
 import 'features/auth/auth_provider.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/perfil_screen.dart';
 import 'features/auth/recuperar_password_screen.dart';
 import 'features/auth/registro_screen.dart';
+import 'features/chatbot/chatbot_screen.dart';
+import 'features/notificaciones/notificaciones_screen.dart';
 import 'features/storefront/carrito_screen.dart';
+import 'features/storefront/checkout_screen.dart';
 import 'features/storefront/cotizaciones_screen.dart';
 import 'features/storefront/home_screen.dart';
+import 'features/storefront/mis_compras_screen.dart';
 import 'features/storefront/producto_detalle_screen.dart';
 import 'features/storefront/tienda_screen.dart';
 import 'root_shell.dart';
@@ -45,7 +55,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final loc = state.matchedLocation;
       final isAuthRoute = loc == '/login' || loc == '/registro' || loc == '/recuperar';
-      final requiresAuth = loc == '/perfil';
+      final requiresAuth =
+          loc == '/perfil' || loc == '/checkout' || loc == '/mis-compras' || loc == '/notificaciones' || loc == '/chatbot';
       final isAdminArea = loc == '/admin' || loc.startsWith('/admin/');
 
       if (requiresAuth && !auth.isAuthenticated) return '/login';
@@ -69,6 +80,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(path: '/cotizaciones', builder: (context, state) => const CotizacionesScreen()),
+      GoRoute(path: '/checkout', builder: (context, state) => const CheckoutScreen()),
+      GoRoute(path: '/mis-compras', builder: (context, state) => const MisComprasScreen()),
+      GoRoute(path: '/notificaciones', builder: (context, state) => const NotificacionesScreen()),
+      GoRoute(path: '/chatbot', builder: (context, state) => const ChatbotScreen()),
       GoRoute(
         path: '/producto/:id',
         builder: (context, state) => ProductoDetalleScreen(productoId: int.parse(state.pathParameters['id']!)),
@@ -88,6 +103,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/admin/temporadas', builder: (context, state) => const TemporadasScreen()),
       GoRoute(path: '/admin/catalogo', builder: (context, state) => const CatalogoScreen()),
       GoRoute(path: '/admin/inventario', builder: (context, state) => const InventarioScreen()),
+      GoRoute(path: '/admin/ventas', builder: (context, state) => const VentasScreen()),
+      GoRoute(path: '/admin/carritos', builder: (context, state) => const CarritosScreen()),
+      GoRoute(path: '/admin/notificaciones', builder: (context, state) => const NotificacionesAdminScreen()),
+      GoRoute(path: '/admin/recomendaciones', builder: (context, state) => const RecomendacionesAdminScreen()),
+      GoRoute(path: '/admin/chatbot', builder: (context, state) => const ChatbotAdminScreen()),
+      GoRoute(path: '/admin/calificaciones', builder: (context, state) => const CalificacionesAdminScreen()),
     ],
   );
 });

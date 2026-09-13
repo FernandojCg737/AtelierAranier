@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../widgets/password_strength.dart';
+import '../notificaciones/notificaciones_provider.dart';
 import 'auth_provider.dart';
 
 class PerfilScreen extends ConsumerStatefulWidget {
@@ -92,6 +93,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
   Widget build(BuildContext context) {
     final usuario = ref.watch(authProvider).usuario;
     final isCliente = usuario?.isCliente ?? false;
+    final noLeidas = ref.watch(notificacionesNoLeidasProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -110,6 +112,26 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            if (isCliente) ...[
+              OutlinedButton.icon(
+                onPressed: () => context.push('/mis-compras'),
+                icon: const Icon(Icons.receipt_long_outlined),
+                label: const Text('MIS COMPRAS'),
+                style: OutlinedButton.styleFrom(shape: const RoundedRectangleBorder(), minimumSize: const Size.fromHeight(48)),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/notificaciones'),
+                icon: Badge(
+                  label: Text('$noLeidas'),
+                  isLabelVisible: noLeidas > 0,
+                  child: const Icon(Icons.notifications_outlined),
+                ),
+                label: const Text('NOTIFICACIONES'),
+                style: OutlinedButton.styleFrom(shape: const RoundedRectangleBorder(), minimumSize: const Size.fromHeight(48)),
+              ),
+              const SizedBox(height: 28),
+            ],
             const EyebrowText('Datos personales'),
             const SizedBox(height: 12),
             if (_errorPerfil != null) _ErrorBanner(_errorPerfil!),

@@ -8,7 +8,7 @@ import '../models/producto_publico.dart';
 /// precio (con precio tachado si hay descuento) — mismo lenguaje visual
 /// que `.product-tile` / `.discount-card` en la web (esquinas rectas).
 class ProductCard extends StatelessWidget {
-  const ProductCard({super.key, required this.producto, required this.onTap, this.badge});
+  const ProductCard({super.key, required this.producto, required this.onTap, this.badge, this.caption});
 
   final ProductoPublico producto;
   final VoidCallback onTap;
@@ -16,6 +16,10 @@ class ProductCard extends StatelessWidget {
   /// 'nuevo' | 'descuento' | null — cual badge mostrar cuando corresponde
   /// (el de Agotado siempre tiene prioridad si no hay stock).
   final String? badge;
+
+  /// CU18: razon de la recomendacion (redactada por IA), se muestra como
+  /// una linea chica debajo del precio cuando esta presente.
+  final String? caption;
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +95,15 @@ class ProductCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  if (caption != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      caption!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: AppColors.grayText),
+                    ),
+                  ],
                 ],
               ),
             ),

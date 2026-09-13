@@ -1,122 +1,93 @@
-import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-/// Igual a `services/cart.ts`: 100% local, no hay endpoint de carrito
-/// todavia. Persiste en `shared_preferences` bajo la misma idea de clave
-/// que usaba localStorage en la web.
-class CartItem {
-  const CartItem({
-    required this.id,
-    required this.name,
-    this.brand,
-    required this.price,
-    required this.image,
-    required this.quantity,
-  });
+import '../../models/carrito.dart';
+import 'carrito_repository.dart';
 
-  final String id;
-  final String name;
-  final String? brand;
-  final double price;
-  final String image;
-  final int quantity;
+/// CU11: el carrito ahora persiste contra el backend (ligado al cliente
+/// autenticado), igual que `services/cart.ts` en la web -- reemplaza la
+/// version anterior 100% local (shared_preferences). Por eso requiere
+/// sesion iniciada; quien lo usa llama `cargar()` cuando corresponde (ver
+/// el listener de sesion en `main.dart`), no se auto-carga solo.
+class CartState {
+  const CartState({this.carrito, this.loading = false, this.error});
 
-  CartItem copyWith({int? quantity}) => CartItem(
-    id: id,
-    name: name,
-    brand: brand,
-    price: price,
-    image: image,
-    quantity: quantity ?? this.quantity,
-  );
+  final Carrito? carrito;
+  final bool loading;
+  final String? error;
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'brand': brand,
-    'price': price,
-    'image': image,
-    'quantity': quantity,
-  };
+  List<DetalleCarrito> get items => carrito?.detalles ?? const [];
+  double get total => carrito?.total ?? 0;
+  int get totalItems => carrito?.totalItems ?? 0;
 
-  factory CartItem.fromJson(Map<String, dynamic> json) => CartItem(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    brand: json['brand'] as String?,
-    price: (json['price'] as num).toDouble(),
-    image: json['image'] as String,
-    quantity: json['quantity'] as int,
-  );
+  CartState copyWith({Carrito? carrito, bool? loading, String? error, bool clearError = false}) {
+    return CartState(
+      carrito: carrito ?? this.carrito,
+      loading: loading ?? this.loading,
+      error: clearError ? null : (error ?? this.error),
+    );
+  }
 }
 
-const _storageKey = 'atelieraranier_cart';
+class CartNotifier extends StateNotifier<CartState> {
+  CartNotifier(this._repo) : super(const CartState());
 
-class CartNotifier extends StateNotifier<List<CartItem>> {
-  CartNotifier() : super(const []) {
-    _load();
-  }
+  final CarritoRepository _repo;
 
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey);
-    if (raw == null) return;
-    final list = (jsonDecode(raw) as List<dynamic>)
-        .map((e) => CartItem.fromJson(e as Map<String, dynamic>))
-        .toList();
-    state = list;
-  }
-
-  Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_storageKey, jsonEncode(state.map((e) => e.toJson()).toList()));
-  }
-
-  void addItem({required String id, required String name, String? brand, required double price, required String image, int quantity = 1}) {
-    final existing = state.indexWhere((e) => e.id == id);
-    if (existing == -1) {
-      state = [...state, CartItem(id: id, name: name, brand: brand, price: price, image: image, quantity: quantity)];
-    } else {
-      state = [
-        for (final item in state)
-          if (item.id == id) item.copyWith(quantity: item.quantity + quantity) else item,
-      ];
+  Future<void> cargar() async {
+    state = state.copyWith(loading: true, clearError: true);
+    try {
+      final carrito = await _repo.obtener();
+      state = state.copyWith(carrito: carrito, loading: false);
+    } catch (_) {
+      // Sin sesion (401) u otro error de red: el carrito se ve vacio.
+      state = const CartState();
     }
-    _persist();
   }
 
-  void updateQuantity(String id, int quantity) {
-    if (quantity <= 0) {
-      removeItem(id);
+  void limpiarLocal() {
+    state = const CartState();
+  }
+
+  Future<void> agregar({
+    required int productoId,
+    required int tallaId,
+    required int colorId,
+    required int cantidad,
+  }) async {
+    final carrito = await _repo.agregar(
+      productoId: productoId,
+      tallaId: tallaId,
+      colorId: colorId,
+      cantidad: cantidad,
+    );
+    state = state.copyWith(carrito: carrito);
+  }
+
+  Future<void> actualizarCantidad(int detalleId, int cantidad) async {
+    if (cantidad < 1) {
+      await eliminar(detalleId);
       return;
     }
-    state = [
-      for (final item in state)
-        if (item.id == id) item.copyWith(quantity: quantity) else item,
-    ];
-    _persist();
+    final carrito = await _repo.actualizarCantidad(detalleId, cantidad);
+    state = state.copyWith(carrito: carrito);
   }
 
-  void removeItem(String id) {
-    state = state.where((e) => e.id != id).toList();
-    _persist();
+  Future<void> eliminar(int detalleId) async {
+    final carrito = await _repo.eliminar(detalleId);
+    state = state.copyWith(carrito: carrito);
   }
 
-  void clear() {
-    state = [];
-    _persist();
+  Future<void> vaciar() async {
+    final carrito = await _repo.vaciar();
+    state = state.copyWith(carrito: carrito);
   }
 }
 
-final cartProvider = StateNotifierProvider<CartNotifier, List<CartItem>>((ref) => CartNotifier());
-
-final cartTotalItemsProvider = Provider<int>((ref) {
-  final items = ref.watch(cartProvider);
-  return items.fold(0, (sum, item) => sum + item.quantity);
+final cartProvider = StateNotifierProvider<CartNotifier, CartState>((ref) {
+  final repo = ref.watch(carritoRepositoryProvider);
+  return CartNotifier(repo);
 });
 
-final cartTotalPriceProvider = Provider<double>((ref) {
-  final items = ref.watch(cartProvider);
-  return items.fold(0.0, (sum, item) => sum + item.price * item.quantity);
-});
+final cartTotalItemsProvider = Provider<int>((ref) => ref.watch(cartProvider).totalItems);
+
+final cartTotalPriceProvider = Provider<double>((ref) => ref.watch(cartProvider).total);

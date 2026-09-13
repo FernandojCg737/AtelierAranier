@@ -9,6 +9,7 @@ class Usuario {
     required this.tipo,
     this.rol,
     required this.permisos,
+    this.sucursalId,
   });
 
   final int id;
@@ -19,6 +20,7 @@ class Usuario {
   final String tipo; // cliente | administrador | encargado_sucursal | cajero
   final String? rol;
   final List<String> permisos;
+  final int? sucursalId; // solo empleados; null para clientes y Administrador
 
   bool get isCliente => tipo == 'cliente';
   bool get isAdministrador => tipo == 'administrador';
@@ -36,6 +38,7 @@ class Usuario {
       tipo: json['tipo'] as String,
       rol: json['rol'] as String?,
       permisos: (json['permisos'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
+      sucursalId: json['sucursal_id'] as int?,
     );
   }
 
@@ -48,6 +51,7 @@ class Usuario {
     'tipo': tipo,
     'rol': rol,
     'permisos': permisos,
+    'sucursal_id': sucursalId,
   };
 }
 

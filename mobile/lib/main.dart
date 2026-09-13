@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme.dart';
 import 'features/auth/auth_provider.dart';
+import 'features/chatbot/chatbot_provider.dart';
+import 'features/notificaciones/notificaciones_provider.dart';
+import 'features/storefront/cart_provider.dart';
 import 'router.dart';
 
 void main() {
@@ -42,6 +45,22 @@ class _AtelierAranierAppState extends ConsumerState<AtelierAranierApp> {
           SnackBar(content: Text(message), backgroundColor: AppColors.danger),
         );
         ref.read(authProvider.notifier).dismissSessionMessage();
+      }
+    });
+
+    // CU11/CU14: el carrito y las notificaciones viven en el backend
+    // ligados al cliente -- se recargan cada vez que cambia la sesion
+    // (login/logout), igual que los efectos homologos en `header.ts` de
+    // la web.
+    ref.listenManual(authProvider, (previous, next) {
+      if (previous?.isAuthenticated == next.isAuthenticated) return;
+      if (next.isAuthenticated) {
+        ref.read(cartProvider.notifier).cargar();
+        ref.read(notificacionesProvider.notifier).cargar();
+      } else {
+        ref.read(cartProvider.notifier).limpiarLocal();
+        ref.read(notificacionesProvider.notifier).limpiarLocal();
+        ref.read(chatbotProvider.notifier).limpiarLocal();
       }
     });
   }

@@ -1,61 +1,67 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
+import '../../models/carrito.dart';
 import 'cart_provider.dart';
 
-/// Replica de `pages/carrito/carrito.html` en la web: mismo header, mismo
-/// estado vacio (fondo gris, eyebrow + titulo + boton con flecha) y misma
-/// lista de items + resumen con total y boton de checkout deshabilitado.
+/// CU11: replica de `pages/carrito/carrito.html` en la web, pero contra el
+/// carrito real del backend (no local). Mismo header, mismo estado vacio,
+/// misma lista de items + resumen con total y boton de checkout.
 class CarritoScreen extends ConsumerWidget {
   const CarritoScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(cartProvider);
-    final total = ref.watch(cartTotalPriceProvider);
-    final totalItems = ref.watch(cartTotalItemsProvider);
+    final state = ref.watch(cartProvider);
+    final items = state.items;
 
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 20, 20, 0),
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'CARRITO DE COMPRAS',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    fontStyle: FontStyle.italic,
-                    color: AppColors.brandDark,
-                    letterSpacing: -0.2,
+    return RefreshIndicator(
+      onRefresh: () => ref.read(cartProvider.notifier).cargar(),
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 20, 20, 0),
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'CARRITO DE COMPRAS',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      fontStyle: FontStyle.italic,
+                      color: AppColors.brandDark,
+                      letterSpacing: -0.2,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Revisa tus articulos seleccionados antes de finalizar la compra.',
-                  style: TextStyle(fontSize: 14, color: AppColors.grayTextDark),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Revisa tus articulos seleccionados antes de finalizar la compra.',
+                    style: TextStyle(fontSize: 14, color: AppColors.grayTextDark),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-          sliver: SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
-              child: items.isEmpty
-                  ? const _CarritoEmpty()
-                  : _CarritoContent(items: items, total: total, totalItems: totalItems),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+            sliver: SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: state.loading && items.isEmpty
+                    ? const CircularProgressIndicator()
+                    : items.isEmpty
+                        ? const _CarritoEmpty()
+                        : _CarritoContent(items: items, total: state.total, totalItems: state.totalItems),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -106,7 +112,7 @@ class _CarritoEmpty extends StatelessWidget {
 class _CarritoContent extends ConsumerWidget {
   const _CarritoContent({required this.items, required this.total, required this.totalItems});
 
-  final List<CartItem> items;
+  final List<DetalleCarrito> items;
   final double total;
   final int totalItems;
 
@@ -141,21 +147,15 @@ class _CarritoContent extends ConsumerWidget {
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF666666), letterSpacing: 0.4),
                   ),
                   Text(
-                    '${total.toStringAsFixed(0)} Bs',
+                    '${total.toStringAsFixed(2)} Bs',
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.brandDark),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.brandDark.withValues(alpha: 0.6),
-                  disabledBackgroundColor: AppColors.brandDark.withValues(alpha: 0.6),
-                  foregroundColor: Colors.white,
-                  disabledForegroundColor: Colors.white,
-                ),
-                child: const Text('FINALIZAR COMPRA (PROXIMAMENTE)'),
+                onPressed: () => context.push('/checkout'),
+                child: const Text('FINALIZAR COMPRA'),
               ),
               const SizedBox(height: 12),
               Center(
@@ -178,11 +178,10 @@ class _CarritoContent extends ConsumerWidget {
 class _CarritoItemRow extends ConsumerWidget {
   const _CarritoItemRow({required this.item});
 
-  final CartItem item;
+  final DetalleCarrito item;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final subtotal = item.price * item.quantity;
     return DecoratedBox(
       decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5)))),
       child: Padding(
@@ -194,8 +193,8 @@ class _CarritoItemRow extends ConsumerWidget {
               width: 60,
               height: 76,
               color: AppColors.grayBorderLight,
-              child: item.image.isNotEmpty
-                  ? Image.network(item.image, fit: BoxFit.cover)
+              child: item.productoImagenUrl != null
+                  ? CachedNetworkImage(imageUrl: item.productoImagenUrl!, fit: BoxFit.cover)
                   : const Icon(Icons.image_not_supported_outlined, color: AppColors.grayText, size: 20),
             ),
             const SizedBox(width: 14),
@@ -203,33 +202,32 @@ class _CarritoItemRow extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (item.brand != null)
-                    Text(
-                      item.brand!.toUpperCase(),
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF9A9A9A), letterSpacing: 0.4),
-                    ),
                   Text(
-                    item.name,
+                    '${item.tallaCodigo} · ${item.colorNombre}',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF9A9A9A), letterSpacing: 0.4),
+                  ),
+                  Text(
+                    item.productoNombre,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.brandDark),
                   ),
                   const SizedBox(height: 4),
-                  Text('${item.price.toStringAsFixed(0)} Bs', style: const TextStyle(fontSize: 12, color: Color(0xFF888888))),
+                  Text('${item.precioUnitario.toStringAsFixed(2)} Bs', style: const TextStyle(fontSize: 12, color: Color(0xFF888888))),
                 ],
               ),
             ),
             const SizedBox(width: 8),
             _QtyStepper(
-              quantity: item.quantity,
-              onDecrease: () => ref.read(cartProvider.notifier).updateQuantity(item.id, item.quantity - 1),
-              onIncrease: () => ref.read(cartProvider.notifier).updateQuantity(item.id, item.quantity + 1),
+              quantity: item.cantidad,
+              onDecrease: () => ref.read(cartProvider.notifier).actualizarCantidad(item.id, item.cantidad - 1),
+              onIncrease: () => ref.read(cartProvider.notifier).actualizarCantidad(item.id, item.cantidad + 1),
             ),
             const SizedBox(width: 12),
             SizedBox(
               width: 64,
               child: Text(
-                '${subtotal.toStringAsFixed(0)} Bs',
+                '${item.subtotal.toStringAsFixed(2)} Bs',
                 textAlign: TextAlign.right,
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.brandDark),
               ),
@@ -238,7 +236,7 @@ class _CarritoItemRow extends ConsumerWidget {
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               icon: const Icon(Icons.close, size: 16, color: AppColors.grayText),
-              onPressed: () => ref.read(cartProvider.notifier).removeItem(item.id),
+              onPressed: () => ref.read(cartProvider.notifier).eliminar(item.id),
             ),
           ],
         ),

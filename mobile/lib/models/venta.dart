@@ -1,0 +1,73 @@
+/// Espejo de `VentaOut`/`DetalleVentaOut` (backend, CU11 -- GET /ventas/mias).
+class DetalleVenta {
+  const DetalleVenta({
+    required this.id,
+    required this.productoNombre,
+    required this.tallaCodigo,
+    required this.colorNombre,
+    required this.cantidad,
+    required this.precioUnitario,
+  });
+
+  final int id;
+  final String productoNombre;
+  final String tallaCodigo;
+  final String colorNombre;
+  final int cantidad;
+  final double precioUnitario;
+
+  factory DetalleVenta.fromJson(Map<String, dynamic> json) {
+    return DetalleVenta(
+      id: json['id'] as int,
+      productoNombre: json['producto_nombre'] as String,
+      tallaCodigo: json['talla_codigo'] as String,
+      colorNombre: json['color_nombre'] as String,
+      cantidad: json['cantidad'] as int,
+      precioUnitario: num.parse(json['precio_unitario'].toString()).toDouble(),
+    );
+  }
+}
+
+class Venta {
+  const Venta({
+    required this.id,
+    required this.tipo,
+    required this.sucursalNombre,
+    required this.fecha,
+    required this.total,
+    required this.metodoPago,
+    required this.estadoPago,
+    required this.detalles,
+    this.calificacionEstrellas,
+    this.calificacionComentario,
+  });
+
+  final int id;
+  final String tipo; // venta_presencial | venta_digital
+  final String sucursalNombre;
+  final DateTime fecha;
+  final double total;
+  final String metodoPago;
+  final String estadoPago; // pendiente | verificando | completado | rechazado
+  final List<DetalleVenta> detalles;
+  final int? calificacionEstrellas;
+  final String? calificacionComentario;
+
+  bool get completada => estadoPago == 'completado';
+  bool get calificada => calificacionEstrellas != null;
+
+  factory Venta.fromJson(Map<String, dynamic> json) {
+    return Venta(
+      id: json['id'] as int,
+      tipo: json['tipo'] as String,
+      sucursalNombre: json['sucursal_nombre'] as String,
+      fecha: DateTime.parse(json['fecha'] as String),
+      total: num.parse(json['total'].toString()).toDouble(),
+      metodoPago: json['metodo_pago'] as String,
+      estadoPago: json['estado_pago'] as String,
+      detalles: (json['detalles'] as List<dynamic>).map((e) => DetalleVenta.fromJson(e as Map<String, dynamic>)).toList(),
+      calificacionEstrellas: json['calificacion_estrellas'] as int?,
+      calificacionComentario: json['calificacion_comentario'] as String?,
+    );
+  }
+}

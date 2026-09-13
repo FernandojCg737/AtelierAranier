@@ -17,9 +17,20 @@ class RootShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cartCount = ref.watch(cartTotalItemsProvider);
     final auth = ref.watch(authProvider);
+    final esClienteConSesion = auth.usuario?.isCliente ?? false;
 
     return Scaffold(
       body: navigationShell,
+      // CU19: burbuja flotante del chatbot -- equivalente al icono de la
+      // web, solo para clientes con sesion iniciada (las conversaciones
+      // quedan ligadas al cliente).
+      floatingActionButton: esClienteConSesion
+          ? FloatingActionButton(
+              onPressed: () => context.push('/chatbot'),
+              backgroundColor: const Color(0xFF203C40),
+              child: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: navigationShell.currentIndex,
         onTap: (index) => navigationShell.goBranch(index, initialLocation: index == navigationShell.currentIndex),
