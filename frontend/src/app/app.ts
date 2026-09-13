@@ -2,6 +2,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, DestroyRef, HostListener, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
+import { ChatbotWidget } from './components/chatbot-widget/chatbot-widget';
 import { Footer } from './components/footer/footer';
 import { Header } from './components/header/header';
 import { WhatsappFloat } from './components/whatsapp-float/whatsapp-float';
@@ -9,7 +10,7 @@ import { Auth } from './services/auth';
 import { InactivitySession } from './services/inactivity-session';
 
 @Component({
-  imports: [RouterOutlet, Header, Footer, WhatsappFloat],
+  imports: [RouterOutlet, Header, Footer, WhatsappFloat, ChatbotWidget],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',

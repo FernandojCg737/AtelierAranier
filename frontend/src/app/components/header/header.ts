@@ -1,9 +1,24 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, DestroyRef, ElementRef, HostListener, OnInit, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { Auth } from '../../services/auth';
 import { Cart } from '../../services/cart';
+import { Notificaciones, type Notificacion } from '../../services/notificaciones';
+
+const INTERVALO_NOTIFICACIONES_MS = 30000;
 
 interface NavLink {
   label: string;
@@ -13,15 +28,16 @@ interface NavLink {
 
 @Component({
   selector: 'app-header',
-  imports: [RouterLink],
+  imports: [RouterLink, DatePipe],
   templateUrl: './header.html',
   styleUrl: './header.scss',
 })
-export class Header implements OnInit {
+export class Header implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly cart = inject(Cart);
   protected readonly auth = inject(Auth);
+  protected readonly notificaciones = inject(Notificaciones);
 
   // Paginas sin ".hero" (fondo oscuro a pantalla completa) no tienen contra
   // que contrastar un header transparente: quedaria blanco sobre blanco. En
@@ -33,8 +49,44 @@ export class Header implements OnInit {
   protected readonly searchOpen = signal(false);
   protected readonly searchQuery = signal('');
   protected readonly accountMenuOpen = signal(false);
+  protected readonly notifMenuOpen = signal(false);
 
   private readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
+  private intervaloNotificaciones?: ReturnType<typeof setInterval>;
+
+  protected readonly esClienteConSesion = () => !!this.auth.currentUser() && !this.auth.isStaff();
+
+  constructor() {
+    // El carrito y las notificaciones viven en el backend ligados al
+    // cliente: se recargan cada vez que cambia la sesion (login/logout)
+    // para que el badge y las paginas siempre reflejen al usuario actual.
+    // Las notificaciones ademas hacen polling mientras haya sesion de
+    // cliente, para que la campana se sienta "en vivo".
+    effect(() => {
+      if (this.auth.currentUser()) {
+        void this.cart.cargar();
+      } else {
+        this.cart.limpiarLocal();
+      }
+
+      if (this.esClienteConSesion()) {
+        void this.notificaciones.cargar();
+        if (!this.intervaloNotificaciones) {
+          this.intervaloNotificaciones = setInterval(() => void this.notificaciones.cargar(), INTERVALO_NOTIFICACIONES_MS);
+        }
+      } else {
+        this.notificaciones.limpiarLocal();
+        if (this.intervaloNotificaciones) {
+          clearInterval(this.intervaloNotificaciones);
+          this.intervaloNotificaciones = undefined;
+        }
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.intervaloNotificaciones) clearInterval(this.intervaloNotificaciones);
+  }
 
   protected readonly navLinks: NavLink[] = [
     { label: 'Tienda', path: '/tienda' },
@@ -59,21 +111,41 @@ export class Header implements OnInit {
         setTimeout(() => this.refreshForCurrentRoute());
         this.closeSearch();
         this.accountMenuOpen.set(false);
+        this.notifMenuOpen.set(false);
       });
   }
 
   @HostListener('document:click', ['$event'])
   protected onDocumentClick(event: MouseEvent): void {
-    if (!this.accountMenuOpen()) return;
-
     const target = event.target as HTMLElement;
-    if (!target.closest('.account-menu-wrap')) {
+    if (this.accountMenuOpen() && !target.closest('.account-menu-wrap')) {
       this.accountMenuOpen.set(false);
+    }
+    if (this.notifMenuOpen() && !target.closest('.notif-menu-wrap')) {
+      this.notifMenuOpen.set(false);
     }
   }
 
   protected toggleAccountMenu(): void {
     this.accountMenuOpen.update((open) => !open);
+  }
+
+  protected toggleNotifMenu(): void {
+    this.notifMenuOpen.update((open) => !open);
+    if (this.notifMenuOpen()) void this.notificaciones.cargar();
+  }
+
+  protected marcarNotifLeida(id: number): void {
+    void this.notificaciones.marcarLeida(id);
+  }
+
+  protected marcarTodasNotifLeidas(): void {
+    void this.notificaciones.marcarTodasLeidas();
+  }
+
+  protected enlaceNotif(n: Notificacion): unknown[] {
+    if (n.entidad_tipo === 'venta' && n.entidad_id) return ['/mis-compras', n.entidad_id];
+    return ['/perfil'];
   }
 
   protected async logout(): Promise<void> {

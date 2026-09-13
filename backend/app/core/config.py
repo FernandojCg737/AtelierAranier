@@ -44,6 +44,17 @@ class Settings(BaseSettings):
     # de cliente de corta duracion (10 min) generados a partir de ella.
     DECART_API_KEY: str = ""
 
+    # CU11: pasarela de pago para la compra digital (PayPal/tarjeta). El QR
+    # no usa pasarela -- se verifica a mano, ver Pago.comprobante_url.
+    PAYPAL_CLIENT_ID: str = ""
+    PAYPAL_CLIENT_SECRET: str = ""
+    PAYPAL_MODE: str = "sandbox"
+
+    # CU18: redacta la razon personalizada de cada recomendacion (el ranking
+    # en si lo calcula el motor de reglas en SQL, no el modelo). Si esta
+    # vacia, se usa una razon generica de respaldo por origen.
+    GEMINI_API_KEY: str = ""
+
     SMTP_HOST: str = "mailpit"
     SMTP_PORT: int = 1025
     SMTP_USER: str = ""

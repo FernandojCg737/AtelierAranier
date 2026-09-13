@@ -1,0 +1,122 @@
+.reserva-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.reserva-modal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  padding: 32px 28px;
+
+  h2 {
+    margin: 0 0 4px;
+    font-size: 20px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--brand-dark);
+  }
+}
+
+.reserva-subtitulo {
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: #777;
+}
+
+.reserva-cerrar {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--brand-dark);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.reserva-mensaje {
+  font-size: 13px;
+  color: #555;
+  margin: 0;
+}
+
+.reserva-error {
+  background: #fdecea;
+  color: #b3261e;
+  font-size: 12px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.reserva-campo {
+  display: block;
+  margin-bottom: 16px;
+
+  span {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #999;
+  }
+
+  select,
+  input {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid #ddd;
+    padding: 8px 0;
+    font-size: 14px;
+    color: var(--brand-dark);
+    background: transparent;
+    outline: none;
+
+    &:focus {
+      border-color: var(--brand-dark);
+    }
+  }
+}
+
+.reserva-enviar {
+  width: 100%;
+  margin-top: 8px;
+  border: none;
+  background: var(--brand-dark);
+  color: #fff;
+  padding: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.reserva-exito {
+  text-align: center;
+
+  p {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--brand-dark);
+  }
+}

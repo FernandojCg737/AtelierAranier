@@ -1,0 +1,154 @@
+<div class="reporte-page">
+  <div class="reporte-toolbar">
+    <a routerLink="/admin/reportes" class="volver-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+      </svg>
+      Volver a Reportes
+    </a>
+
+    <div class="reporte-acciones">
+      <button type="button" (click)="imprimir()">Imprimir / PDF</button>
+      <button type="button" [disabled]="exportando()" (click)="exportar('excel')">Excel</button>
+      <button type="button" [disabled]="exportando()" (click)="exportar('csv')">CSV</button>
+    </div>
+  </div>
+
+  <div class="reporte-filtros">
+    <label>
+      <span>Sucursal</span>
+      <select [value]="sucursalId()" (change)="sucursalId.set($any($event.target).value ? +$any($event.target).value : null)">
+        <option value="">Todas</option>
+        @for (s of sucursales(); track s.id) {
+          <option [value]="s.id">{{ s.nombre }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Alerta de stock bajo (unidades o menos)</span>
+      <input type="number" min="0" [value]="umbral()" (change)="umbral.set(+$any($event.target).value)" />
+    </label>
+    <label>
+      <span>Movimientos desde</span>
+      <input type="date" [value]="fechaDesde()" (change)="fechaDesde.set($any($event.target).value)" />
+    </label>
+    <label>
+      <span>Movimientos hasta</span>
+      <input type="date" [value]="fechaHasta()" (change)="fechaHasta.set($any($event.target).value)" />
+    </label>
+    <button type="button" class="reporte-buscar-btn" (click)="buscar()">Aplicar filtros</button>
+  </div>
+
+  <article class="reporte">
+    <header class="reporte__header">
+      <div class="reporte__marca">
+        <img src="/img/logo.png" alt="Atelier Aranier" />
+        <div class="reporte__marca-datos">
+          <strong>Atelier Aranier</strong>
+          <span>Reporte de Inventario</span>
+        </div>
+      </div>
+      <div class="reporte__periodo">
+        <span>Movimientos</span>
+        <strong>{{ fechaDesde() | date: 'd MMM yyyy' }} -- {{ fechaHasta() | date: 'd MMM yyyy' }}</strong>
+      </div>
+    </header>
+
+    @if (error()) {
+      <div class="admin-error">{{ error() }}</div>
+    }
+
+    @if (loading()) {
+      <p class="reporte-cargando">Cargando...</p>
+    } @else if (datos(); as d) {
+      <div class="reporte-kpis">
+        <div class="reporte-kpi">
+          <span>Productos distintos</span>
+          <strong>{{ d.resumen.productos_distintos }}</strong>
+        </div>
+        <div class="reporte-kpi">
+          <span>Unidades en stock</span>
+          <strong>{{ d.resumen.unidades_en_stock }}</strong>
+        </div>
+        <div class="reporte-kpi">
+          <span>Alertas de stock bajo</span>
+          <strong>{{ d.resumen.alertas_stock_bajo }}</strong>
+        </div>
+      </div>
+
+      <div class="reporte__tabla-wrap">
+      <table class="reporte__tabla">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Talla</th>
+            <th>Color</th>
+            <th>Sucursal</th>
+            <th>Cantidad</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (d.stock.length === 0) {
+            <tr>
+              <td colspan="6" class="reporte__vacio">No hay stock para estos filtros.</td>
+            </tr>
+          } @else {
+            @for (s of d.stock; track s.producto_nombre + s.talla_codigo + s.color_nombre + s.sucursal_nombre) {
+              <tr>
+                <td>{{ s.producto_nombre }}</td>
+                <td>{{ s.talla_codigo }}</td>
+                <td>{{ s.color_nombre }}</td>
+                <td>{{ s.sucursal_nombre }}</td>
+                <td>{{ s.cantidad }}</td>
+                <td>
+                  <span class="reporte-badge" [class.reporte-badge--bajo]="s.cantidad <= umbral()">
+                    {{ s.cantidad <= umbral() ? 'Stock bajo' : 'OK' }}
+                  </span>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+      </div>
+
+      <h3 class="reporte-subtitulo">Movimientos recientes</h3>
+      <div class="reporte__tabla-wrap">
+      <table class="reporte__tabla">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Cantidad</th>
+            <th>Producto</th>
+            <th>Sucursal</th>
+            <th>Empleado</th>
+            <th>Referencia</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (d.movimientos.length === 0) {
+            <tr>
+              <td colspan="7" class="reporte__vacio">No hay movimientos para estos filtros.</td>
+            </tr>
+          } @else {
+            @for (m of d.movimientos; track m.fecha + m.producto_nombre) {
+              <tr>
+                <td>{{ m.fecha | date: 'd MMM yyyy, h:mm a' }}</td>
+                <td>{{ m.tipo }}</td>
+                <td>{{ m.cantidad }}</td>
+                <td>{{ m.producto_nombre }} ({{ m.talla_codigo }}, {{ m.color_nombre }})</td>
+                <td>{{ m.sucursal_nombre }}</td>
+                <td>{{ m.empleado_nombre ?? 'Sistema' }}</td>
+                <td>{{ m.documento_referencia ?? '-' }}</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+      </div>
+    }
+  </article>
+</div>

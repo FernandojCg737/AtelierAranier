@@ -1,0 +1,98 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P5 · CU20</span>
+      <h1>Reputacion y Calificaciones</h1>
+      <p>Calificacion general de la atencion y el servicio, segun las estrellas que dejaron los clientes tras cada compra.</p>
+    </div>
+
+    <div class="admin-filtros">
+      <select [value]="filtroEstrellas()" (change)="filtroEstrellas.set($any($event.target).value); filtrar()">
+        <option value="">Todas las estrellas</option>
+        <option value="5">5 estrellas</option>
+        <option value="4">4 estrellas</option>
+        <option value="3">3 estrellas</option>
+        <option value="2">2 estrellas</option>
+        <option value="1">1 estrella</option>
+      </select>
+    </div>
+  </div>
+
+  @if (resumen(); as r) {
+    <div class="calif-resumen">
+      <div class="calif-promedio">
+        <strong>{{ r.promedio | number: '1.1-1' }}</strong>
+        <span class="calif-estrellas-grandes">
+          @for (n of [1, 2, 3, 4, 5]; track n) {
+            <span [class.is-llena]="n <= r.promedio">★</span>
+          }
+        </span>
+        <span class="calif-promedio__total">{{ r.total }} {{ r.total === 1 ? 'calificacion' : 'calificaciones' }}</span>
+      </div>
+      <div class="calif-distribucion">
+        <h3>Distribucion por estrellas</h3>
+        <app-chart type="bar" [labels]="labelsDistribucion()" [data]="dataDistribucion()" label="Calificaciones" />
+      </div>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Venta</th>
+          <th>Sucursal</th>
+          <th>Atendido por</th>
+          <th>Calificacion</th>
+          <th>Comentario</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td colspan="7" class="admin-table__empty">Cargando...</td>
+          </tr>
+        } @else if (items().length === 0) {
+          <tr>
+            <td colspan="7" class="admin-table__empty">No hay calificaciones para estos filtros.</td>
+          </tr>
+        } @else {
+          @for (c of items(); track c.id) {
+            <tr>
+              <td>
+                <div class="admin-table__user">
+                  <strong>{{ c.cliente_nombre }}</strong>
+                  <span>{{ c.cliente_email }}</span>
+                </div>
+              </td>
+              <td>#{{ c.venta_id }}</td>
+              <td>{{ c.sucursal_nombre }}</td>
+              <td>{{ c.empleado_nombre ?? '-' }}</td>
+              <td>
+                <span class="calif-estrellas">
+                  @for (n of [1, 2, 3, 4, 5]; track n) {
+                    <span [class.is-llena]="n <= c.estrellas">★</span>
+                  }
+                </span>
+              </td>
+              <td class="calif-comentario">{{ c.comentario ?? '-' }}</td>
+              <td>{{ c.fecha | date: "d MMM yyyy, h:mm a" }}</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="admin-pagination">
+    <button type="button" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">Anterior</button>
+    <span>Pagina {{ page() }} de {{ totalPages }}</span>
+    <button type="button" [disabled]="page() >= totalPages" (click)="goToPage(page() + 1)">Siguiente</button>
+  </div>
+</div>

@@ -1,8 +1,7 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Product } from '../../data/products';
 import { CatalogoPublico, isAgotado } from '../../services/catalogo-publico';
-import { Cart } from '../../services/cart';
 
 @Component({
   selector: 'app-new-arrivals',
@@ -11,7 +10,7 @@ import { Cart } from '../../services/cart';
   styleUrl: './new-arrivals.scss',
 })
 export class NewArrivals implements OnInit {
-  private readonly cart = inject(Cart);
+  private readonly router = inject(Router);
   private readonly catalogo = inject(CatalogoPublico);
 
   protected readonly isAgotado = isAgotado;
@@ -28,12 +27,6 @@ export class NewArrivals implements OnInit {
 
   protected addToCart(product: Product): void {
     if (isAgotado(product)) return;
-    this.cart.addItem({
-      id: product.id,
-      name: product.name,
-      brand: product.brand,
-      price: product.price,
-      image: product.image,
-    });
+    void this.router.navigate(['/producto', product.id]);
   }
 }

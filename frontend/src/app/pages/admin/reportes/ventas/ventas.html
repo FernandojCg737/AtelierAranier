@@ -1,0 +1,182 @@
+<div class="reporte-page">
+  <div class="reporte-toolbar">
+    <a routerLink="/admin/reportes" class="volver-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+      </svg>
+      Volver a Reportes
+    </a>
+
+    <div class="reporte-acciones">
+      <button type="button" (click)="imprimir()">Imprimir / PDF</button>
+      <button type="button" [disabled]="exportando()" (click)="exportar('excel')">Excel</button>
+      <button type="button" [disabled]="exportando()" (click)="exportar('csv')">CSV</button>
+    </div>
+  </div>
+
+  <div class="reporte-filtros">
+    <label>
+      <span>Desde</span>
+      <input type="date" [value]="fechaDesde()" (change)="fechaDesde.set($any($event.target).value)" />
+    </label>
+    <label>
+      <span>Hasta</span>
+      <input type="date" [value]="fechaHasta()" (change)="fechaHasta.set($any($event.target).value)" />
+    </label>
+    <label>
+      <span>Sucursal</span>
+      <select [value]="sucursalId()" (change)="sucursalId.set($any($event.target).value ? +$any($event.target).value : null)">
+        <option value="">Todas</option>
+        @for (s of sucursales(); track s.id) {
+          <option [value]="s.id">{{ s.nombre }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Tipo</span>
+      <select [value]="tipo()" (change)="tipo.set($any($event.target).value)">
+        <option value="">Todos</option>
+        <option value="venta_digital">En linea</option>
+        <option value="venta_presencial">Mostrador</option>
+      </select>
+    </label>
+    <label>
+      <span>Metodo de pago</span>
+      <select [value]="metodo()" (change)="metodo.set($any($event.target).value)">
+        <option value="">Todos</option>
+        <option value="efectivo">Efectivo</option>
+        <option value="qr">QR</option>
+        <option value="paypal">PayPal</option>
+      </select>
+    </label>
+    <button type="button" class="reporte-buscar-btn" (click)="buscar()">Aplicar filtros</button>
+  </div>
+
+  <article class="reporte">
+    <header class="reporte__header">
+      <div class="reporte__marca">
+        <img src="/img/logo.png" alt="Atelier Aranier" />
+        <div class="reporte__marca-datos">
+          <strong>Atelier Aranier</strong>
+          <span>Reporte de Ventas</span>
+        </div>
+      </div>
+      <div class="reporte__periodo">
+        <span>Periodo</span>
+        <strong>{{ fechaDesde() | date: 'd MMM yyyy' }} -- {{ fechaHasta() | date: 'd MMM yyyy' }}</strong>
+      </div>
+    </header>
+
+    @if (error()) {
+      <div class="admin-error">{{ error() }}</div>
+    }
+
+    @if (loading()) {
+      <p class="reporte-cargando">Cargando...</p>
+    } @else if (datos(); as d) {
+      <div class="reporte-kpis">
+        <div class="reporte-kpi">
+          <span>Total vendido</span>
+          <strong>{{ d.resumen.total_vendido | number: '1.2-2' }} Bs</strong>
+        </div>
+        <div class="reporte-kpi">
+          <span>Cantidad de ventas</span>
+          <strong>{{ d.resumen.cantidad_ventas }}</strong>
+        </div>
+        <div class="reporte-kpi">
+          <span>Ticket promedio</span>
+          <strong>{{ d.resumen.ticket_promedio | number: '1.2-2' }} Bs</strong>
+        </div>
+      </div>
+
+      <div class="reporte-subtablas">
+        <div class="reporte-subtabla">
+          <h3>Por metodo de pago</h3>
+          <div class="reporte-subtabla__wrap">
+            <table>
+              <tbody>
+                @for (m of d.por_metodo; track m.etiqueta) {
+                  <tr>
+                    <td>{{ m.etiqueta }}</td>
+                    <td>{{ m.cantidad }}</td>
+                    <td>{{ m.total | number: '1.2-2' }} Bs</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="reporte-subtabla">
+          <h3>Por sucursal</h3>
+          <div class="reporte-subtabla__wrap">
+            <table>
+              <tbody>
+                @for (s of d.por_sucursal; track s.etiqueta) {
+                  <tr>
+                    <td>{{ s.etiqueta }}</td>
+                    <td>{{ s.cantidad }}</td>
+                    <td>{{ s.total | number: '1.2-2' }} Bs</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="reporte-subtabla">
+          <h3>Top productos</h3>
+          <div class="reporte-subtabla__wrap">
+            <table>
+              <tbody>
+                @for (p of d.top_productos; track p.etiqueta) {
+                  <tr>
+                    <td>{{ p.etiqueta }}</td>
+                    <td>{{ p.cantidad }} un.</td>
+                    <td>{{ p.total | number: '1.2-2' }} Bs</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="reporte__tabla-wrap">
+      <table class="reporte__tabla">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Sucursal</th>
+            <th>Tipo</th>
+            <th>Metodo</th>
+            <th>Estado</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (d.detalle.length === 0) {
+            <tr>
+              <td colspan="8" class="reporte__vacio">No hay ventas para estos filtros.</td>
+            </tr>
+          } @else {
+            @for (v of d.detalle; track v.id) {
+              <tr>
+                <td>{{ v.id }}</td>
+                <td>{{ v.fecha | date: "d MMM yyyy, h:mm a" }}</td>
+                <td>{{ v.cliente_nombre }}</td>
+                <td>{{ v.sucursal_nombre }}</td>
+                <td>{{ v.tipo === 'venta_digital' ? 'En linea' : 'Mostrador' }}</td>
+                <td>{{ v.metodo_pago }}</td>
+                <td>{{ v.estado_pago }}</td>
+                <td>{{ v.total | number: '1.2-2' }} Bs</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+      </div>
+    }
+  </article>
+</div>

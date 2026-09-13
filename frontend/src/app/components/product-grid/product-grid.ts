@@ -1,9 +1,8 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Product } from '../../data/products';
 import { CatalogoPublico, isAgotado } from '../../services/catalogo-publico';
-import { Cart } from '../../services/cart';
 import { TiendaFiltros } from '../../services/tienda-filtros';
 
 @Component({
@@ -14,8 +13,8 @@ import { TiendaFiltros } from '../../services/tienda-filtros';
 })
 export class ProductGrid implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly cart = inject(Cart);
   private readonly catalogo = inject(CatalogoPublico);
   private readonly filtros = inject(TiendaFiltros);
 
@@ -101,14 +100,11 @@ export class ProductGrid implements OnInit {
     setTimeout(() => this.loadingMore.set(false), 600);
   }
 
+  // El carrito ahora requiere elegir talla y color (backend real, CU11) --
+  // en vez de agregar a ciegas una variante desde la grilla, se manda al
+  // detalle del producto donde esta el selector real de talla/color.
   protected addToCart(product: Product): void {
     if (isAgotado(product)) return;
-    this.cart.addItem({
-      id: product.id,
-      name: product.name,
-      brand: product.brand,
-      price: product.price,
-      image: product.image,
-    });
+    void this.router.navigate(['/producto', product.id]);
   }
 }

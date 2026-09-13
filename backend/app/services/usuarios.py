@@ -12,4 +12,5 @@ def to_usuario_out(usuario: Usuario) -> UsuarioOut:
         tipo=usuario.tipo,
         rol=usuario.rol.nombre if usuario.rol else None,
         permisos=[p.nombre for p in usuario.rol.permisos] if usuario.rol else [],
+        sucursal_id=getattr(usuario, "sucursal_id", None),
     )

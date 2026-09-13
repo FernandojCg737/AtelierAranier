@@ -49,5 +49,6 @@ class Cliente(Usuario):
     notificaciones: Mapped[list["Notificacion"]] = relationship(back_populates="cliente")
     recomendaciones: Mapped[list["Recomendacion"]] = relationship(back_populates="cliente")
     chats: Mapped[list["Chatbot"]] = relationship(back_populates="cliente")
+    calificaciones: Mapped[list["Calificacion"]] = relationship(back_populates="cliente")
 
     __mapper_args__ = {"polymorphic_identity": "cliente"}

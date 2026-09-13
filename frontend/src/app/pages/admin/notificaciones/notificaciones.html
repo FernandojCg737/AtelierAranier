@@ -1,0 +1,72 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P5 · CU14</span>
+      <h1>Enviar Notificaciones</h1>
+      <p>A quien se le mando cada notificacion, de que tipo, cuando y con que mensaje.</p>
+    </div>
+
+    <div class="admin-filtros">
+      <select [value]="filtroTipo()" (change)="filtroTipo.set($any($event.target).value); filtrar()">
+        <option value="">Todos los tipos</option>
+        @for (t of tiposEvento | keyvalue; track t.key) {
+          <option [value]="t.key">{{ t.value }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Destinatario</th>
+          <th>Tipo</th>
+          <th>Fecha y hora</th>
+          <th>Mensaje</th>
+          <th>Leida</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td colspan="5" class="admin-table__empty">Cargando...</td>
+          </tr>
+        } @else if (items().length === 0) {
+          <tr>
+            <td colspan="5" class="admin-table__empty">No hay notificaciones para estos filtros.</td>
+          </tr>
+        } @else {
+          @for (n of items(); track n.id) {
+            <tr>
+              <td>
+                <div class="admin-table__user">
+                  <strong>{{ n.cliente_nombre }}</strong>
+                  <span>{{ n.cliente_email }}</span>
+                </div>
+              </td>
+              <td>{{ tiposEvento[n.tipo_evento] ?? n.tipo_evento }}</td>
+              <td>{{ n.fecha_envio | date: "d MMM 'de' yyyy, h:mm a" : '-0400' }}</td>
+              <td class="notif-mensaje">{{ n.mensaje }}</td>
+              <td>
+                <span class="admin-badge admin-badge--{{ n.leida ? 'completado' : 'pendiente' }}">
+                  {{ n.leida ? 'Si' : 'No' }}
+                </span>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="admin-pagination">
+    <button type="button" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">Anterior</button>
+    <span>Pagina {{ page() }} de {{ totalPages }}</span>
+    <button type="button" [disabled]="page() >= totalPages" (click)="goToPage(page() + 1)">Siguiente</button>
+  </div>
+</div>

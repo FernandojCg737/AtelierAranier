@@ -1,81 +1,113 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../environments/environment';
 
-export interface CartItem {
-  id: string;
-  name: string;
-  brand?: string;
-  price: number;
-  image: string;
-  quantity: number;
+export interface DetalleCarrito {
+  id: number;
+  producto_id: number;
+  producto_nombre: string;
+  producto_imagen_url: string | null;
+  talla_id: number;
+  talla_codigo: string;
+  color_id: number;
+  color_nombre: string;
+  cantidad: number;
+  precio_unitario: number;
+  subtotal: number;
 }
 
-const STORAGE_KEY = 'atelieraranier_cart';
+interface DetalleCarritoApi {
+  id: number;
+  producto_id: number;
+  producto_nombre: string;
+  producto_imagen_url: string | null;
+  talla_id: number;
+  talla_codigo: string;
+  color_id: number;
+  color_nombre: string;
+  cantidad: number;
+  precio_unitario: string;
+  subtotal: string;
+}
 
-// TODO: cuando exista el backend (tabla Venta/Carrito/DetalleCarrito), esto
-// pasa de localStorage a persistir contra la API y asociarse al Cliente
-// autenticado. Por ahora es 100% cliente, no requiere backend.
+interface CarritoApi {
+  id: number;
+  estado: string;
+  detalles: DetalleCarritoApi[];
+  total: string;
+}
+
+// Pydantic serializa Decimal como texto (ej. "130.00"), no como numero JSON
+// -- sin esto, sumar precios en el frontend hace concatenacion de strings
+// en vez de una suma (0 + "320.00" da "0320.00", no 320).
+function normalizarDetalle(d: DetalleCarritoApi): DetalleCarrito {
+  return { ...d, precio_unitario: Number(d.precio_unitario), subtotal: Number(d.subtotal) };
+}
+
+// CU11: el carrito ahora persiste contra el backend (tabla Carrito /
+// DetalleCarrito), asociado al cliente autenticado -- reemplaza la version
+// anterior 100% local (localStorage). Por eso requiere sesion iniciada,
+// igual que Reservas y el probador de RA. Quien lo usa (Header, la pagina
+// de Carrito, Checkout) llama cargar() cuando corresponde; no se auto-carga
+// solo al instanciarse para no disparar una llamada HTTP antes de saber si
+// hay sesion.
 @Injectable({ providedIn: 'root' })
 export class Cart {
-  private readonly _items = signal<CartItem[]>(this.readFromStorage());
+  private readonly http = inject(HttpClient);
+
+  private readonly _items = signal<DetalleCarrito[]>([]);
 
   readonly items = this._items.asReadonly();
+  readonly totalItems = computed(() => this._items().reduce((sum, i) => sum + i.cantidad, 0));
+  readonly totalPrice = computed(() => this._items().reduce((sum, i) => sum + i.subtotal, 0));
 
-  readonly totalItems = computed(() => this._items().reduce((sum, i) => sum + i.quantity, 0));
-  readonly totalPrice = computed(() => this._items().reduce((sum, i) => sum + i.price * i.quantity, 0));
-
-  addItem(item: Omit<CartItem, 'quantity'>, quantity = 1): void {
-    this._items.update((items) => {
-      const existing = items.find((i) => i.id === item.id);
-      const next = existing
-        ? items.map((i) => (i.id === item.id ? { ...i, quantity: i.quantity + quantity } : i))
-        : [...items, { ...item, quantity }];
-
-      this.writeToStorage(next);
-      return next;
-    });
+  async cargar(): Promise<void> {
+    try {
+      const res = await firstValueFrom(this.http.get<CarritoApi>(`${environment.apiUrl}/carrito`));
+      this._items.set(res.detalles.map(normalizarDetalle));
+    } catch {
+      // Sin sesion (401) u otro error de red: el carrito se ve vacio.
+      this._items.set([]);
+    }
   }
 
-  removeItem(id: string): void {
-    this._items.update((items) => {
-      const next = items.filter((i) => i.id !== id);
-      this.writeToStorage(next);
-      return next;
-    });
+  limpiarLocal(): void {
+    this._items.set([]);
   }
 
-  setQuantity(id: string, quantity: number): void {
-    if (quantity < 1) {
-      this.removeItem(id);
+  async agregar(productoId: number, tallaId: number, colorId: number, cantidad: number): Promise<void> {
+    const res = await firstValueFrom(
+      this.http.post<CarritoApi>(`${environment.apiUrl}/carrito/items`, {
+        producto_id: productoId,
+        talla_id: tallaId,
+        color_id: colorId,
+        cantidad,
+      }),
+    );
+    this._items.set(res.detalles.map(normalizarDetalle));
+  }
+
+  async actualizarCantidad(detalleId: number, cantidad: number): Promise<void> {
+    if (cantidad < 1) {
+      await this.eliminar(detalleId);
       return;
     }
-
-    this._items.update((items) => {
-      const next = items.map((i) => (i.id === id ? { ...i, quantity } : i));
-      this.writeToStorage(next);
-      return next;
-    });
+    const res = await firstValueFrom(
+      this.http.put<CarritoApi>(`${environment.apiUrl}/carrito/items/${detalleId}`, { cantidad }),
+    );
+    this._items.set(res.detalles.map(normalizarDetalle));
   }
 
-  clear(): void {
-    this._items.set([]);
-    this.writeToStorage([]);
+  async eliminar(detalleId: number): Promise<void> {
+    const res = await firstValueFrom(
+      this.http.delete<CarritoApi>(`${environment.apiUrl}/carrito/items/${detalleId}`),
+    );
+    this._items.set(res.detalles.map(normalizarDetalle));
   }
 
-  private readFromStorage(): CartItem[] {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as CartItem[]) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  private writeToStorage(items: CartItem[]): void {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch {
-      // localStorage no disponible (modo privado, etc.); el carrito sigue
-      // funcionando en memoria durante la sesion.
-    }
+  async vaciar(): Promise<void> {
+    const res = await firstValueFrom(this.http.delete<CarritoApi>(`${environment.apiUrl}/carrito`));
+    this._items.set(res.detalles.map(normalizarDetalle));
   }
 }

@@ -252,6 +252,121 @@ $breakpoint-desktop: 960px;
   }
 }
 
+.notif-menu-wrap {
+  position: relative;
+}
+
+.notif-menu {
+  position: absolute;
+  top: calc(100% + 14px);
+  right: 0;
+  width: 320px;
+  max-width: 88vw;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--brand-dark);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  animation: account-menu-in 0.15s ease;
+  z-index: 10;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+
+    span {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #999;
+    }
+
+    button {
+      border: none;
+      background: none;
+      padding: 0;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--brand-dark);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+  }
+
+  &__vacio {
+    margin: 0;
+    padding: 24px 16px;
+    text-align: center;
+    font-size: 13px;
+    color: #999;
+  }
+
+  &__lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 320px;
+    overflow-y: auto;
+
+    li {
+      border-bottom: 1px solid #f2f2f2;
+
+      &.is-no-leida {
+        background: #f5f8f7;
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    a {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px 16px;
+      text-decoration: none;
+      color: var(--brand-dark);
+
+      &:hover {
+        background: #f5f5f5;
+      }
+    }
+  }
+
+  &__mensaje {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  &__fecha {
+    font-size: 10px;
+    color: #999;
+  }
+
+  &__ver-todas {
+    display: block;
+    text-align: center;
+    padding: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--brand-dark);
+    text-decoration: none;
+    border-top: 1px solid #eee;
+
+    &:hover {
+      background: #f5f5f5;
+    }
+  }
+}
+
 .mobile-menu-backdrop {
   position: fixed;
   inset: 0;
@@ -364,6 +479,20 @@ $breakpoint-desktop: 960px;
       width: 18px;
       height: 18px;
     }
+  }
+
+  .mobile-nav-icon-link--button {
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--brand-dark);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
   }
 
   .mobile-nav-icon-link__count {

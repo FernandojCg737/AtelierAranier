@@ -3,24 +3,30 @@
     <div>
       <span class="admin-content__eyebrow">P3 · CU12</span>
       <h1>Controlar Inventario por Sucursal</h1>
-      <p>Agrega el inventario de una o mas sucursales para editar la cantidad de cada variante en stock.</p>
-    </div>
-
-    <div class="catalogo-picker">
-      <button type="button" class="admin-search__refresh" (click)="togglePicker()">+ Agregar Sucursal</button>
-
-      @if (showPicker()) {
-        <div class="catalogo-picker__menu">
-          @if (sucursalesParaAgregar().length === 0) {
-            <span class="catalogo-picker__empty">Ya agregaste el inventario de todas las sucursales.</span>
-          } @else {
-            @for (s of sucursalesParaAgregar(); track s.id) {
-              <button type="button" (click)="agregarCatalogo(s)">{{ s.nombre }}</button>
-            }
-          }
-        </div>
+      @if (esAdministrador()) {
+        <p>Agrega el inventario de una o mas sucursales para editar la cantidad de cada variante en stock.</p>
+      } @else {
+        <p>Inventario de tu sucursal -- edita la cantidad de cada variante en stock.</p>
       }
     </div>
+
+    @if (esAdministrador()) {
+      <div class="catalogo-picker">
+        <button type="button" class="admin-search__refresh" (click)="togglePicker()">+ Agregar Sucursal</button>
+
+        @if (showPicker()) {
+          <div class="catalogo-picker__menu">
+            @if (sucursalesParaAgregar().length === 0) {
+              <span class="catalogo-picker__empty">Ya agregaste el inventario de todas las sucursales.</span>
+            } @else {
+              @for (s of sucursalesParaAgregar(); track s.id) {
+                <button type="button" (click)="agregarCatalogo(s)">{{ s.nombre }}</button>
+              }
+            }
+          </div>
+        }
+      </div>
+    }
   </div>
 
   @if (error()) {
@@ -35,7 +41,9 @@
     <div class="catalogo-section">
       <div class="catalogo-section__header">
         <h2>{{ cat.sucursal.nombre }}</h2>
-        <button type="button" class="catalogo-section__remove" (click)="quitarCatalogo(cat.sucursal.id)">Quitar</button>
+        @if (esAdministrador()) {
+          <button type="button" class="catalogo-section__remove" (click)="quitarCatalogo(cat.sucursal.id)">Quitar</button>
+        }
       </div>
 
       @if (cat.error) {

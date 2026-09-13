@@ -1,165 +1,560 @@
-<section class="perfil-page">
-  <div class="perfil-page__header">
-    <h1>Mi Perfil</h1>
-    <p>Actualiza tus datos personales y tu contrasena.</p>
-  </div>
+@if (isCliente()) {
+  <section class="dash">
+    <a routerLink="/" class="volver-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+      </svg>
+      Volver al inicio
+    </a>
 
-  <div class="perfil-cards">
-    <div class="perfil-card">
-      <h2>Datos personales</h2>
+    <div class="dash__header">
+      <div>
+        <span class="dash__eyebrow">Mi cuenta</span>
+        <h1>Hola, {{ auth.currentUser()?.nombre }}</h1>
+      </div>
+      <a routerLink="/carrito" class="dash__carrito-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="9" cy="21" r="1" />
+          <circle cx="20" cy="21" r="1" />
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+        </svg>
+        <span>Ir a mi carrito</span>
+      </a>
+    </div>
 
-      @if (profileError()) {
-        <div class="perfil-alert is-error">{{ profileError() }}</div>
+    <nav class="dash__tabs">
+      <button type="button" [class.is-active]="tab() === 'resumen'" (click)="setTab('resumen')">Resumen</button>
+      <button type="button" [class.is-active]="tab() === 'reservas'" (click)="setTab('reservas')">Mis Reservas</button>
+      <button type="button" [class.is-active]="tab() === 'compras'" (click)="setTab('compras')">Mis Compras</button>
+      <button type="button" [class.is-active]="tab() === 'pagos'" (click)="setTab('pagos')">Metodos de Pago</button>
+      <button type="button" [class.is-active]="tab() === 'notificaciones'" (click)="setTab('notificaciones')">
+        Notificaciones
+        @if (notificaciones.noLeidas() > 0) {
+          <span class="dash__tabs-badge">{{ notificaciones.noLeidas() }}</span>
+        }
+      </button>
+      <button type="button" [class.is-active]="tab() === 'datos'" (click)="setTab('datos')">Mis Datos</button>
+      <button type="button" [class.is-active]="tab() === 'seguridad'" (click)="setTab('seguridad')">Seguridad</button>
+    </nav>
+
+    <div class="dash__content">
+      @if (tab() === 'resumen') {
+        <div class="dash-stats">
+          <div class="dash-stat">
+            <span>Reservas activas</span>
+            <strong>{{ reservasActivas() }}</strong>
+          </div>
+          <div class="dash-stat">
+            <span>Compras realizadas</span>
+            <strong>{{ compras().length }}</strong>
+          </div>
+          <div class="dash-stat">
+            <span>Total gastado</span>
+            <strong>{{ totalGastado() }} Bs</strong>
+          </div>
+        </div>
+
+        <div class="dash-resumen-listas">
+          <div class="dash-resumen-bloque">
+            <h3>Ultimas reservas</h3>
+            @if (reservas().length === 0) {
+              <p class="dash-vacio">Todavia no tienes reservas.</p>
+            } @else {
+              @for (r of reservas().slice(0, 3); track r.id) {
+                <div class="dash-mini-item">
+                  <span>{{ r.detalles[0]?.producto_nombre }}{{ r.detalles.length > 1 ? ' y mas' : '' }}</span>
+                  <span class="admin-badge admin-badge--{{ r.estado }}">{{ r.estado }}</span>
+                </div>
+              }
+            }
+          </div>
+          <div class="dash-resumen-bloque">
+            <h3>Ultimas compras</h3>
+            @if (compras().length === 0) {
+              <p class="dash-vacio">Todavia no tienes compras.</p>
+            } @else {
+              @for (v of compras().slice(0, 3); track v.id) {
+                <div class="dash-mini-item">
+                  <span>#{{ v.id }} · {{ v.total }} Bs</span>
+                  <span class="admin-badge admin-badge--{{ v.estado_pago }}">{{ v.estado_pago }}</span>
+                </div>
+              }
+            }
+          </div>
+        </div>
       }
-      @if (profileSuccess()) {
-        <div class="perfil-alert is-success">{{ profileSuccess() }}</div>
+
+      @if (tab() === 'reservas') {
+        @if (cargandoReservas()) {
+          <p class="dash-vacio">Cargando...</p>
+        } @else if (reservas().length === 0) {
+          <p class="dash-vacio">Todavia no tienes reservas. <a routerLink="/tienda">Ir a la tienda</a></p>
+        } @else {
+          <ul class="dash-lista">
+            @for (r of reservas(); track r.id) {
+              <li class="dash-card">
+                <div class="dash-card__info">
+                  <strong>{{ r.sucursal_nombre }}</strong>
+                  <span>{{ r.horario_atencion | date: "d MMM 'de' yyyy, h:mm a" : '-0400' }}</span>
+                  <ul class="dash-card__detalles">
+                    @for (d of r.detalles; track d.id) {
+                      <li>{{ d.cantidad }}x {{ d.producto_nombre }} ({{ d.talla_codigo }}, {{ d.color_nombre }})</li>
+                    }
+                  </ul>
+                </div>
+                <div class="dash-card__acciones">
+                  <span class="admin-badge admin-badge--{{ r.estado }}">{{ r.estado }}</span>
+                  @if (r.estado === 'pendiente' || r.estado === 'confirmada') {
+                    <button type="button" [disabled]="procesandoReserva() === r.id" (click)="cancelarReserva(r)">
+                      Cancelar
+                    </button>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        }
       }
 
-      <form (submit)="$event.preventDefault(); submitProfile()">
-        <label class="perfil-field">
-          <span>Nombre Completo</span>
-          <input type="text" [value]="nombre()" (input)="nombre.set($any($event.target).value)" />
-        </label>
+      @if (tab() === 'compras') {
+        @if (cargandoCompras()) {
+          <p class="dash-vacio">Cargando...</p>
+        } @else if (compras().length === 0) {
+          <p class="dash-vacio">Todavia no tienes compras. <a routerLink="/tienda">Ir a la tienda</a></p>
+        } @else {
+          <ul class="dash-lista">
+            @for (v of compras(); track v.id) {
+              <li class="dash-card dash-card--compra">
+                <div class="dash-card__fila">
+                  <div class="dash-card__info">
+                    <strong>Compra #{{ v.id }} · {{ v.total }} Bs</strong>
+                    <span>{{ v.fecha | date: "d MMM 'de' yyyy, h:mm a" : '-0400' }} · {{ v.sucursal_nombre }}</span>
+                    <ul class="dash-card__detalles">
+                      @for (d of v.detalles; track d.id) {
+                        <li>{{ d.cantidad }}x {{ d.producto_nombre }} ({{ d.talla_codigo }}, {{ d.color_nombre }})</li>
+                      }
+                    </ul>
+                  </div>
+                  <div class="dash-card__acciones">
+                    <span class="admin-badge admin-badge--{{ v.estado_pago }}">
+                      {{ metodoLabel[v.metodo_pago] ?? v.metodo_pago }} · {{ v.estado_pago }}
+                    </span>
+                    @if (v.estado_pago === 'completado') {
+                      <a class="dash-comprobante-link" [routerLink]="['/mis-compras', v.id]">Ver comprobante</a>
+                    }
+                  </div>
+                </div>
 
-        <label class="perfil-field">
-          <span>Correo Electronico</span>
-          <input type="email" [value]="auth.currentUser()?.email" disabled />
-        </label>
+                @if (v.estado_pago === 'completado') {
+                  <div class="dash-calificacion">
+                    @if (v.calificacion_estrellas) {
+                      <div class="dash-calificacion__vista">
+                        <span class="dash-estrellas">
+                          @for (n of [1, 2, 3, 4, 5]; track n) {
+                            <span [class.is-llena]="n <= v.calificacion_estrellas">★</span>
+                          }
+                        </span>
+                        @if (v.calificacion_comentario) {
+                          <p>"{{ v.calificacion_comentario }}"</p>
+                        }
+                      </div>
+                    } @else if (calificandoVentaId() === v.id) {
+                      <form class="dash-calificacion__form" (submit)="$event.preventDefault(); enviarCalificacion(v)">
+                        @if (errorCalificacion()) {
+                          <div class="perfil-alert is-error">{{ errorCalificacion() }}</div>
+                        }
+                        <span class="dash-estrellas dash-estrellas--input">
+                          @for (n of [1, 2, 3, 4, 5]; track n) {
+                            <button
+                              type="button"
+                              [class.is-llena]="n <= estrellasSeleccionadas()"
+                              (click)="estrellasSeleccionadas.set(n)"
+                              [attr.aria-label]="n + ' estrellas'"
+                            >
+                              ★
+                            </button>
+                          }
+                        </span>
+                        <textarea
+                          placeholder="Contanos tu experiencia (opcional)"
+                          [value]="comentarioCalificacion()"
+                          (input)="comentarioCalificacion.set($any($event.target).value)"
+                        ></textarea>
+                        <div class="dash-calificacion__botones">
+                          <button type="button" class="is-secondary" (click)="cerrarCalificar()">Cancelar</button>
+                          <button type="submit" [disabled]="estrellasSeleccionadas() < 1 || guardandoCalificacion()">
+                            {{ guardandoCalificacion() ? 'Enviando...' : 'Enviar calificacion' }}
+                          </button>
+                        </div>
+                      </form>
+                    } @else {
+                      <button type="button" class="dash-calificar-btn" (click)="abrirCalificar(v)">
+                        Calificar esta compra
+                      </button>
+                    }
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+        }
+      }
 
-        @if (isCliente()) {
-          <label class="perfil-field">
-            <span>Telefono</span>
-            <input type="tel" [value]="telefono()" (input)="telefono.set($any($event.target).value)" />
-          </label>
+      @if (tab() === 'pagos') {
+        <p class="dash-nota">
+          Por tu seguridad no guardamos numeros de tarjeta -- cuando pagas con tarjeta, eso pasa directo por PayPal
+          y nunca llega a nuestros servidores. Aca ves con que metodos pagaste antes.
+        </p>
+        @if (metodosUsados().length === 0) {
+          <p class="dash-vacio">Todavia no registras ningun pago.</p>
+        } @else {
+          <ul class="dash-lista">
+            @for (m of metodosUsados(); track m.metodo) {
+              <li class="dash-card">
+                <div class="dash-card__info">
+                  <strong>{{ metodoLabel[m.metodo] ?? m.metodo }}</strong>
+                  <span>Usado {{ m.veces }} {{ m.veces === 1 ? 'vez' : 'veces' }}</span>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      }
 
-          <label class="perfil-field">
-            <span>Direccion</span>
-            <input type="text" [value]="direccion()" (input)="direccion.set($any($event.target).value)" />
-          </label>
+      @if (tab() === 'notificaciones') {
+        @if (notificaciones.noLeidas() > 0) {
+          <div class="dash-notif-acciones">
+            <button type="button" (click)="notificaciones.marcarTodasLeidas()">Marcar todas como leidas</button>
+          </div>
+        }
+        @if (notificaciones.items().length === 0) {
+          <p class="dash-vacio">Todavia no tienes notificaciones.</p>
+        } @else {
+          <ul class="dash-lista">
+            @for (n of notificaciones.items(); track n.id) {
+              <li class="dash-card dash-card--notif" [class.is-no-leida]="!n.leida" (click)="notificaciones.marcarLeida(n.id)">
+                <div class="dash-card__info">
+                  <strong>{{ n.mensaje }}</strong>
+                  <span>{{ n.fecha_envio | date: "d MMM 'de' yyyy, h:mm a" : '-0400' }}</span>
+                </div>
+                @if (!n.leida) {
+                  <span class="dash-notif-punto" aria-label="No leida"></span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      }
+
+      @if (tab() === 'datos') {
+        <div class="perfil-card">
+          @if (profileError()) {
+            <div class="perfil-alert is-error">{{ profileError() }}</div>
+          }
+          @if (profileSuccess()) {
+            <div class="perfil-alert is-success">{{ profileSuccess() }}</div>
+          }
+
+          <form (submit)="$event.preventDefault(); submitProfile()">
+            <label class="perfil-field">
+              <span>Nombre Completo</span>
+              <input type="text" [value]="nombre()" (input)="nombre.set($any($event.target).value)" />
+            </label>
+
+            <label class="perfil-field">
+              <span>Correo Electronico</span>
+              <input type="email" [value]="auth.currentUser()?.email" disabled />
+            </label>
+
+            <label class="perfil-field">
+              <span>Telefono</span>
+              <input type="tel" [value]="telefono()" (input)="telefono.set($any($event.target).value)" />
+            </label>
+
+            <label class="perfil-field">
+              <span>Direccion</span>
+              <input type="text" [value]="direccion()" (input)="direccion.set($any($event.target).value)" />
+            </label>
+
+            <button type="submit" class="perfil-submit" [disabled]="profileSaving()">
+              {{ profileSaving() ? 'Guardando...' : 'Guardar cambios' }}
+            </button>
+          </form>
+        </div>
+      }
+
+      @if (tab() === 'seguridad') {
+        <div class="perfil-card">
+          @if (passwordError()) {
+            <div class="perfil-alert is-error">{{ passwordError() }}</div>
+          }
+          @if (passwordSuccess()) {
+            <div class="perfil-alert is-success">{{ passwordSuccess() }}</div>
+          }
+
+          <form (submit)="$event.preventDefault(); submitPassword()">
+            <label class="perfil-field">
+              <span>Contrasena Actual</span>
+              <div class="perfil-field__input-wrap">
+                <input
+                  [type]="showActual() ? 'text' : 'password'"
+                  [value]="passwordActual()"
+                  (input)="passwordActual.set($any($event.target).value)"
+                />
+                <button
+                  type="button"
+                  class="perfil-field__toggle"
+                  [attr.aria-label]="showActual() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+                  (click)="showActual.set(!showActual())"
+                >
+                  @if (showActual()) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                      <line x1="3" y1="21" x2="21" y2="3" />
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  }
+                </button>
+              </div>
+            </label>
+
+            <label class="perfil-field">
+              <span>Contrasena Nueva</span>
+              <div class="perfil-field__input-wrap">
+                <input
+                  [type]="showNueva() ? 'text' : 'password'"
+                  [value]="passwordNueva()"
+                  (input)="passwordNueva.set($any($event.target).value)"
+                  (focus)="passwordTouched.set(true)"
+                />
+                <button
+                  type="button"
+                  class="perfil-field__toggle"
+                  [attr.aria-label]="showNueva() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+                  (click)="showNueva.set(!showNueva())"
+                >
+                  @if (showNueva()) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                      <line x1="3" y1="21" x2="21" y2="3" />
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  }
+                </button>
+              </div>
+
+              @if (passwordTouched()) {
+                <ul class="password-checklist">
+                  <li [class.is-valid]="passwordChecks().length">Minimo 8 caracteres</li>
+                  <li [class.is-valid]="passwordChecks().upper">Una mayuscula</li>
+                  <li [class.is-valid]="passwordChecks().lower">Una minuscula</li>
+                  <li [class.is-valid]="passwordChecks().number">Un numero</li>
+                  <li [class.is-valid]="passwordChecks().special">Un caracter especial</li>
+                </ul>
+              }
+            </label>
+
+            <label class="perfil-field">
+              <span>Confirmar Contrasena Nueva</span>
+              <div class="perfil-field__input-wrap">
+                <input
+                  [type]="showConfirmar() ? 'text' : 'password'"
+                  [value]="passwordConfirmar()"
+                  (input)="passwordConfirmar.set($any($event.target).value)"
+                />
+                <button
+                  type="button"
+                  class="perfil-field__toggle"
+                  [attr.aria-label]="showConfirmar() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+                  (click)="showConfirmar.set(!showConfirmar())"
+                >
+                  @if (showConfirmar()) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                      <line x1="3" y1="21" x2="21" y2="3" />
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  }
+                </button>
+              </div>
+            </label>
+
+            <button type="submit" class="perfil-submit" [disabled]="passwordSaving()">
+              {{ passwordSaving() ? 'Actualizando...' : 'Cambiar contrasena' }}
+            </button>
+          </form>
+        </div>
+      }
+    </div>
+  </section>
+} @else {
+  <section class="perfil-page">
+    <div class="perfil-page__header">
+      <h1>Mi Perfil</h1>
+      <p>Actualiza tus datos personales y tu contrasena.</p>
+    </div>
+
+    <div class="perfil-cards">
+      <div class="perfil-card">
+        <h2>Datos personales</h2>
+
+        @if (profileError()) {
+          <div class="perfil-alert is-error">{{ profileError() }}</div>
+        }
+        @if (profileSuccess()) {
+          <div class="perfil-alert is-success">{{ profileSuccess() }}</div>
         }
 
-        <button type="submit" class="perfil-submit" [disabled]="profileSaving()">
-          {{ profileSaving() ? 'Guardando...' : 'Guardar cambios' }}
-        </button>
-      </form>
+        <form (submit)="$event.preventDefault(); submitProfile()">
+          <label class="perfil-field">
+            <span>Nombre Completo</span>
+            <input type="text" [value]="nombre()" (input)="nombre.set($any($event.target).value)" />
+          </label>
+
+          <label class="perfil-field">
+            <span>Correo Electronico</span>
+            <input type="email" [value]="auth.currentUser()?.email" disabled />
+          </label>
+
+          <button type="submit" class="perfil-submit" [disabled]="profileSaving()">
+            {{ profileSaving() ? 'Guardando...' : 'Guardar cambios' }}
+          </button>
+        </form>
+      </div>
+
+      <div class="perfil-card">
+        <h2>Cambiar contrasena</h2>
+
+        @if (passwordError()) {
+          <div class="perfil-alert is-error">{{ passwordError() }}</div>
+        }
+        @if (passwordSuccess()) {
+          <div class="perfil-alert is-success">{{ passwordSuccess() }}</div>
+        }
+
+        <form (submit)="$event.preventDefault(); submitPassword()">
+          <label class="perfil-field">
+            <span>Contrasena Actual</span>
+            <div class="perfil-field__input-wrap">
+              <input
+                [type]="showActual() ? 'text' : 'password'"
+                [value]="passwordActual()"
+                (input)="passwordActual.set($any($event.target).value)"
+              />
+              <button
+                type="button"
+                class="perfil-field__toggle"
+                [attr.aria-label]="showActual() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+                (click)="showActual.set(!showActual())"
+              >
+                @if (showActual()) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                    <line x1="3" y1="21" x2="21" y2="3" />
+                  </svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                }
+              </button>
+            </div>
+          </label>
+
+          <label class="perfil-field">
+            <span>Contrasena Nueva</span>
+            <div class="perfil-field__input-wrap">
+              <input
+                [type]="showNueva() ? 'text' : 'password'"
+                [value]="passwordNueva()"
+                (input)="passwordNueva.set($any($event.target).value)"
+                (focus)="passwordTouched.set(true)"
+              />
+              <button
+                type="button"
+                class="perfil-field__toggle"
+                [attr.aria-label]="showNueva() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+                (click)="showNueva.set(!showNueva())"
+              >
+                @if (showNueva()) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                    <line x1="3" y1="21" x2="21" y2="3" />
+                  </svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                }
+              </button>
+            </div>
+
+            @if (passwordTouched()) {
+              <ul class="password-checklist">
+                <li [class.is-valid]="passwordChecks().length">Minimo 8 caracteres</li>
+                <li [class.is-valid]="passwordChecks().upper">Una mayuscula</li>
+                <li [class.is-valid]="passwordChecks().lower">Una minuscula</li>
+                <li [class.is-valid]="passwordChecks().number">Un numero</li>
+                <li [class.is-valid]="passwordChecks().special">Un caracter especial</li>
+              </ul>
+            }
+          </label>
+
+          <label class="perfil-field">
+            <span>Confirmar Contrasena Nueva</span>
+            <div class="perfil-field__input-wrap">
+              <input
+                [type]="showConfirmar() ? 'text' : 'password'"
+                [value]="passwordConfirmar()"
+                (input)="passwordConfirmar.set($any($event.target).value)"
+              />
+              <button
+                type="button"
+                class="perfil-field__toggle"
+                [attr.aria-label]="showConfirmar() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+                (click)="showConfirmar.set(!showConfirmar())"
+              >
+                @if (showConfirmar()) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                    <line x1="3" y1="21" x2="21" y2="3" />
+                  </svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                }
+              </button>
+            </div>
+          </label>
+
+          <button type="submit" class="perfil-submit" [disabled]="passwordSaving()">
+            {{ passwordSaving() ? 'Actualizando...' : 'Cambiar contrasena' }}
+          </button>
+        </form>
+      </div>
     </div>
-
-    <div class="perfil-card">
-      <h2>Cambiar contrasena</h2>
-
-      @if (passwordError()) {
-        <div class="perfil-alert is-error">{{ passwordError() }}</div>
-      }
-      @if (passwordSuccess()) {
-        <div class="perfil-alert is-success">{{ passwordSuccess() }}</div>
-      }
-
-      <form (submit)="$event.preventDefault(); submitPassword()">
-        <label class="perfil-field">
-          <span>Contrasena Actual</span>
-          <div class="perfil-field__input-wrap">
-            <input
-              [type]="showActual() ? 'text' : 'password'"
-              [value]="passwordActual()"
-              (input)="passwordActual.set($any($event.target).value)"
-            />
-            <button
-              type="button"
-              class="perfil-field__toggle"
-              [attr.aria-label]="showActual() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
-              (click)="showActual.set(!showActual())"
-            >
-              @if (showActual()) {
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                  <line x1="3" y1="21" x2="21" y2="3" />
-                </svg>
-              } @else {
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              }
-            </button>
-          </div>
-        </label>
-
-        <label class="perfil-field">
-          <span>Contrasena Nueva</span>
-          <div class="perfil-field__input-wrap">
-            <input
-              [type]="showNueva() ? 'text' : 'password'"
-              [value]="passwordNueva()"
-              (input)="passwordNueva.set($any($event.target).value)"
-              (focus)="passwordTouched.set(true)"
-            />
-            <button
-              type="button"
-              class="perfil-field__toggle"
-              [attr.aria-label]="showNueva() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
-              (click)="showNueva.set(!showNueva())"
-            >
-              @if (showNueva()) {
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                  <line x1="3" y1="21" x2="21" y2="3" />
-                </svg>
-              } @else {
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              }
-            </button>
-          </div>
-
-          @if (passwordTouched()) {
-            <ul class="password-checklist">
-              <li [class.is-valid]="passwordChecks().length">Minimo 8 caracteres</li>
-              <li [class.is-valid]="passwordChecks().upper">Una mayuscula</li>
-              <li [class.is-valid]="passwordChecks().lower">Una minuscula</li>
-              <li [class.is-valid]="passwordChecks().number">Un numero</li>
-              <li [class.is-valid]="passwordChecks().special">Un caracter especial</li>
-            </ul>
-          }
-        </label>
-
-        <label class="perfil-field">
-          <span>Confirmar Contrasena Nueva</span>
-          <div class="perfil-field__input-wrap">
-            <input
-              [type]="showConfirmar() ? 'text' : 'password'"
-              [value]="passwordConfirmar()"
-              (input)="passwordConfirmar.set($any($event.target).value)"
-            />
-            <button
-              type="button"
-              class="perfil-field__toggle"
-              [attr.aria-label]="showConfirmar() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
-              (click)="showConfirmar.set(!showConfirmar())"
-            >
-              @if (showConfirmar()) {
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                  <line x1="3" y1="21" x2="21" y2="3" />
-                </svg>
-              } @else {
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              }
-            </button>
-          </div>
-        </label>
-
-        <button type="submit" class="perfil-submit" [disabled]="passwordSaving()">
-          {{ passwordSaving() ? 'Actualizando...' : 'Cambiar contrasena' }}
-        </button>
-      </form>
-    </div>
-  </div>
-</section>
+  </section>
+}

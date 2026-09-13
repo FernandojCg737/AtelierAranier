@@ -96,17 +96,11 @@
           [disabled]="isAgotado(p)"
           (click)="addToCart()"
         >
-          <span>{{ isAgotado(p) ? 'Sin stock' : addedFeedback() ? 'Agregado' : 'Anadir al carrito' }}</span>
-          @if (!addedFeedback()) {
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          } @else {
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          }
+          <span>{{ isAgotado(p) ? 'Sin stock' : 'Anadir al carrito' }}</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
         </button>
 
         @if (p.hasPhotos) {
@@ -192,6 +186,10 @@
   }
   @if (reservaAbierta()) {
     <app-reserva-form [productoId]="p.id" [productoNombre]="p.name" (closed)="cerrarReserva()" />
+  }
+
+  @if (carritoAbierto()) {
+    <app-agregar-carrito [productoId]="p.id" [productoNombre]="p.name" (closed)="cerrarCarrito()" />
   }
 } @else {
   <div class="producto-not-found">

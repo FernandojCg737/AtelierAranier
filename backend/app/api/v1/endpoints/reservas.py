@@ -259,7 +259,7 @@ def listar_reservas(
     estado: str | None = Query(default=None),
     sucursal_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
-    _usuario: Usuario = Depends(require_permiso("CU10")),
+    _usuario: Usuario = Depends(require_permiso("CU10", "CU11", "CU14")),
 ) -> ReservaPage:
     _vencer_reservas_expiradas(db)
 
@@ -310,19 +310,29 @@ def completar_reserva(
     reserva_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_permiso("CU10")),
+    admin: Usuario = Depends(require_permiso("CU10", "CU11", "CU14")),
 ) -> ReservaAdminOut:
-    """Marca la reserva como pagada/entregada. El stock ya se retuvo al
-    reservar (ver crear_reserva), asi que aca no se toca inventario -- es
-    solo el cierre formal que evita que sp_vencer_reservas_expiradas() la
-    de por vencida despues de esta fecha."""
+    """Marca la reserva como pagada/entregada -- "atender la reserva" en
+    sucursal (CU11): el cliente paga en efectivo al recogerla, asi que esto
+    genera una VentaPresencial + Pago igual que cualquier otra venta de
+    mostrador, dejando registrado que empleado la atendio. El stock ya se
+    retuvo al reservar (ver crear_reserva), asi que aca no se vuelve a
+    tocar inventario."""
     reserva = _get_reserva_or_404(db, reserva_id)
     if reserva.estado not in ("pendiente", "confirmada"):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Esta reserva ya esta cerrada o vencida.")
 
-    reserva.estado = "completada"
+    empleado = db.query(Empleado).filter(Empleado.id == admin.id).first()
+    if empleado is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Solo el personal de sucursal puede atender reservas.")
+
+    result = db.execute(
+        text("SELECT sp_atender_reserva(:reserva_id, :empleado_id)"),
+        {"reserva_id": reserva_id, "empleado_id": empleado.id},
+    )
+    venta_id = result.scalar_one()
     db.commit()
-    log_bitacora(db, admin, "ACTUALIZAR", "reserva", reserva.id, "Reserva completada (pagada/entregada)", request)
+    log_bitacora(db, admin, "ACTUALIZAR", "reserva", reserva.id, f"Reserva completada (pagada/entregada en efectivo, venta #{venta_id})", request)
 
     reserva = _get_reserva_or_404(db, reserva_id)
     return _to_admin_out(reserva)

@@ -1,0 +1,327 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P4 · CU11</span>
+      <h1>Gestion de Ventas</h1>
+      <p>Ventas en linea (PayPal), por QR y de mostrador -- las finanzas de la venta en un solo lugar.</p>
+    </div>
+
+    <div class="admin-filtros">
+      <select [value]="filtroTipo()" (change)="filtroTipo.set($any($event.target).value); filtrar()">
+        <option value="">Todos los tipos</option>
+        <option value="venta_digital">En linea</option>
+        <option value="venta_presencial">Mostrador</option>
+      </select>
+
+      <select [value]="filtroEstadoPago()" (change)="filtroEstadoPago.set($any($event.target).value); filtrar()">
+        <option value="">Todos los pagos</option>
+        <option value="verificando">QR por verificar</option>
+        <option value="completado">Completado</option>
+        <option value="rechazado">Rechazado</option>
+      </select>
+
+      <select [value]="filtroSucursal()" (change)="filtroSucursal.set($any($event.target).value); filtrar()">
+        <option value="">Todas las sucursales</option>
+        @for (s of sucursales(); track s.id) {
+          <option [value]="s.id">{{ s.nombre }}</option>
+        }
+      </select>
+
+      <button type="button" class="ventas-nueva-btn" (click)="abrirFormulario()">+ Venta presencial</button>
+    </div>
+  </div>
+
+  <nav class="ventas-tabs">
+    <button type="button" [class.is-active]="vista() === 'ventas'" (click)="cambiarVista('ventas')">Ventas</button>
+    <button type="button" [class.is-active]="vista() === 'reservas'" (click)="cambiarVista('reservas')">
+      Reservas por cobrar
+    </button>
+  </nav>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  @if (vista() === 'reservas') {
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Sucursal</th>
+            <th>Horario</th>
+            <th>Prendas</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (cargandoReservas()) {
+            <tr>
+              <td colspan="6" class="admin-table__empty">Cargando...</td>
+            </tr>
+          } @else if (reservas().length === 0) {
+            <tr>
+              <td colspan="6" class="admin-table__empty">No hay reservas pendientes de cobro.</td>
+            </tr>
+          } @else {
+            @for (r of reservas(); track r.id) {
+              <tr>
+                <td>
+                  <div class="admin-table__user">
+                    <strong>{{ r.cliente_nombre }}</strong>
+                    <span>{{ r.cliente_email }}</span>
+                  </div>
+                </td>
+                <td>{{ r.sucursal_nombre }}</td>
+                <td>{{ r.horario_atencion | date: "d MMM 'de' yyyy, h:mm a" : '-0400' }}</td>
+                <td>
+                  <ul class="ventas-detalles">
+                    @for (d of r.detalles; track d.id) {
+                      <li>{{ d.cantidad }}x {{ d.producto_nombre }} ({{ d.talla_codigo }}, {{ d.color_nombre }})</li>
+                    }
+                  </ul>
+                </td>
+                <td><span class="admin-badge admin-badge--{{ r.estado }}">{{ r.estado }}</span></td>
+                <td>
+                  <div class="ventas-acciones">
+                    <button type="button" [disabled]="procesando() === r.id" (click)="cobrarReserva(r)">
+                      Cobrar en efectivo
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (vista() === 'ventas') {
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Tipo</th>
+          <th>Sucursal</th>
+          <th>Fecha</th>
+          <th>Prendas</th>
+          <th>Total</th>
+          <th>Pago</th>
+          <th>Atendido por</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td colspan="9" class="admin-table__empty">Cargando...</td>
+          </tr>
+        } @else if (items().length === 0) {
+          <tr>
+            <td colspan="9" class="admin-table__empty">No hay ventas para estos filtros.</td>
+          </tr>
+        } @else {
+          @for (v of items(); track v.id) {
+            <tr>
+              <td>
+                <div class="admin-table__user">
+                  <strong>{{ v.cliente_nombre }}</strong>
+                  <span>{{ v.cliente_email }}</span>
+                </div>
+              </td>
+              <td>{{ v.tipo === 'venta_digital' ? 'En linea' : 'Mostrador' }}</td>
+              <td>{{ v.sucursal_nombre }}</td>
+              <td>{{ v.fecha | date: "d MMM 'de' yyyy, h:mm a" : '-0400' }}</td>
+              <td>
+                <ul class="ventas-detalles">
+                  @for (d of v.detalles; track d.id) {
+                    <li>{{ d.cantidad }}x {{ d.producto_nombre }} ({{ d.talla_codigo }}, {{ d.color_nombre }})</li>
+                  }
+                </ul>
+              </td>
+              <td>{{ v.total }} Bs</td>
+              <td>
+                <span class="admin-badge admin-badge--{{ v.estado_pago }}">{{ v.metodo_pago }} · {{ v.estado_pago }}</span>
+                @if (v.comprobante_url) {
+                  <a class="ventas-comprobante" [href]="v.comprobante_url" target="_blank" rel="noopener">
+                    Ver comprobante
+                  </a>
+                }
+              </td>
+              <td>{{ v.atendido_por_nombre ?? '-' }}</td>
+              <td>
+                <div class="ventas-acciones">
+                  @if (v.estado_pago === 'verificando') {
+                    <button type="button" [disabled]="procesando() === v.id" (click)="aprobarQr(v)">Aprobar</button>
+                    <button type="button" class="is-danger" [disabled]="procesando() === v.id" (click)="rechazarQr(v)">
+                      Rechazar
+                    </button>
+                  }
+                  @if (v.estado_pago === 'completado') {
+                    <a class="is-secondary" [routerLink]="['/admin/factura', v.id]" target="_blank">Ver factura</a>
+                  }
+                  <button type="button" class="is-secondary" [disabled]="procesando() === v.id" (click)="abrirEditar(v)">
+                    Editar
+                  </button>
+                  <button type="button" class="is-danger" [disabled]="procesando() === v.id" (click)="eliminarVenta(v)">
+                    Eliminar
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="admin-pagination">
+    <button type="button" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">Anterior</button>
+    <span>Pagina {{ page() }} de {{ totalPages }}</span>
+    <button type="button" [disabled]="page() >= totalPages" (click)="goToPage(page() + 1)">Siguiente</button>
+  </div>
+  }
+
+  @if (formularioAbierto()) {
+    <div class="ventas-overlay" (click)="cerrarFormulario()">
+      <div class="ventas-modal" (click)="$event.stopPropagation()">
+        @if (editando(); as e) {
+          <h2>Editar venta #{{ e.id }}</h2>
+          <p class="ventas-modal__subtitulo">{{ e.cliente_nombre }}</p>
+        } @else {
+          <h2>Nueva venta presencial</h2>
+          <p class="ventas-modal__subtitulo">Se cobra en efectivo al instante.</p>
+        }
+
+        @if (errorNuevaVenta()) {
+          <div class="admin-error">{{ errorNuevaVenta() }}</div>
+        }
+
+        @if (!editando()) {
+          <label class="ventas-campo">
+            <span>Cliente</span>
+            <input
+              type="text"
+              placeholder="Buscar por nombre o correo..."
+              [value]="clienteBusqueda()"
+              (input)="clienteBusqueda.set($any($event.target).value); buscarClientes()"
+            />
+            @if (clienteResultados().length > 0) {
+              <ul class="ventas-sugerencias">
+                @for (c of clienteResultados(); track c.id) {
+                  <li (click)="seleccionarCliente(c)">{{ c.nombre }} · {{ c.email }}</li>
+                }
+              </ul>
+            }
+          </label>
+          @if (clienteSeleccionado(); as c) {
+            <p class="ventas-seleccion">Cliente: {{ c.nombre }}</p>
+          }
+        }
+
+        @if (editando()) {
+          <label class="ventas-campo">
+            <span>Metodo de pago</span>
+            <select [value]="metodoPagoEdit()" (change)="metodoPagoEdit.set($any($event.target).value)">
+              <option value="efectivo">Efectivo</option>
+              <option value="qr">QR (transferencia)</option>
+              <option value="paypal">PayPal / Tarjeta</option>
+            </select>
+          </label>
+
+          <label class="ventas-campo">
+            <span>Estado del pago</span>
+            <select [value]="estadoPagoEdit()" (change)="estadoPagoEdit.set($any($event.target).value)">
+              <option value="completado">Completado</option>
+              <option value="verificando">Por verificar</option>
+              <option value="rechazado">Rechazado</option>
+            </select>
+          </label>
+        }
+
+        <label class="ventas-campo">
+          <span>Sucursal</span>
+          <select [value]="sucursalNuevaId()" (change)="sucursalNuevaId.set(+$any($event.target).value)">
+            @for (s of sucursales(); track s.id) {
+              <option [value]="s.id">{{ s.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="ventas-campo">
+          <span>Agregar producto</span>
+          <input
+            type="text"
+            placeholder="Buscar producto..."
+            [value]="productoBusqueda()"
+            (input)="productoBusqueda.set($any($event.target).value)"
+          />
+          @if (productosSugeridos().length > 0 && !productoParaVariantes()) {
+            <ul class="ventas-sugerencias">
+              @for (p of productosSugeridos(); track p.id) {
+                <li (click)="seleccionarProducto(p)">{{ p.name }} · {{ p.price }} Bs</li>
+              }
+            </ul>
+          }
+        </label>
+
+        @if (productoParaVariantes(); as p) {
+          @if (variantesDisponibles().length === 0) {
+            <p class="ventas-mensaje">Este producto no tiene stock en la sucursal elegida.</p>
+          } @else {
+            <label class="ventas-campo">
+              <span>Talla y color</span>
+              <select [value]="varianteSeleccionada()" (change)="varianteSeleccionada.set($any($event.target).value)">
+                @for (v of variantesDisponibles(); track v.talla_id + '-' + v.color_id) {
+                  <option [value]="v.talla_id + '-' + v.color_id">
+                    {{ v.talla_codigo }} · {{ v.color_nombre }} ({{ v.cantidad }} disponibles)
+                  </option>
+                }
+              </select>
+            </label>
+
+            <label class="ventas-campo">
+              <span>Cantidad</span>
+              <input type="number" min="1" [value]="cantidadNueva()" (input)="cantidadNueva.set(+$any($event.target).value)" />
+            </label>
+
+            <button type="button" class="ventas-agregar-btn" (click)="agregarItem()">Agregar a la venta</button>
+          }
+        }
+
+        @if (itemsNuevaVenta().length > 0) {
+          <ul class="ventas-detalles ventas-detalles--form">
+            @for (i of itemsNuevaVenta(); track $index) {
+              <li>
+                <span>
+                  {{ i.cantidad }}x {{ i.producto_nombre }} ({{ i.talla_codigo }}, {{ i.color_nombre }})
+                  <br />
+                  <small
+                    >{{ i.precio_unitario | number: '1.2-2' }} Bs c/u ·
+                    {{ i.precio_unitario * i.cantidad | number: '1.2-2' }} Bs</small
+                  >
+                </span>
+                <button type="button" (click)="quitarItem($index)" aria-label="Quitar">&times;</button>
+              </li>
+            }
+          </ul>
+          <p class="ventas-seleccion">Total: {{ totalNuevaVenta() | number: '1.2-2' }} Bs</p>
+        }
+
+        <div class="ventas-modal__acciones">
+          <button type="button" class="is-secondary" (click)="cerrarFormulario()">Cancelar</button>
+          <button
+            type="button"
+            [disabled]="(!editando() && !clienteSeleccionado()) || itemsNuevaVenta().length === 0 || guardandoVenta()"
+            (click)="confirmarVenta()"
+          >
+            {{ guardandoVenta() ? 'Guardando...' : editando() ? 'Guardar cambios' : 'Cobrar en efectivo' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

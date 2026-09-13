@@ -1,0 +1,92 @@
+<section class="comprobante-page">
+  <a routerLink="/perfil" class="volver-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+    Volver a mi perfil
+  </a>
+
+  @if (cargando()) {
+    <p class="comprobante-mensaje">Cargando...</p>
+  }
+
+  @if (error()) {
+    <div class="comprobante-mensaje">
+      <p>{{ error() }}</p>
+      <a routerLink="/perfil">Volver a mi perfil</a>
+    </div>
+  }
+
+  @if (venta(); as v) {
+    <article class="comprobante">
+      <header class="comprobante__header">
+        <div class="comprobante__marca">
+          <img src="/img/logo.png" alt="Atelier Aranier" />
+          <div class="comprobante__marca-datos">
+            <strong>Atelier Aranier</strong>
+            <span>Av. San Martin, 3er Anillo Interno, Equipetrol, Santa Cruz de la Sierra, Bolivia</span>
+            <span>+591 73766956 &middot; contacto&#64;atelieraranier.com</span>
+          </div>
+        </div>
+        <div class="comprobante__folio">
+          <span>Comprobante de compra</span>
+          <strong>N&deg; {{ folio(v.id) }}</strong>
+          <span>{{ v.fecha | date: "d 'de' MMMM 'de' yyyy, h:mm a" : '-0400' }}</span>
+        </div>
+      </header>
+
+      <div class="comprobante__info">
+        <span>Sucursal: {{ v.sucursal_nombre }}</span>
+        <span>Tipo: {{ v.tipo === 'venta_digital' ? 'Compra en linea' : 'Compra en tienda' }}</span>
+        @if (v.atendido_por_nombre) {
+          <span>Atendido por: {{ v.atendido_por_nombre }}</span>
+        }
+        <span>Metodo de pago: {{ metodoLabel[v.metodo_pago] ?? v.metodo_pago }}</span>
+        <span class="comprobante__estado">Estado: {{ v.estado_pago }}</span>
+      </div>
+
+      <table class="comprobante__tabla">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Talla</th>
+            <th>Color</th>
+            <th>Cant.</th>
+            <th>Precio</th>
+            <th>Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (d of v.detalles; track d.id) {
+            <tr>
+              <td>{{ d.producto_nombre }}</td>
+              <td>{{ d.talla_codigo }}</td>
+              <td>{{ d.color_nombre }}</td>
+              <td>{{ d.cantidad }}</td>
+              <td>{{ d.precio_unitario | number: '1.2-2' }} Bs</td>
+              <td>{{ subtotal(d) | number: '1.2-2' }} Bs</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="comprobante__total">
+        <span>Total</span>
+        <strong>{{ v.total | number: '1.2-2' }} Bs</strong>
+      </div>
+
+      <footer class="comprobante__footer">
+        <p>Gracias por tu compra en Atelier Aranier.</p>
+        <p class="comprobante__legal">
+          Este documento es un comprobante interno de compra y no reemplaza una factura fiscal con validez
+          tributaria (NIT).
+        </p>
+      </footer>
+
+      <div class="comprobante__acciones">
+        <button type="button" (click)="imprimir()">Descargar / Imprimir</button>
+      </div>
+    </article>
+  }
+</section>

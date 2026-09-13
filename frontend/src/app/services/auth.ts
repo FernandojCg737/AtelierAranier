@@ -14,6 +14,7 @@ export interface Cliente {
   tipo: string;
   rol: string | null;
   permisos: string[];
+  sucursal_id: number | null;
 }
 
 export interface PerfilUpdatePayload {

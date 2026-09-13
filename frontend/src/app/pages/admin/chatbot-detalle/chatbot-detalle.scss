@@ -1,0 +1,119 @@
+.admin-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+
+  @media (min-width: 700px) {
+    padding: 40px 32px 64px;
+  }
+
+  &__header {
+    margin: 16px 0 24px;
+
+    h1 {
+      margin: 4px 0 0;
+      font-size: clamp(22px, 3vw, 28px);
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--brand-dark);
+    }
+  }
+
+  &__eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #999;
+  }
+}
+
+.volver-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brand-dark);
+  text-decoration: none;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.admin-error {
+  background: #fdecea;
+  color: #b3261e;
+  font-size: 13px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.chat-cargando {
+  font-size: 13px;
+  color: #999;
+}
+
+.chat-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-msg {
+  align-self: flex-end;
+  max-width: 80%;
+  background: var(--brand-dark);
+  color: #fff;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &__remitente {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  &__fecha {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.55);
+    align-self: flex-end;
+  }
+
+  &--bot {
+    align-self: flex-start;
+    background: #fff;
+    border: 1px solid #eee;
+
+    .chat-msg__remitente {
+      color: #999;
+    }
+
+    p {
+      color: var(--brand-dark);
+    }
+
+    .chat-msg__fecha {
+      color: #999;
+    }
+  }
+}

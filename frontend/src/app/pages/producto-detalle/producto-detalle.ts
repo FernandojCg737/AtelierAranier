@@ -4,13 +4,13 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { AgregarCarrito } from '../../components/agregar-carrito/agregar-carrito';
 import { ArFoto } from '../../components/ar-foto/ar-foto';
 import { ArTryon } from '../../components/ar-tryon/ar-tryon';
 import { ReservaForm } from '../../components/reserva-form/reserva-form';
 import { Product } from '../../data/products';
 import { Auth } from '../../services/auth';
 import { isAgotado, toArPrenda } from '../../services/catalogo-publico';
-import { Cart } from '../../services/cart';
 
 interface PrendaArApi {
   url: string;
@@ -71,7 +71,7 @@ function toProduct(p: ProductoPublico): Product {
 
 @Component({
   selector: 'app-producto-detalle',
-  imports: [RouterLink, ArTryon, ArFoto, ReservaForm],
+  imports: [RouterLink, ArTryon, ArFoto, ReservaForm, AgregarCarrito],
   templateUrl: './producto-detalle.html',
   styleUrl: './producto-detalle.scss',
 })
@@ -80,7 +80,6 @@ export class ProductoDetalle implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly cart = inject(Cart);
   protected readonly auth = inject(Auth);
 
   protected readonly product = signal<Product | undefined>(undefined);
@@ -89,11 +88,11 @@ export class ProductoDetalle implements OnInit {
   protected readonly selectedSize = signal<string | null>(null);
   protected readonly activeImage = signal<string>('');
   protected readonly detallesOpen = signal(true);
-  protected readonly addedFeedback = signal(false);
   protected readonly arMenuAbierto = signal(false);
   protected readonly arAbierto = signal(false);
   protected readonly arFotoAbierto = signal(false);
   protected readonly reservaAbierta = signal(false);
+  protected readonly carritoAbierto = signal(false);
 
   protected readonly whatsappUrl = computed(() => {
     const p = this.product();
@@ -181,15 +180,16 @@ export class ProductoDetalle implements OnInit {
     const p = this.product();
     if (!p || isAgotado(p)) return;
 
-    this.cart.addItem({
-      id: p.id,
-      name: p.name,
-      brand: p.brand,
-      price: p.price,
-      image: p.image,
-    });
+    // CU11: el carrito ahora es real (backend), asociado al cliente -- igual
+    // que probarse la prenda o reservar, hace falta sesion iniciada.
+    if (!this.auth.currentUser()) {
+      void this.router.navigate(['/login']);
+      return;
+    }
+    this.carritoAbierto.set(true);
+  }
 
-    this.addedFeedback.set(true);
-    setTimeout(() => this.addedFeedback.set(false), 1600);
+  protected cerrarCarrito(): void {
+    this.carritoAbierto.set(false);
   }
 }

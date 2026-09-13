@@ -39,7 +39,15 @@ from app.models.p4_ventas import (
     VentaDigital,
     VentaPresencial,
 )
-from app.models.p5_analitica import Chatbot, Dashboard, Notificacion, Recomendacion, Reporte
+from app.models.p5_analitica import (
+    Calificacion,
+    Chatbot,
+    ChatbotMensaje,
+    Dashboard,
+    Notificacion,
+    Recomendacion,
+    Reporte,
+)
 
 __all__ = [
     "Usuario",
@@ -83,5 +91,7 @@ __all__ = [
     "Reporte",
     "Dashboard",
     "Recomendacion",
+    "Calificacion",
     "Chatbot",
+    "ChatbotMensaje",
 ]

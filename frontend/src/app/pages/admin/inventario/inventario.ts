@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { Auth } from '../../../services/auth';
 
 interface Sucursal {
   id: number;
@@ -42,11 +43,18 @@ interface CatalogoSucursal {
 })
 export class AdminInventario implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(Auth);
 
   protected readonly sucursalesDisponibles = signal<Sucursal[]>([]);
   protected readonly catalogos = signal<CatalogoSucursal[]>([]);
   protected readonly showPicker = signal(false);
   protected readonly error = signal('');
+
+  // CU12: un Encargado de Sucursal solo controla el inventario de SU
+  // sucursal, nunca el de otras -- el backend tambien lo exige (rechaza el
+  // PUT si intenta tocar otra sucursal), esto es ademas para que ni
+  // aparezcan en la pantalla. Administrador si ve/edita todas.
+  protected readonly esAdministrador = computed(() => this.auth.currentUser()?.tipo === 'administrador');
 
   protected readonly sucursalesParaAgregar = computed(() => {
     const yaAgregadas = new Set(this.catalogos().map((c) => c.sucursal.id));
@@ -132,12 +140,15 @@ export class AdminInventario implements OnInit {
     this.error.set('');
     try {
       const res = await firstValueFrom(this.http.get<Sucursal[]>(`${environment.apiUrl}/catalogo/sucursales`));
-      this.sucursalesDisponibles.set(res);
-      // Precarga el catalogo de todas las sucursales para que siempre esten
-      // visibles al entrar a la pagina, sin depender de que el usuario los
-      // haya agregado a mano en una visita anterior (el estado no persiste
-      // entre navegaciones).
-      await Promise.all(res.map((s) => this.agregarCatalogo(s)));
+      const propiaId = this.auth.currentUser()?.sucursal_id;
+      const visibles = this.esAdministrador() ? res : res.filter((s) => s.id === propiaId);
+
+      this.sucursalesDisponibles.set(visibles);
+      // Precarga el catalogo de todas las sucursales visibles para que
+      // siempre esten a la vista al entrar a la pagina, sin depender de que
+      // el usuario las haya agregado a mano en una visita anterior (el
+      // estado no persiste entre navegaciones).
+      await Promise.all(visibles.map((s) => this.agregarCatalogo(s)));
     } catch {
       this.error.set('No se pudo cargar las sucursales.');
     }

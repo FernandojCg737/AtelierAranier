@@ -1,0 +1,59 @@
+<div class="reserva-overlay" (click)="cerrar()">
+  <div class="reserva-modal" (click)="$event.stopPropagation()">
+    <button type="button" class="reserva-cerrar" (click)="cerrar()" aria-label="Cerrar">&times;</button>
+
+    <h2>Agregar al carrito</h2>
+    <p class="reserva-subtitulo">{{ productoNombre() }}</p>
+
+    @if (estado() === 'cargando') {
+      <p class="reserva-mensaje">Cargando disponibilidad...</p>
+    }
+
+    @if (estado() === 'sin-stock') {
+      <p class="reserva-mensaje">Este producto no tiene stock disponible en ninguna sucursal por ahora.</p>
+    }
+
+    @if (estado() === 'error') {
+      <p class="reserva-mensaje">No pudimos cargar la disponibilidad. Intenta de nuevo en unos segundos.</p>
+    }
+
+    @if (estado() === 'formulario' || estado() === 'agregando') {
+      <form (submit)="$event.preventDefault(); enviar()">
+        @if (errorMsg()) {
+          <div class="reserva-error">{{ errorMsg() }}</div>
+        }
+
+        <label class="reserva-campo">
+          <span>Talla y color</span>
+          <select [value]="claveSeleccionada()" (change)="onVarianteChange($any($event.target).value)">
+            @for (v of variantes(); track clave(v)) {
+              <option [value]="clave(v)">{{ v.talla_codigo }} · {{ v.color_nombre }} ({{ v.cantidad }} disponibles)</option>
+            }
+          </select>
+        </label>
+
+        <label class="reserva-campo">
+          <span>Cantidad</span>
+          <input
+            type="number"
+            min="1"
+            [max]="varianteActual()?.cantidad ?? 1"
+            [value]="cantidad()"
+            (input)="cantidad.set(+$any($event.target).value)"
+          />
+        </label>
+
+        <button type="submit" class="reserva-enviar" [disabled]="estado() === 'agregando'">
+          {{ estado() === 'agregando' ? 'Agregando...' : 'Agregar al carrito' }}
+        </button>
+      </form>
+    }
+
+    @if (estado() === 'listo') {
+      <div class="reserva-exito">
+        <p>Se agrego al carrito.</p>
+        <button type="button" class="reserva-enviar" (click)="cerrar()">Listo</button>
+      </div>
+    }
+  </div>
+</div>

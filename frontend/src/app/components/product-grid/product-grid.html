@@ -43,7 +43,7 @@
             [disabled]="isAgotado(product)"
             (click)="$event.preventDefault(); $event.stopPropagation(); addToCart(product)"
           >
-            {{ isAgotado(product) ? 'Sin stock' : 'Agregar al carrito' }}
+            {{ isAgotado(product) ? 'Sin stock' : 'Elegir talla y color' }}
           </button>
         </div>
         <div class="product-tile__info">

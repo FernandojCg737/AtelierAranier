@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -17,6 +17,9 @@ class Notificacion(Base):
     mensaje: Mapped[str] = mapped_column(Text)
     fecha_envio: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     estado: Mapped[str] = mapped_column(String(20), default="pendiente")
+    leida: Mapped[bool] = mapped_column(Boolean, default=False)
+    entidad_tipo: Mapped[str | None] = mapped_column(String(30))
+    entidad_id: Mapped[int | None] = mapped_column()
 
     cliente: Mapped["Cliente"] = relationship(back_populates="notificaciones")
 
@@ -50,9 +53,30 @@ class Recomendacion(Base):
     score: Mapped[Decimal] = mapped_column(Numeric(5, 4))
     origen: Mapped[str] = mapped_column(String(50))
     fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Redactada por Gemini (o una frase generica de respaldo si no hay API
+    # key o la llamada falla) -- el ranking/origen los calcula el motor de
+    # reglas en SQL, la IA solo explica el por que.
+    razon: Mapped[str | None] = mapped_column(Text)
+    # Se marca sola via trigger cuando el cliente compra el producto
+    # recomendado (ver migracion) -- mide si la recomendacion sirvio.
+    convertido: Mapped[bool] = mapped_column(Boolean, default=False)
 
     cliente: Mapped["Cliente"] = relationship(back_populates="recomendaciones")
     producto: Mapped["Producto"] = relationship(back_populates="recomendaciones")
+
+
+class Calificacion(Base):
+    __tablename__ = "calificacion"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    venta_id: Mapped[int] = mapped_column(ForeignKey("venta.id"), unique=True)
+    cliente_id: Mapped[int] = mapped_column(ForeignKey("cliente.id"))
+    estrellas: Mapped[int] = mapped_column()
+    comentario: Mapped[str | None] = mapped_column(Text)
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    venta: Mapped["Venta"] = relationship(back_populates="calificacion")
+    cliente: Mapped["Cliente"] = relationship(back_populates="calificaciones")
 
 
 class Chatbot(Base):
@@ -65,3 +89,18 @@ class Chatbot(Base):
     fecha_fin: Mapped[datetime | None] = mapped_column(DateTime)
 
     cliente: Mapped["Cliente"] = relationship(back_populates="chats")
+    mensajes: Mapped[list["ChatbotMensaje"]] = relationship(
+        back_populates="chatbot", cascade="all, delete-orphan", order_by="ChatbotMensaje.fecha"
+    )
+
+
+class ChatbotMensaje(Base):
+    __tablename__ = "chatbot_mensaje"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chatbot_id: Mapped[int] = mapped_column(ForeignKey("chatbot.id"))
+    remitente: Mapped[str] = mapped_column(String(10))  # 'cliente' | 'bot'
+    mensaje: Mapped[str] = mapped_column(Text)
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    chatbot: Mapped["Chatbot"] = relationship(back_populates="mensajes")

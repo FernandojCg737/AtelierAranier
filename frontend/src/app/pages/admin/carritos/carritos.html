@@ -1,0 +1,81 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P4 · CU13</span>
+      <h1>Administrar Carrito de Compras</h1>
+      <p>Que clientes tienen articulos en su carrito ahora mismo, y que estan por comprar.</p>
+    </div>
+
+    <div class="carritos-refresco">
+      <span class="carritos-en-vivo"><span class="carritos-en-vivo__punto"></span>En vivo</span>
+      @if (ultimaActualizacion(); as u) {
+        <span class="carritos-refresco__hora">Actualizado {{ u | date: 'HH:mm:ss' }}</span>
+      }
+      <button type="button" [disabled]="loading()" (click)="refrescarAhora()">Refrescar ahora</button>
+    </div>
+  </div>
+
+  <div class="carritos-resumen">
+    <div class="carritos-resumen__card">
+      <strong>{{ totalClientes() }}</strong>
+      <span>Carritos activos</span>
+    </div>
+    <div class="carritos-resumen__card">
+      <strong>{{ totalArticulos() }}</strong>
+      <span>Articulos en total</span>
+    </div>
+    <div class="carritos-resumen__card">
+      <strong>{{ valorTotal() | number: '1.2-2' }} Bs</strong>
+      <span>Valor potencial</span>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Articulos</th>
+          <th>Total</th>
+          <th>Carrito desde</th>
+          <th>Ultima actividad</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td colspan="5" class="admin-table__empty">Cargando...</td>
+          </tr>
+        } @else if (items().length === 0) {
+          <tr>
+            <td colspan="5" class="admin-table__empty">Ningun cliente tiene articulos en su carrito ahora mismo.</td>
+          </tr>
+        } @else {
+          @for (c of items(); track c.id) {
+            <tr>
+              <td>
+                <div class="admin-table__user">
+                  <strong>{{ c.cliente_nombre }}</strong>
+                  <span>{{ c.cliente_email }}</span>
+                </div>
+                <ul class="carritos-detalles">
+                  @for (d of c.detalles; track d.id) {
+                    <li>{{ d.cantidad }}x {{ d.producto_nombre }} ({{ d.talla_codigo }}, {{ d.color_nombre }})</li>
+                  }
+                </ul>
+              </td>
+              <td>{{ c.cantidad_items }}</td>
+              <td>{{ c.total | number: '1.2-2' }} Bs</td>
+              <td>{{ c.fecha_creacion | date: "d MMM, h:mm a" : '-0400' }}</td>
+              <td>{{ c.fecha_actualizacion | date: "d MMM, h:mm a" : '-0400' }}</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

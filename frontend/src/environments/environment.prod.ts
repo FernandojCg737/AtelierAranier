@@ -1,5 +1,6 @@
 export const environment = {
   production: true,
   apiUrl: 'https://atelieraranier-backend.onrender.com/api/v1',
-  googleClientId: '1077780230270-le9ifqpmlmbd4bj7j82gqsq9fr5cf2tu.apps.googleusercontent.com'
+  googleClientId: '358122795142-b9uf3oe7i98lg2bjkhcj6habdrh1mqcp.apps.googleusercontent.com',
+  paypalClientId: 'BAA5qL7SYwxYqXcObNp7cuq9-DKSDIrlAslsqcoHEFuPoLBrvkEydFDvIsjkKf0Zj49TJZ4AXptEAtzVmc'
 };

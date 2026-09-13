@@ -1,0 +1,115 @@
+<div class="reporte-page">
+  <div class="reporte-toolbar">
+    <a routerLink="/admin/reportes" class="volver-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+      </svg>
+      Volver a Reportes
+    </a>
+
+    <div class="reporte-acciones">
+      <button type="button" (click)="imprimir()">Imprimir / PDF</button>
+      <button type="button" [disabled]="exportando()" (click)="exportar('excel')">Excel</button>
+      <button type="button" [disabled]="exportando()" (click)="exportar('csv')">CSV</button>
+    </div>
+  </div>
+
+  <div class="reporte-filtros">
+    <label>
+      <span>Desde</span>
+      <input type="date" [value]="fechaDesde()" (change)="fechaDesde.set($any($event.target).value)" />
+    </label>
+    <label>
+      <span>Hasta</span>
+      <input type="date" [value]="fechaHasta()" (change)="fechaHasta.set($any($event.target).value)" />
+    </label>
+    <label>
+      <span>Sucursal</span>
+      <select [value]="sucursalId()" (change)="sucursalId.set($any($event.target).value ? +$any($event.target).value : null)">
+        <option value="">Todas</option>
+        @for (s of sucursales(); track s.id) {
+          <option [value]="s.id">{{ s.nombre }}</option>
+        }
+      </select>
+    </label>
+    <button type="button" class="reporte-buscar-btn" (click)="buscar()">Aplicar filtros</button>
+  </div>
+
+  <article class="reporte">
+    <header class="reporte__header">
+      <div class="reporte__marca">
+        <img src="/img/logo.png" alt="Atelier Aranier" />
+        <div class="reporte__marca-datos">
+          <strong>Atelier Aranier</strong>
+          <span>Reporte de Asistencia de Empleados</span>
+        </div>
+      </div>
+      <div class="reporte__periodo">
+        <span>Periodo</span>
+        <strong>{{ fechaDesde() | date: 'd MMM yyyy' }} -- {{ fechaHasta() | date: 'd MMM yyyy' }}</strong>
+      </div>
+    </header>
+
+    <p class="reporte-nota">
+      Calculado a partir del historial de inicio/cierre de sesion (bitacora) -- refleja presencia en el sistema, no
+      un marcado de asistencia fisico.
+    </p>
+
+    @if (error()) {
+      <div class="admin-error">{{ error() }}</div>
+    }
+
+    @if (loading()) {
+      <p class="reporte-cargando">Cargando...</p>
+    } @else if (datos(); as d) {
+      <div class="reporte-kpis">
+        <div class="reporte-kpi">
+          <span>Empleados activos</span>
+          <strong>{{ d.resumen.empleados_activos }}</strong>
+        </div>
+        <div class="reporte-kpi">
+          <span>Dias con actividad</span>
+          <strong>{{ d.resumen.dias_con_actividad }}</strong>
+        </div>
+        <div class="reporte-kpi">
+          <span>Promedio horas / dia</span>
+          <strong>{{ d.resumen.promedio_horas_por_dia | number: '1.2-2' }} h</strong>
+        </div>
+      </div>
+
+      <div class="reporte__tabla-wrap">
+      <table class="reporte__tabla">
+        <thead>
+          <tr>
+            <th>Empleado</th>
+            <th>Sucursal</th>
+            <th>Fecha</th>
+            <th>Entrada</th>
+            <th>Salida</th>
+            <th>Horas conectado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (d.detalle.length === 0) {
+            <tr>
+              <td colspan="6" class="reporte__vacio">No hay actividad registrada para estos filtros.</td>
+            </tr>
+          } @else {
+            @for (a of d.detalle; track a.empleado_id + '-' + a.fecha) {
+              <tr>
+                <td>{{ a.empleado_nombre }}</td>
+                <td>{{ a.sucursal_nombre }}</td>
+                <td>{{ a.fecha | date: 'd MMM yyyy' }}</td>
+                <td>{{ a.hora_entrada ? (a.hora_entrada | date: 'h:mm a') : '-' }}</td>
+                <td>{{ a.hora_salida ? (a.hora_salida | date: 'h:mm a') : 'En curso' }}</td>
+                <td>{{ a.horas_conectado | number: '1.2-2' }} h</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+      </div>
+    }
+  </article>
+</div>

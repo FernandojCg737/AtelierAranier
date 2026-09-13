@@ -526,6 +526,11 @@ def update_inventario_cantidad(
     if inventario is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Registro de inventario no encontrado.")
 
+    # CU12: Encargado/Cajero solo controlan el inventario de SU sucursal --
+    # Administrador (con o sin sucursal asignada) sigue viendo/editando todas.
+    if admin.tipo != "administrador" and inventario.sucursal_id != getattr(admin, "sucursal_id", None):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "No podes modificar el inventario de otra sucursal.")
+
     db.execute(
         text("SELECT sp_actualizar_inventario_cantidad(:id, :cantidad)"),
         {"id": inventario_id, "cantidad": payload.cantidad},

@@ -1,0 +1,32 @@
+<div class="admin-content">
+  <a routerLink="/admin/chatbot" class="volver-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+    Volver a Chatbot
+  </a>
+
+  <div class="admin-content__header">
+    <span class="admin-content__eyebrow">P5 · CU19</span>
+    <h1>Conversacion</h1>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+    <p class="chat-cargando">Cargando...</p>
+  } @else if (mensajes().length > 0) {
+    <div class="chat-transcript">
+      @for (m of mensajes(); track m.id) {
+        <div class="chat-msg" [class.chat-msg--bot]="m.remitente === 'bot'">
+          <span class="chat-msg__remitente">{{ m.remitente === 'bot' ? 'Asistente' : 'Cliente' }}</span>
+          <p>{{ m.mensaje }}</p>
+          <span class="chat-msg__fecha">{{ m.fecha | date: "d MMM yyyy, h:mm a" }}</span>
+        </div>
+      }
+    </div>
+  }
+</div>

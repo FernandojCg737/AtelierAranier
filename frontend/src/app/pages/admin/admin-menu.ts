@@ -46,19 +46,19 @@ export const ADMIN_MENU: AdminPackage[] = [
     useCases: [
       { code: 'CU09', label: 'Visualizar Prenda con Realidad Aumentada', route: '/admin/ar-uso' },
       { code: 'CU10', label: 'Gestion de Reservas', route: '/admin/reservas' },
-      { code: 'CU11', label: 'Gestion de Ventas' },
-      { code: 'CU13', label: 'Administrar Carrito de Compras' },
+      { code: 'CU11', label: 'Gestion de Ventas', route: '/admin/ventas' },
+      { code: 'CU13', label: 'Administrar Carrito de Compras', route: '/admin/carritos' },
     ],
   },
   {
     code: 'P5',
     label: 'Gestion de Experiencia y Analitica',
     useCases: [
-      { code: 'CU14', label: 'Enviar Notificaciones' },
-      { code: 'CU16', label: 'Gestion Reportes y Dashboards' },
-      { code: 'CU18', label: 'Recomendar Prendas por IA' },
-      { code: 'CU19', label: 'Atender Cliente con Chatbot' },
-      { code: 'CU20', label: 'Reputacion y Calificaciones' },
+      { code: 'CU14', label: 'Enviar Notificaciones', route: '/admin/notificaciones' },
+      { code: 'CU16', label: 'Gestion Reportes y Dashboards', route: '/admin/reportes' },
+      { code: 'CU18', label: 'Recomendar Prendas por IA', route: '/admin/recomendaciones' },
+      { code: 'CU19', label: 'Atender Cliente con Chatbot', route: '/admin/chatbot' },
+      { code: 'CU20', label: 'Reputacion y Calificaciones', route: '/admin/calificaciones' },
     ],
   },
 ];

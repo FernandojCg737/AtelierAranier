@@ -1,0 +1,96 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P5 · CU18</span>
+      <h1>Recomendar Prendas por IA</h1>
+      <p>
+        El ranking lo calcula un motor de reglas (compra conjunta, similitud, mas vendidos) y Gemini redacta la razon
+        de cada una. Panel de solo lectura para auditar que se recomendo y si se convirtio en venta.
+      </p>
+    </div>
+
+    <div class="admin-filtros">
+      <select [value]="filtroOrigen()" (change)="filtroOrigen.set($any($event.target).value); filtrar()">
+        <option value="">Todos los origenes</option>
+        <option value="compra_conjunta">Comprado junto a...</option>
+        <option value="similar_categoria">Similar a tus compras</option>
+        <option value="mas_vendido">Mas vendido</option>
+      </select>
+    </div>
+  </div>
+
+  @if (resumen(); as r) {
+    <div class="recom-kpis">
+      <div class="recom-kpi">
+        <strong>{{ r.total_activas }}</strong>
+        <span>Recomendaciones activas</span>
+      </div>
+      <div class="recom-kpi">
+        <strong>{{ r.convertidas }}</strong>
+        <span>Terminaron en compra</span>
+      </div>
+      <div class="recom-kpi">
+        <strong>{{ r.tasa_conversion | number: '1.1-1' }}%</strong>
+        <span>Tasa de conversion</span>
+      </div>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Producto</th>
+          <th>Origen</th>
+          <th>Razon (IA)</th>
+          <th>Score</th>
+          <th>Fecha</th>
+          <th>Convertida</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td colspan="7" class="admin-table__empty">Cargando...</td>
+          </tr>
+        } @else if (items().length === 0) {
+          <tr>
+            <td colspan="7" class="admin-table__empty">No hay recomendaciones para estos filtros.</td>
+          </tr>
+        } @else {
+          @for (r of items(); track r.id) {
+            <tr>
+              <td>
+                <div class="admin-table__user">
+                  <strong>{{ r.cliente_nombre }}</strong>
+                  <span>{{ r.cliente_email }}</span>
+                </div>
+              </td>
+              <td>{{ r.producto_nombre }}</td>
+              <td>{{ origenLabel[r.origen] ?? r.origen }}</td>
+              <td class="recom-razon">{{ r.razon ?? '-' }}</td>
+              <td>{{ r.score | number: '1.2-2' }}</td>
+              <td>{{ r.fecha | date: "d MMM yyyy, h:mm a" }}</td>
+              <td>
+                <span class="admin-badge admin-badge--{{ r.convertido ? 'completado' : 'pendiente' }}">
+                  {{ r.convertido ? 'Si' : 'No' }}
+                </span>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="admin-pagination">
+    <button type="button" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">Anterior</button>
+    <span>Pagina {{ page() }} de {{ totalPages }}</span>
+    <button type="button" [disabled]="page() >= totalPages" (click)="goToPage(page() + 1)">Siguiente</button>
+  </div>
+</div>

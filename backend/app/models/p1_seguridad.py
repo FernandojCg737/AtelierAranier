@@ -87,6 +87,9 @@ class Empleado(Usuario):
     sucursal: Mapped["Sucursal | None"] = relationship(back_populates="empleados")
     movimientos_inventario: Mapped[list["MovimientoInventario"]] = relationship(back_populates="empleado")
     reportes: Mapped[list["Reporte"]] = relationship(back_populates="empleado")
+    # CU11: cualquier tipo de empleado (Administrador, Encargado, Cajero)
+    # puede atender una venta presencial, no solo un Cajero.
+    ventas_atendidas: Mapped[list["VentaPresencial"]] = relationship(back_populates="atendido_por")
 
     __mapper_args__ = {"polymorphic_identity": "empleado"}
 
@@ -111,7 +114,5 @@ class Cajero(Empleado):
     __tablename__ = "cajero"
 
     id: Mapped[int] = mapped_column(ForeignKey("empleado.id"), primary_key=True)
-
-    ventas_atendidas: Mapped[list["VentaPresencial"]] = relationship(back_populates="cajero")
 
     __mapper_args__ = {"polymorphic_identity": "cajero"}

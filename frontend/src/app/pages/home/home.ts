@@ -4,11 +4,12 @@ import { Discounts } from '../../components/discounts/discounts';
 import { Hero } from '../../components/hero/hero';
 import { InstagramCta } from '../../components/instagram-cta/instagram-cta';
 import { NewArrivals } from '../../components/new-arrivals/new-arrivals';
+import { Recomendaciones } from '../../components/recomendaciones/recomendaciones';
 import { WhatsappCta } from '../../components/whatsapp-cta/whatsapp-cta';
 
 @Component({
   selector: 'app-home',
-  imports: [Hero, Categories, InstagramCta, NewArrivals, WhatsappCta, Discounts],
+  imports: [Hero, Categories, InstagramCta, NewArrivals, Recomendaciones, WhatsappCta, Discounts],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })

@@ -1,0 +1,92 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P5 · CU16</span>
+      <h1>Gestion de Reportes y Dashboards</h1>
+      <p>Panorama general del negocio en los ultimos 30 dias, con acceso a los reportes detallados y exportables.</p>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+    <p class="reportes-cargando">Cargando...</p>
+  } @else if (datos(); as d) {
+    <div class="reportes-kpis">
+      <div class="reportes-kpi">
+        <span>Ventas hoy</span>
+        <strong>{{ d.ventas_hoy_total | number: '1.2-2' }} Bs</strong>
+        <small>{{ d.ventas_hoy_cantidad }} {{ d.ventas_hoy_cantidad === 1 ? 'venta' : 'ventas' }}</small>
+      </div>
+      <div class="reportes-kpi">
+        <span>Ventas del mes</span>
+        <strong>{{ d.ventas_mes_total | number: '1.2-2' }} Bs</strong>
+        <small>{{ d.ventas_mes_cantidad }} {{ d.ventas_mes_cantidad === 1 ? 'venta' : 'ventas' }}</small>
+      </div>
+      <div class="reportes-kpi">
+        <span>Ticket promedio (mes)</span>
+        <strong>{{ d.ticket_promedio_mes | number: '1.2-2' }} Bs</strong>
+      </div>
+      <div class="reportes-kpi">
+        <span>Reservas activas</span>
+        <strong>{{ d.reservas_activas }}</strong>
+      </div>
+      <div class="reportes-kpi">
+        <span>Clientes nuevos (mes)</span>
+        <strong>{{ d.clientes_nuevos_mes }}</strong>
+      </div>
+    </div>
+
+    <div class="reportes-graficos">
+      <div class="reportes-grafico reportes-grafico--ancho">
+        <h3>Ventas por dia (ultimos 30 dias)</h3>
+        @if (dataDias().length === 0) {
+          <p class="reportes-vacio">Sin ventas completadas en este periodo.</p>
+        } @else {
+          <app-chart type="line" [labels]="labelsDias()" [data]="dataDias()" label="Ventas (Bs)" />
+        }
+      </div>
+
+      <div class="reportes-grafico">
+        <h3>Ventas por metodo de pago</h3>
+        @if (dataMetodo().length === 0) {
+          <p class="reportes-vacio">Sin datos.</p>
+        } @else {
+          <app-chart type="doughnut" [labels]="labelsMetodo()" [data]="dataMetodo()" />
+        }
+      </div>
+
+      <div class="reportes-grafico">
+        <h3>Top 5 productos (unidades)</h3>
+        @if (dataProductos().length === 0) {
+          <p class="reportes-vacio">Sin datos.</p>
+        } @else {
+          <app-chart type="bar" [labels]="labelsProductos()" [data]="dataProductos()" label="Unidades" />
+        }
+      </div>
+
+      <div class="reportes-grafico">
+        <h3>Ventas por sucursal</h3>
+        @if (dataSucursal().length === 0) {
+          <p class="reportes-vacio">Sin datos.</p>
+        } @else {
+          <app-chart type="bar" [labels]="labelsSucursal()" [data]="dataSucursal()" label="Ventas (Bs)" />
+        }
+      </div>
+    </div>
+  }
+
+  <div class="reportes-links">
+    <h2>Reportes detallados</h2>
+    <div class="reportes-links__grid">
+      @for (r of reportesLinks; track r.route) {
+        <a [routerLink]="r.route" class="reportes-link-card">
+          <strong>{{ r.label }}</strong>
+          <span>{{ r.desc }}</span>
+        </a>
+      }
+    </div>
+  </div>
+</div>

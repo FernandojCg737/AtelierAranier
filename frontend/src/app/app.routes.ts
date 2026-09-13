@@ -8,13 +8,29 @@ import { AdminHome } from './pages/admin/home/home';
 import { AdminInventario } from './pages/admin/inventario/inventario';
 import { AdminPerfil } from './pages/admin/perfil/perfil';
 import { AdminProductos } from './pages/admin/productos/productos';
+import { AdminCarritos } from './pages/admin/carritos/carritos';
+import { AdminNotificaciones } from './pages/admin/notificaciones/notificaciones';
+import { AdminReportesDashboard } from './pages/admin/reportes/dashboard/dashboard';
+import { ReporteVentasPage } from './pages/admin/reportes/ventas/ventas';
+import { ReporteAsistenciaPage } from './pages/admin/reportes/asistencia/asistencia';
+import { ReporteInventarioPage } from './pages/admin/reportes/inventario/inventario';
+import { ReporteReservasPage } from './pages/admin/reportes/reservas/reservas';
+import { ReporteProductosPage } from './pages/admin/reportes/productos/productos';
+import { AdminRecomendaciones } from './pages/admin/recomendaciones/recomendaciones';
+import { AdminChatbot } from './pages/admin/chatbot/chatbot';
+import { AdminChatbotDetalle } from './pages/admin/chatbot-detalle/chatbot-detalle';
+import { AdminCalificaciones } from './pages/admin/calificaciones/calificaciones';
 import { AdminReservas } from './pages/admin/reservas/reservas';
 import { AdminProveedores } from './pages/admin/proveedores/proveedores';
 import { AdminSesiones } from './pages/admin/sesiones/sesiones';
 import { AdminTemporadas } from './pages/admin/temporadas/temporadas';
 import { AdminSucursales } from './pages/admin/sucursales/sucursales';
+import { AdminFactura } from './pages/admin/factura/factura';
 import { AdminUsuarios } from './pages/admin/usuarios/usuarios';
+import { AdminVentas } from './pages/admin/ventas/ventas';
 import { Carrito } from './pages/carrito/carrito';
+import { Checkout } from './pages/checkout/checkout';
+import { Comprobante } from './pages/comprobante/comprobante';
 import { Cotizaciones } from './pages/cotizaciones/cotizaciones';
 import { Home } from './pages/home/home';
 import { Login } from './pages/login/login';
@@ -30,11 +46,24 @@ export const routes: Routes = [
   { path: 'tienda', component: Tienda },
   { path: 'cotizaciones', component: Cotizaciones },
   { path: 'carrito', component: Carrito },
+  { path: 'checkout', component: Checkout, canActivate: [authGuard] },
   { path: 'producto/:id', component: ProductoDetalle },
   { path: 'login', component: Login, data: { hideChrome: true } },
   { path: 'registro', component: Registro, data: { hideChrome: true } },
   { path: 'recuperar', component: RecuperarPassword, data: { hideChrome: true } },
   { path: 'perfil', component: Perfil, canActivate: [authGuard] },
+  {
+    path: 'mis-compras/:id',
+    component: Comprobante,
+    canActivate: [authGuard],
+    data: { hideChrome: true },
+  },
+  {
+    path: 'admin/factura/:id',
+    component: AdminFactura,
+    canActivate: [adminGuard, permisoGuard('CU11')],
+    data: { hideChrome: true },
+  },
   {
     path: 'admin',
     component: AdminLayout,
@@ -55,6 +84,19 @@ export const routes: Routes = [
       { path: 'bitacora', component: AdminBitacora, canActivate: [permisoGuard('CU17')] },
       { path: 'ar-uso', component: AdminArUso, canActivate: [permisoGuard('CU09')] },
       { path: 'reservas', component: AdminReservas, canActivate: [permisoGuard('CU10')] },
+      { path: 'ventas', component: AdminVentas, canActivate: [permisoGuard('CU11')] },
+      { path: 'carritos', component: AdminCarritos, canActivate: [permisoGuard('CU13')] },
+      { path: 'notificaciones', component: AdminNotificaciones, canActivate: [permisoGuard('CU14')] },
+      { path: 'reportes', component: AdminReportesDashboard, canActivate: [permisoGuard('CU16')] },
+      { path: 'reportes/ventas', component: ReporteVentasPage, canActivate: [permisoGuard('CU16')] },
+      { path: 'reportes/asistencia', component: ReporteAsistenciaPage, canActivate: [permisoGuard('CU16')] },
+      { path: 'reportes/inventario', component: ReporteInventarioPage, canActivate: [permisoGuard('CU16')] },
+      { path: 'reportes/reservas', component: ReporteReservasPage, canActivate: [permisoGuard('CU16')] },
+      { path: 'reportes/productos', component: ReporteProductosPage, canActivate: [permisoGuard('CU16')] },
+      { path: 'recomendaciones', component: AdminRecomendaciones, canActivate: [permisoGuard('CU18')] },
+      { path: 'chatbot', component: AdminChatbot, canActivate: [permisoGuard('CU19')] },
+      { path: 'chatbot/:clienteId', component: AdminChatbotDetalle, canActivate: [permisoGuard('CU19')] },
+      { path: 'calificaciones', component: AdminCalificaciones, canActivate: [permisoGuard('CU20')] },
     ],
   },
 ];

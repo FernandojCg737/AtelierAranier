@@ -1,4 +1,12 @@
 <section class="carrito-page">
+  <a routerLink="/tienda" class="volver-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+    Volver
+  </a>
+
   <div class="carrito-page__header">
     <h1>Carrito de compras</h1>
     <p>Revisa tus articulos seleccionados antes de finalizar la compra.</p>
@@ -22,30 +30,23 @@
       <ul class="carrito-list">
         @for (item of cart.items(); track item.id) {
           <li class="carrito-item">
-            <img [src]="item.image" [alt]="item.name" />
+            <img [src]="item.producto_imagen_url ?? '/img/productos/producto-1.jpg'" [alt]="item.producto_nombre" />
 
             <div class="carrito-item__info">
-              @if (item.brand) {
-                <span class="carrito-item__brand">{{ item.brand }}</span>
-              }
-              <span class="carrito-item__name">{{ item.name }}</span>
-              <span class="carrito-item__price">{{ item.price }} Bs</span>
+              <span class="carrito-item__name">{{ item.producto_nombre }}</span>
+              <span class="carrito-item__variante">{{ item.talla_codigo }} · {{ item.color_nombre }}</span>
+              <span class="carrito-item__price">{{ item.precio_unitario | number: '1.2-2' }} Bs</span>
             </div>
 
             <div class="carrito-item__qty">
-              <button type="button" (click)="decrease(item.id, item.quantity)" aria-label="Restar">−</button>
-              <span>{{ item.quantity }}</span>
-              <button type="button" (click)="increase(item.id, item.quantity)" aria-label="Sumar">+</button>
+              <button type="button" (click)="decrease(item.id, item.cantidad)" aria-label="Restar">−</button>
+              <span>{{ item.cantidad }}</span>
+              <button type="button" (click)="increase(item.id, item.cantidad)" aria-label="Sumar">+</button>
             </div>
 
-            <span class="carrito-item__subtotal">{{ item.price * item.quantity }} Bs</span>
+            <span class="carrito-item__subtotal">{{ item.subtotal | number: '1.2-2' }} Bs</span>
 
-            <button
-              type="button"
-              class="carrito-item__remove"
-              aria-label="Quitar del carrito"
-              (click)="cart.removeItem(item.id)"
-            >
+            <button type="button" class="carrito-item__remove" aria-label="Quitar del carrito" (click)="remove(item.id)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <line x1="5" y1="5" x2="19" y2="19" />
                 <line x1="19" y1="5" x2="5" y2="19" />
@@ -58,9 +59,66 @@
       <div class="carrito-summary">
         <div class="carrito-summary__row">
           <span>Total ({{ cart.totalItems() }} articulos)</span>
-          <span class="carrito-summary__total">{{ cart.totalPrice() }} Bs</span>
+          <span class="carrito-summary__total">{{ cart.totalPrice() | number: '1.2-2' }} Bs</span>
         </div>
-        <button type="button" class="carrito-summary__checkout" disabled>Finalizar compra (proximamente)</button>
+        <button type="button" class="carrito-summary__checkout" (click)="irACheckout()">Finalizar compra</button>
+
+        @if (!reservaAbierta()) {
+          <button type="button" class="carrito-summary__reservar" (click)="abrirReserva()">Reservar</button>
+        }
+
+        @if (reservaAbierta()) {
+          <div class="carrito-reserva">
+            @if (reservaEstado() === 'listo') {
+              <div class="carrito-reserva__exito">
+                <p>Tu reserva quedo registrada.</p>
+                <p class="carrito-reserva__detalle">
+                  Te esperamos en la sucursal el dia y hora que elegiste para pagar y recoger tu pedido. Podes ver el
+                  estado en tu perfil, en "Mis reservas".
+                </p>
+                <button type="button" (click)="cerrarReserva()">Listo</button>
+              </div>
+            } @else {
+              <p class="carrito-reserva__titulo">Reservar para pagar y recoger en sucursal</p>
+
+              @if (reservaError()) {
+                <div class="carrito-reserva__error">{{ reservaError() }}</div>
+              }
+
+              <label class="carrito-reserva__campo">
+                <span>Sucursal</span>
+                <select [value]="sucursalId()" (change)="sucursalId.set(+$any($event.target).value)">
+                  @for (s of sucursales(); track s.id) {
+                    <option [value]="s.id">{{ s.nombre }}</option>
+                  }
+                </select>
+              </label>
+
+              <label class="carrito-reserva__campo">
+                <span>Fecha y hora en que iras a pagar y recoger</span>
+                <input
+                  type="datetime-local"
+                  [min]="minDatetime"
+                  [value]="horario()"
+                  (input)="horario.set($any($event.target).value)"
+                  required
+                />
+              </label>
+
+              <div class="carrito-reserva__acciones">
+                <button type="button" class="is-secondary" (click)="cerrarReserva()">Cancelar</button>
+                <button
+                  type="button"
+                  [disabled]="reservaEstado() === 'enviando' || !horario() || !sucursalId()"
+                  (click)="confirmarReserva()"
+                >
+                  {{ reservaEstado() === 'enviando' ? 'Reservando...' : 'Confirmar reserva' }}
+                </button>
+              </div>
+            }
+          </div>
+        }
+
         <a class="carrito-summary__continue" routerLink="/tienda">Continuar comprando</a>
       </div>
     </div>

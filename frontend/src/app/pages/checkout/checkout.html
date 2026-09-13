@@ -1,0 +1,125 @@
+<section class="checkout-page">
+  <a routerLink="/carrito" class="volver-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+    Volver al carrito
+  </a>
+
+  <div class="checkout-page__header">
+    <h1>Finalizar compra</h1>
+  </div>
+
+  @if (estado() === 'cargando') {
+    <p class="checkout-mensaje">Cargando...</p>
+  }
+
+  @if (estado() === 'vacio') {
+    <div class="checkout-empty">
+      <h2>Tu carrito esta vacio</h2>
+      <a routerLink="/tienda">Ir a la tienda</a>
+    </div>
+  }
+
+  @if (estado() === 'error') {
+    <p class="checkout-mensaje">No pudimos cargar el checkout. Intenta de nuevo en unos segundos.</p>
+  }
+
+  @if (estado() === 'formulario' || estado() === 'procesando') {
+    <div class="checkout-content">
+      <div class="checkout-resumen">
+        <h2>Resumen</h2>
+        <ul>
+          @for (item of cart.items(); track item.id) {
+            <li>
+              <span>{{ item.cantidad }}x {{ item.producto_nombre }} ({{ item.talla_codigo }}, {{ item.color_nombre }})</span>
+              <span>{{ item.subtotal | number: '1.2-2' }} Bs</span>
+            </li>
+          }
+        </ul>
+        <div class="checkout-resumen__total">
+          <span>Total</span>
+          <span>{{ cart.totalPrice() | number: '1.2-2' }} Bs</span>
+        </div>
+      </div>
+
+      <div class="checkout-form">
+        @if (errorMsg()) {
+          <div class="checkout-error">{{ errorMsg() }}</div>
+        }
+
+        <label class="checkout-campo">
+          <span>Sucursal donde recoges tu pedido</span>
+          <select [value]="sucursalId()" (change)="onSucursalChange($any($event.target).value)">
+            @for (s of sucursales(); track s.id) {
+              <option [value]="s.id">{{ s.nombre }} · {{ s.direccion }}</option>
+            }
+          </select>
+        </label>
+
+        <div class="checkout-metodos">
+          <button
+            type="button"
+            class="checkout-metodo"
+            [class.checkout-metodo--activo]="metodo() === 'paypal'"
+            (click)="onMetodoChange('paypal')"
+          >
+            PayPal / Tarjeta de credito
+          </button>
+          <button
+            type="button"
+            class="checkout-metodo"
+            [class.checkout-metodo--activo]="metodo() === 'qr'"
+            (click)="onMetodoChange('qr')"
+          >
+            QR (transferencia)
+          </button>
+        </div>
+
+        @if (metodo() === 'paypal') {
+          <p class="checkout-nota">
+            El pago se hace en dolares (USD) a traves de PayPal, aunque los precios de la tienda esten en bolivianos.
+          </p>
+          <div #paypalContainer class="checkout-paypal"></div>
+        }
+
+        @if (metodo() === 'qr') {
+          <p class="checkout-nota">
+            Escanea el QR, transfiere el total de tu compra y sube una foto del comprobante. Un encargado de la
+            sucursal lo va a revisar antes de confirmar tu compra.
+          </p>
+          <img class="checkout-qr-img" src="/img/pago/qr-transferencia.png" alt="QR para pagar por transferencia" />
+          <label class="checkout-campo">
+            <span>Foto del comprobante</span>
+            <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onArchivoSeleccionado($event)" />
+          </label>
+          <button
+            type="button"
+            class="checkout-enviar"
+            [disabled]="!archivoComprobante() || estado() === 'procesando'"
+            (click)="enviarQr()"
+          >
+            {{ estado() === 'procesando' ? 'Enviando...' : 'Enviar comprobante' }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  @if (estado() === 'listo') {
+    <div class="checkout-exito">
+      <h2>Tu compra fue pagada con exito</h2>
+      <p>Te esperamos en la sucursal que elegiste para recoger tu pedido.</p>
+      <button type="button" (click)="irATienda()">Seguir comprando</button>
+    </div>
+  }
+
+  @if (estado() === 'listo-qr') {
+    <div class="checkout-exito">
+      <h2>Comprobante recibido</h2>
+      <p>Tu compra queda pendiente de verificacion. Te avisaremos cuando se confirme el pago.</p>
+      <button type="button" (click)="irATienda()">Seguir comprando</button>
+    </div>
+  }
+</section>

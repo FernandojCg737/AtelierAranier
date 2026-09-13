@@ -14,3 +14,4 @@ google-auth==2.36.0
 requests==2.32.3
 Pillow==11.0.0
 pillow-heif==0.18.0
+openpyxl==3.1.5

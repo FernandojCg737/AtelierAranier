@@ -59,6 +59,7 @@ class Carrito(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     cliente_id: Mapped[int] = mapped_column(ForeignKey("cliente.id"))
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    fecha_actualizacion: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     estado: Mapped[str] = mapped_column(String(20), default="activo")
 
     cliente: Mapped["Cliente"] = relationship(back_populates="carritos")
@@ -92,6 +93,7 @@ class Venta(Base):
     cliente: Mapped["Cliente"] = relationship(back_populates="ventas")
     sucursal: Mapped["Sucursal"] = relationship(back_populates="ventas")
     pago: Mapped["Pago | None"] = relationship(back_populates="venta")
+    calificacion: Mapped["Calificacion | None"] = relationship(back_populates="venta")
 
     __mapper_args__ = {
         "polymorphic_identity": "venta",
@@ -103,9 +105,11 @@ class VentaPresencial(Venta):
     __tablename__ = "venta_presencial"
 
     id: Mapped[int] = mapped_column(ForeignKey("venta.id"), primary_key=True)
-    cajero_id: Mapped[int] = mapped_column(ForeignKey("cajero.id"))
+    # CU11: cualquier tipo de empleado puede atender una venta de mostrador
+    # (Administrador, Encargado de Sucursal o Cajero), no solo un Cajero.
+    empleado_id: Mapped[int] = mapped_column(ForeignKey("empleado.id"))
 
-    cajero: Mapped["Cajero"] = relationship(back_populates="ventas_atendidas")
+    atendido_por: Mapped["Empleado"] = relationship(back_populates="ventas_atendidas")
     detalles: Mapped[list["DetalleVentaPresencial"]] = relationship(
         back_populates="venta_presencial", cascade="all, delete-orphan"
     )
@@ -158,11 +162,21 @@ class Pago(Base):
     venta_id: Mapped[int] = mapped_column(ForeignKey("venta.id"), unique=True)
     monto: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     metodo: Mapped[str] = mapped_column(String(30))
+    # estados: pendiente | verificando (QR subido, falta revision) |
+    # completado | rechazado
     estado: Mapped[str] = mapped_column(String(20), default="pendiente")
     fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+    # Pago por QR (CU11): el cliente sube la foto del comprobante de
+    # transferencia y un cajero/encargado la revisa manualmente para
+    # aprobar o rechazar el pago -- no hay forma de verificar un QR
+    # automaticamente, a diferencia de PayPal.
+    comprobante_url: Mapped[str | None] = mapped_column(String(500))
+    revisado_por_id: Mapped[int | None] = mapped_column(ForeignKey("empleado.id"))
+
     venta: Mapped["Venta"] = relationship(back_populates="pago")
     transaccion: Mapped["Transaccion | None"] = relationship(back_populates="pago")
+    revisado_por: Mapped["Empleado | None"] = relationship()
 
 
 class UsoArPrenda(Base):

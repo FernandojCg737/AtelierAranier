@@ -33,6 +33,7 @@ class UsuarioOut(BaseModel):
     tipo: str
     rol: str | None = None
     permisos: list[str] = []
+    sucursal_id: int | None = None
 
     model_config = {"from_attributes": True}
 

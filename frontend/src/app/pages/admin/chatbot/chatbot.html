@@ -1,0 +1,49 @@
+<div class="admin-content">
+  <div class="admin-content__header">
+    <div>
+      <span class="admin-content__eyebrow">P5 · CU19</span>
+      <h1>Atender Cliente con Chatbot</h1>
+      <p>Clientes que usaron el asistente virtual. Hace click en uno para ver la conversacion completa.</p>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="admin-error">{{ error() }}</div>
+  }
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Mensajes</th>
+          <th>Ultima actividad</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td colspan="3" class="admin-table__empty">Cargando...</td>
+          </tr>
+        } @else if (items().length === 0) {
+          <tr>
+            <td colspan="3" class="admin-table__empty">Todavia nadie uso el chatbot.</td>
+          </tr>
+        } @else {
+          @for (u of items(); track u.cliente_id) {
+            <tr [routerLink]="['/admin/chatbot', u.cliente_id]" class="admin-table__row-link">
+              <td>
+                <div class="admin-table__user">
+                  <strong>{{ u.cliente_nombre }}</strong>
+                  <span>{{ u.cliente_email }}</span>
+                </div>
+              </td>
+              <td>{{ u.total_mensajes }}</td>
+              <td>{{ u.ultima_actividad | date: "d MMM yyyy, h:mm a" }}</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
