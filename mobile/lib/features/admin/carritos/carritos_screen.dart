@@ -37,7 +37,9 @@ class _CarritosScreenState extends ConsumerState<CarritosScreen> {
   }
 
   void _cargar() {
-    setState(() => _future = ref.read(adminRepositoryProvider).getCarritosActivos());
+    setState(() {
+      _future = ref.read(adminRepositoryProvider).getCarritosActivos();
+    });
   }
 
   @override
