@@ -24,7 +24,7 @@ class NotificacionAdmin {
       id: json['id'] as int,
       tipoEvento: json['tipo_evento'] as String,
       mensaje: json['mensaje'] as String,
-      fecha: DateTime.parse(json['fecha'] as String),
+      fecha: DateTime.parse(json['fecha_envio'] as String),
       leida: json['leida'] as bool,
       clienteNombre: json['cliente_nombre'] as String,
       clienteEmail: json['cliente_email'] as String,
