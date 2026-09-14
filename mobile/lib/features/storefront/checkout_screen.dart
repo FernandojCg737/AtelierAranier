@@ -45,6 +45,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   String _error = '';
   int? _ventaId;
   WebViewController? _paypalController;
+  // Arranca chico (solo los botones) y despues la pagina misma le avisa
+  // (canal PaypalHeightChannel) cuanto mide de verdad cuando el formulario
+  // de tarjeta se despliega -- asi no hace falta scroll DENTRO del WebView
+  // (que quedaba atrapado por el scroll de la pagina de afuera y no dejaba
+  // ver el boton de pagar, reportado por el usuario) porque el WebView
+  // termina siendo tan alto como su contenido real, y es la pagina entera
+  // del checkout la unica que scrollea.
+  double _paypalWebviewHeight = 130;
 
   @override
   void initState() {
@@ -60,8 +68,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
       ..addJavaScriptChannel('PaypalResultChannel', onMessageReceived: (msg) => _onPaypalMensaje(msg.message))
+      ..addJavaScriptChannel('PaypalHeightChannel', onMessageReceived: (msg) => _onPaypalAltura(msg.message))
       ..loadRequest(Uri.parse(paypalEmbedUrl(token)));
     setState(() => _paypalController = controller);
+  }
+
+  void _onPaypalAltura(String raw) {
+    final alto = double.tryParse(raw);
+    if (alto == null || !mounted) return;
+    // Clamps: nunca mas chico que los botones solos, ni mas grande que casi
+    // toda la pantalla (por si algun campo de direccion la infla de mas).
+    final maxAlto = MediaQuery.of(context).size.height * 0.75;
+    final nuevo = alto.clamp(130.0, maxAlto).toDouble();
+    if ((nuevo - _paypalWebviewHeight).abs() > 2) {
+      setState(() => _paypalWebviewHeight = nuevo);
+    }
   }
 
   void _onPaypalMensaje(String raw) {
@@ -254,11 +275,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           else if (_paypalController == null)
             const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Center(child: CircularProgressIndicator()))
           else
-            // 430 (no 230) porque el boton "Debit or Credit Card" abre un
-            // formulario propio (numero, vencimiento, CSC) dentro del mismo
-            // WebView -- con un alto chico ese formulario se desbordaba
-            // visualmente fuera del contenedor.
-            SizedBox(height: 430, child: WebViewWidget(controller: _paypalController!)),
+            // Alto dinamico (ver PaypalHeightChannel/_onPaypalAltura): con
+            // un alto fijo, el boton "Debit or Credit Card" abria un
+            // formulario (numero, vencimiento, CSC, direccion) mas alto que
+            // el recuadro, y como el WebView esta anidado en esta misma
+            // lista que scrollea, no habia forma de scrollear DENTRO del
+            // WebView para llegar al boton de pagar -- quedaba atrapado.
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              height: _paypalWebviewHeight,
+              child: WebViewWidget(controller: _paypalController!),
+            ),
         ] else ...[
           const Text(
             'Transferi a nuestro QR y despues subi la foto del comprobante. Un cajero lo revisa y confirma tu compra.',

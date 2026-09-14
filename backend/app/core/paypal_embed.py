@@ -51,6 +51,22 @@ function enviarResultado(payload) {{
   }}
 }}
 
+// El WebView de Flutter (chico, embebido en el formulario) no sabe cuanto
+// mide esta pagina -- sin esto, el formulario de tarjeta (que crece cuando
+// se completa: numero -> vencimiento/CSC -> direccion de facturacion)
+// quedaba recortado y el boton de pagar final no se podia ni ver ni
+// scrollear hasta el (reportado por el usuario probando en su celular).
+// En vez de adivinar un alto fijo, se le avisa a Flutter el alto real cada
+// vez que el contenido cambia, y el WebView se agranda para que sea la
+// pagina entera (checkout) la que scrollea, sin scroll anidado.
+function reportarAltura() {{
+  if (window.PaypalHeightChannel) {{
+    window.PaypalHeightChannel.postMessage(String(document.body.scrollHeight));
+  }}
+}}
+new ResizeObserver(reportarAltura).observe(document.body);
+window.addEventListener("load", reportarAltura);
+
 async function crearOrden() {{
   const res = await fetch("/api/v1/ventas/checkout/paypal/crear-orden", {{
     method: "POST",
@@ -82,14 +98,17 @@ script.onload = () => {{
       .render("#paypal-button-container");
     msgCargando.hidden = true;
     contenedor.hidden = false;
+    reportarAltura();
   }} catch (e) {{
     msgCargando.hidden = true;
     msgError.hidden = false;
+    reportarAltura();
   }}
 }};
 script.onerror = () => {{
   msgCargando.hidden = true;
   msgError.hidden = false;
+  reportarAltura();
 }};
 document.head.appendChild(script);
 </script>
