@@ -24,7 +24,12 @@ class CarritoScreen extends ConsumerWidget {
       child: CustomScrollView(
         slivers: [
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 20, 20, 0),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              MediaQuery.of(context).padding.top + 20,
+              20,
+              0,
+            ),
             sliver: SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,7 +47,10 @@ class CarritoScreen extends ConsumerWidget {
                   const SizedBox(height: 10),
                   const Text(
                     'Revisa tus articulos seleccionados antes de finalizar la compra.',
-                    style: TextStyle(fontSize: 14, color: AppColors.grayTextDark),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.grayTextDark,
+                    ),
                   ),
                 ],
               ),
@@ -56,8 +64,12 @@ class CarritoScreen extends ConsumerWidget {
                 child: state.loading && items.isEmpty
                     ? const CircularProgressIndicator()
                     : items.isEmpty
-                        ? const _CarritoEmpty()
-                        : _CarritoContent(items: items, total: state.total, totalItems: state.totalItems),
+                    ? const _CarritoEmpty()
+                    : _CarritoContent(
+                        items: items,
+                        total: state.total,
+                        totalItems: state.totalItems,
+                      ),
               ),
             ),
           ),
@@ -84,7 +96,11 @@ class _CarritoEmpty extends StatelessWidget {
           const Text(
             'TU CARRITO ESTA VACIO',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.brandDark),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.brandDark,
+            ),
           ),
           const SizedBox(height: 12),
           const Text(
@@ -111,7 +127,11 @@ class _CarritoEmpty extends StatelessWidget {
 }
 
 class _CarritoContent extends ConsumerWidget {
-  const _CarritoContent({required this.items, required this.total, required this.totalItems});
+  const _CarritoContent({
+    required this.items,
+    required this.total,
+    required this.totalItems,
+  });
 
   final List<DetalleCarrito> items;
   final double total;
@@ -123,11 +143,11 @@ class _CarritoContent extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         DecoratedBox(
-          decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFE5E5E5)))),
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: Color(0xFFE5E5E5))),
+          ),
           child: Column(
-            children: [
-              for (final item in items) _CarritoItemRow(item: item),
-            ],
+            children: [for (final item in items) _CarritoItemRow(item: item)],
           ),
         ),
         const SizedBox(height: 24),
@@ -145,11 +165,20 @@ class _CarritoContent extends ConsumerWidget {
                 children: [
                   Text(
                     'TOTAL ($totalItems ARTICULOS)',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF666666), letterSpacing: 0.4),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF666666),
+                      letterSpacing: 0.4,
+                    ),
                   ),
                   Text(
                     '${total.toStringAsFixed(2)} Bs',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.brandDark),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.brandDark,
+                    ),
                   ),
                 ],
               ),
@@ -158,13 +187,27 @@ class _CarritoContent extends ConsumerWidget {
                 onPressed: () => context.push('/checkout'),
                 child: const Text('FINALIZAR COMPRA'),
               ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => _irAReservar(context, items),
+                icon: const Icon(Icons.event_outlined, size: 16),
+                label: const Text('RESERVAR EN VEZ DE COMPRAR'),
+                style: OutlinedButton.styleFrom(
+                  shape: const RoundedRectangleBorder(),
+                ),
+              ),
               const SizedBox(height: 12),
               Center(
                 child: TextButton(
                   onPressed: () => context.go('/tienda'),
                   child: const Text(
                     'Continuar comprando',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brandDark, decoration: TextDecoration.underline),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.brandDark,
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
                 ),
               ),
@@ -176,6 +219,61 @@ class _CarritoContent extends ConsumerWidget {
   }
 }
 
+/// Abre el formulario de reserva (CU10) para un item del carrito. Si hay
+/// un solo producto, va directo; si hay varios, primero deja elegir cual
+/// -- reservar es una accion por producto (sucursal/talla/color/horario
+/// propios), no tiene sentido "reservar todo el carrito junto".
+Future<void> _irAReservar(
+  BuildContext context,
+  List<DetalleCarrito> items,
+) async {
+  DetalleCarrito? elegido = items.length == 1 ? items.first : null;
+
+  elegido ??= await showModalBottomSheet<DetalleCarrito>(
+    context: context,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'QUE PRODUCTO QUERES RESERVAR?',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                  color: AppColors.grayText,
+                ),
+              ),
+            ),
+          ),
+          for (final item in items)
+            ListTile(
+              title: Text(
+                '${item.productoNombre} (${item.tallaCodigo}, ${item.colorNombre})',
+              ),
+              onTap: () => Navigator.of(context).pop(item),
+            ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    ),
+  );
+
+  if (elegido == null || !context.mounted) return;
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => ReservaFormScreen(
+        productoId: elegido!.productoId,
+        productoNombre: elegido.productoNombre,
+      ),
+    ),
+  );
+}
+
 class _CarritoItemRow extends ConsumerWidget {
   const _CarritoItemRow({required this.item});
 
@@ -184,81 +282,97 @@ class _CarritoItemRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DecoratedBox(
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5)))),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5))),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 60,
-                  height: 76,
-                  color: AppColors.grayBorderLight,
-                  child: item.productoImagenUrl != null
-                      ? CachedNetworkImage(imageUrl: item.productoImagenUrl!, fit: BoxFit.cover)
-                      : const Icon(Icons.image_not_supported_outlined, color: AppColors.grayText, size: 20),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${item.tallaCodigo} · ${item.colorNombre}',
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF9A9A9A), letterSpacing: 0.4),
-                      ),
-                      Text(
-                        item.productoNombre,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.brandDark),
-                      ),
-                      const SizedBox(height: 4),
-                      Text('${item.precioUnitario.toStringAsFixed(2)} Bs', style: const TextStyle(fontSize: 12, color: Color(0xFF888888))),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _QtyStepper(
-                  quantity: item.cantidad,
-                  onDecrease: () => ref.read(cartProvider.notifier).actualizarCantidad(item.id, item.cantidad - 1),
-                  onIncrease: () => ref.read(cartProvider.notifier).actualizarCantidad(item.id, item.cantidad + 1),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 64,
-                  child: Text(
-                    '${item.subtotal.toStringAsFixed(2)} Bs',
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.brandDark),
-                  ),
-                ),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: const Icon(Icons.close, size: 16, color: AppColors.grayText),
-                  onPressed: () => ref.read(cartProvider.notifier).eliminar(item.id),
-                ),
-              ],
+            Container(
+              width: 60,
+              height: 76,
+              color: AppColors.grayBorderLight,
+              child: item.productoImagenUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: item.productoImagenUrl!,
+                      fit: BoxFit.cover,
+                    )
+                  : const Icon(
+                      Icons.image_not_supported_outlined,
+                      color: AppColors.grayText,
+                      size: 20,
+                    ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 74, top: 4),
-              child: TextButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ReservaFormScreen(productoId: item.productoId, productoNombre: item.productoNombre),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${item.tallaCodigo} · ${item.colorNombre}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF9A9A9A),
+                      letterSpacing: 0.4,
+                    ),
                   ),
-                ),
-                icon: const Icon(Icons.event_outlined, size: 14, color: AppColors.grayTextDark),
-                label: const Text(
-                  'RESERVAR EN VEZ DE COMPRAR',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.3, color: AppColors.grayTextDark),
-                ),
-                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 24), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  Text(
+                    item.productoNombre,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.brandDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${item.precioUnitario.toStringAsFixed(2)} Bs',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF888888),
+                    ),
+                  ),
+                ],
               ),
+            ),
+            const SizedBox(width: 8),
+            _QtyStepper(
+              quantity: item.cantidad,
+              onDecrease: () => ref
+                  .read(cartProvider.notifier)
+                  .actualizarCantidad(item.id, item.cantidad - 1),
+              onIncrease: () => ref
+                  .read(cartProvider.notifier)
+                  .actualizarCantidad(item.id, item.cantidad + 1),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 64,
+              child: Text(
+                '${item.subtotal.toStringAsFixed(2)} Bs',
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.brandDark,
+                ),
+              ),
+            ),
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              icon: const Icon(
+                Icons.close,
+                size: 16,
+                color: AppColors.grayText,
+              ),
+              onPressed: () =>
+                  ref.read(cartProvider.notifier).eliminar(item.id),
             ),
           ],
         ),
@@ -268,7 +382,11 @@ class _CarritoItemRow extends ConsumerWidget {
 }
 
 class _QtyStepper extends StatelessWidget {
-  const _QtyStepper({required this.quantity, required this.onDecrease, required this.onIncrease});
+  const _QtyStepper({
+    required this.quantity,
+    required this.onDecrease,
+    required this.onIncrease,
+  });
 
   final int quantity;
   final VoidCallback onDecrease;
@@ -282,7 +400,15 @@ class _QtyStepper extends StatelessWidget {
         _QtyButton(label: '−', onTap: onDecrease),
         SizedBox(
           width: 22,
-          child: Text('$quantity', textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.brandDark)),
+          child: Text(
+            '$quantity',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.brandDark,
+            ),
+          ),
         ),
         _QtyButton(label: '+', onTap: onIncrease),
       ],
@@ -304,8 +430,13 @@ class _QtyButton extends StatelessWidget {
         width: 26,
         height: 26,
         alignment: Alignment.center,
-        decoration: BoxDecoration(border: Border.all(color: AppColors.grayBorder)),
-        child: Text(label, style: const TextStyle(fontSize: 14, color: AppColors.brandDark)),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.grayBorder),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 14, color: AppColors.brandDark),
+        ),
       ),
     );
   }

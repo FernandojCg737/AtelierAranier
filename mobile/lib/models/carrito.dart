@@ -1,3 +1,5 @@
+import '../core/api_config.dart';
+
 /// Espejo de `CarritoOut`/`DetalleCarritoOut` (backend, CU11). El carrito
 /// ahora vive en el backend ligado al cliente -- igual que en la web desde
 /// CU11, ya no es local. Pydantic serializa Decimal como texto (ej.
@@ -34,7 +36,9 @@ class DetalleCarrito {
       id: json['id'] as int,
       productoId: json['producto_id'] as int,
       productoNombre: json['producto_nombre'] as String,
-      productoImagenUrl: json['producto_imagen_url'] as String?,
+      productoImagenUrl: (json['producto_imagen_url'] as String?) != null
+          ? resolveImageUrl(json['producto_imagen_url'] as String)
+          : null,
       tallaId: json['talla_id'] as int,
       tallaCodigo: json['talla_codigo'] as String,
       colorId: json['color_id'] as int,
