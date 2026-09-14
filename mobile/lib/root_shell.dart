@@ -19,10 +19,11 @@ class RootShell extends ConsumerStatefulWidget {
 }
 
 class _RootShellState extends ConsumerState<RootShell> {
-  // Igual que el signal `visible` de `whatsapp-float.ts`: arranca oculto y
-  // se muestra apenas el usuario baja y el hero de Home sale del viewport
-  // (en las demas pestañas, que no tienen hero, se ve siempre).
-  bool _whatsappVisibleEnHome = false;
+  // Igual que `heroVisible`/`visible` de chatbot-widget.ts y
+  // whatsapp-float.ts: arranca oculto y se muestra apenas el usuario baja
+  // y el hero de Home sale del viewport (en las demas pestañas, que no
+  // tienen hero, se ve siempre) -- gobierna a los DOS botones flotantes.
+  bool _floatingVisibleEnHome = false;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +31,7 @@ class _RootShellState extends ConsumerState<RootShell> {
     final auth = ref.watch(authProvider);
     final esClienteConSesion = auth.usuario?.isCliente ?? false;
     final enHome = widget.navigationShell.currentIndex == 0;
-    final whatsappVisible = !enHome || _whatsappVisibleEnHome;
+    final floatingVisible = !enHome || _floatingVisibleEnHome;
 
     return Scaffold(
       body: NotificationListener<ScrollNotification>(
@@ -40,8 +41,8 @@ class _RootShellState extends ConsumerState<RootShell> {
           // -- ver `hero_widget.dart`. Pasado eso, el hero ya no se ve.
           final heroHeight = MediaQuery.of(context).size.height * 0.85;
           final pastHero = notification.metrics.pixels >= heroHeight;
-          if (pastHero != _whatsappVisibleEnHome) {
-            setState(() => _whatsappVisibleEnHome = pastHero);
+          if (pastHero != _floatingVisibleEnHome) {
+            setState(() => _floatingVisibleEnHome = pastHero);
           }
           return false;
         },
@@ -56,9 +57,9 @@ class _RootShellState extends ConsumerState<RootShell> {
               right: 16,
               bottom: 16,
               child: IgnorePointer(
-                ignoring: !whatsappVisible,
+                ignoring: !floatingVisible,
                 child: AnimatedOpacity(
-                  opacity: whatsappVisible ? 1 : 0,
+                  opacity: floatingVisible ? 1 : 0,
                   duration: const Duration(milliseconds: 200),
                   child: const WhatsappFloatButton(),
                 ),
@@ -70,8 +71,10 @@ class _RootShellState extends ConsumerState<RootShell> {
       // CU19: burbuja flotante del chatbot -- equivalente al icono de la
       // web, solo para clientes con sesion iniciada (las conversaciones
       // quedan ligadas al cliente). Va a la izquierda (mismo lado que en la
-      // web), para no pisarse con el de WhatsApp.
-      floatingActionButton: esClienteConSesion
+      // web), para no pisarse con el de WhatsApp, y se oculta/muestra con
+      // el mismo criterio del hero (igual que `heroVisible` en
+      // chatbot-widget.ts).
+      floatingActionButton: (esClienteConSesion && floatingVisible)
           ? FloatingActionButton(
               onPressed: () => context.push('/chatbot'),
               backgroundColor: const Color(0xFF203C40),
