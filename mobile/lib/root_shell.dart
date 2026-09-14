@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'features/auth/auth_provider.dart';
 import 'features/storefront/cart_provider.dart';
+import 'widgets/whatsapp_float_button.dart';
 
 /// Shell con bottom nav para toda la parte publica (Home, Tienda, Carrito,
 /// Cuenta) — equivalente al `Header` + `RouterOutlet` de la web para las
@@ -20,7 +21,16 @@ class RootShell extends ConsumerWidget {
     final esClienteConSesion = auth.usuario?.isCliente ?? false;
 
     return Scaffold(
-      body: navigationShell,
+      body: Stack(
+        children: [
+          navigationShell,
+          // Equivalente al `app-whatsapp-float` que la web muestra en TODAS
+          // las paginas -- a diferencia del chatbot (abajo a la derecha),
+          // este va abajo a la izquierda (mismos lados que en la web) y no
+          // requiere sesion, para que cualquier visitante pueda escribir.
+          const Positioned(left: 16, bottom: 16, child: WhatsappFloatButton()),
+        ],
+      ),
       // CU19: burbuja flotante del chatbot -- equivalente al icono de la
       // web, solo para clientes con sesion iniciada (las conversaciones
       // quedan ligadas al cliente).

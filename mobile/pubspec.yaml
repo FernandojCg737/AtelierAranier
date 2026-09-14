@@ -80,6 +80,8 @@ dependencies:
   # funciona en la web dentro de un WebView, en vez de reimplementar el
   # protocolo WebRTC de Decart a mano en Dart.
   webview_flutter: ^4.10.0
+  # Icono vectorial de WhatsApp del boton flotante (mismo trazo que usa la web)
+  flutter_svg: ^2.0.10+1
   # WebViewController.onPermissionRequest solo reenvia el pedido de la
   # pagina al WebView; en Android 6+ el permiso de camara del SISTEMA
   # operativo (runtime, no solo el <uses-permission> del manifest) tiene
@@ -137,6 +139,7 @@ flutter:
   assets:
     - assets/logo.png
     - assets/qr-transferencia.png
+    - assets/whatsapp.svg
     - assets/video/hero.mp4
     - assets/video/tienda-hero.mp4
 
