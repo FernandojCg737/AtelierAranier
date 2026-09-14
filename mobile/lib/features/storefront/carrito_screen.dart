@@ -191,7 +191,7 @@ class _CarritoContent extends ConsumerWidget {
               OutlinedButton.icon(
                 onPressed: () => _irAReservar(context, items),
                 icon: const Icon(Icons.event_outlined, size: 16),
-                label: const Text('RESERVAR EN VEZ DE COMPRAR'),
+                label: const Text('RESERVAR'),
                 style: OutlinedButton.styleFrom(
                   shape: const RoundedRectangleBorder(),
                 ),
