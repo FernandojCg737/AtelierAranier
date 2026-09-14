@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../models/carrito.dart';
 import 'cart_provider.dart';
+import 'reserva_form_screen.dart';
 
 /// CU11: replica de `pages/carrito/carrito.html` en la web, pero contra el
 /// carrito real del backend (no local). Mismo header, mismo estado vacio,
@@ -186,57 +187,78 @@ class _CarritoItemRow extends ConsumerWidget {
       decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E5E5)))),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 60,
-              height: 76,
-              color: AppColors.grayBorderLight,
-              child: item.productoImagenUrl != null
-                  ? CachedNetworkImage(imageUrl: item.productoImagenUrl!, fit: BoxFit.cover)
-                  : const Icon(Icons.image_not_supported_outlined, color: AppColors.grayText, size: 20),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${item.tallaCodigo} · ${item.colorNombre}',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF9A9A9A), letterSpacing: 0.4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 60,
+                  height: 76,
+                  color: AppColors.grayBorderLight,
+                  child: item.productoImagenUrl != null
+                      ? CachedNetworkImage(imageUrl: item.productoImagenUrl!, fit: BoxFit.cover)
+                      : const Icon(Icons.image_not_supported_outlined, color: AppColors.grayText, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${item.tallaCodigo} · ${item.colorNombre}',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF9A9A9A), letterSpacing: 0.4),
+                      ),
+                      Text(
+                        item.productoNombre,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.brandDark),
+                      ),
+                      const SizedBox(height: 4),
+                      Text('${item.precioUnitario.toStringAsFixed(2)} Bs', style: const TextStyle(fontSize: 12, color: Color(0xFF888888))),
+                    ],
                   ),
-                  Text(
-                    item.productoNombre,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.brandDark),
+                ),
+                const SizedBox(width: 8),
+                _QtyStepper(
+                  quantity: item.cantidad,
+                  onDecrease: () => ref.read(cartProvider.notifier).actualizarCantidad(item.id, item.cantidad - 1),
+                  onIncrease: () => ref.read(cartProvider.notifier).actualizarCantidad(item.id, item.cantidad + 1),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 64,
+                  child: Text(
+                    '${item.subtotal.toStringAsFixed(2)} Bs',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.brandDark),
                   ),
-                  const SizedBox(height: 4),
-                  Text('${item.precioUnitario.toStringAsFixed(2)} Bs', style: const TextStyle(fontSize: 12, color: Color(0xFF888888))),
-                ],
+                ),
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  icon: const Icon(Icons.close, size: 16, color: AppColors.grayText),
+                  onPressed: () => ref.read(cartProvider.notifier).eliminar(item.id),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 74, top: 4),
+              child: TextButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ReservaFormScreen(productoId: item.productoId, productoNombre: item.productoNombre),
+                  ),
+                ),
+                icon: const Icon(Icons.event_outlined, size: 14, color: AppColors.grayTextDark),
+                label: const Text(
+                  'RESERVAR EN VEZ DE COMPRAR',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.3, color: AppColors.grayTextDark),
+                ),
+                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 24), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
               ),
-            ),
-            const SizedBox(width: 8),
-            _QtyStepper(
-              quantity: item.cantidad,
-              onDecrease: () => ref.read(cartProvider.notifier).actualizarCantidad(item.id, item.cantidad - 1),
-              onIncrease: () => ref.read(cartProvider.notifier).actualizarCantidad(item.id, item.cantidad + 1),
-            ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 64,
-              child: Text(
-                '${item.subtotal.toStringAsFixed(2)} Bs',
-                textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.brandDark),
-              ),
-            ),
-            IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              icon: const Icon(Icons.close, size: 16, color: AppColors.grayText),
-              onPressed: () => ref.read(cartProvider.notifier).eliminar(item.id),
             ),
           ],
         ),
