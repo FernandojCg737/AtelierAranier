@@ -264,8 +264,35 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             'Transferi a nuestro QR y despues subi la foto del comprobante. Un cajero lo revisa y confirma tu compra.',
             style: TextStyle(fontSize: 12, color: AppColors.grayTextDark),
           ),
+          const SizedBox(height: 12),
+          // El QR es de monto libre (ALTOKE/BancoSol no nos da forma de
+          // generarlo con el monto ya puesto), asi que se lo repetimos bien
+          // grande aca al lado para que no se equivoquen al escanearlo.
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            color: const Color(0xFFF7F7F5),
+            child: Column(
+              children: [
+                const Text(
+                  'MONTO EXACTO A TRANSFERIR',
+                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: Colors.grey),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${total.toStringAsFixed(2)} Bs',
+                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.brandDark),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 8),
           Image.asset('assets/qr-transferencia.png', height: 180, errorBuilder: (_, _, _) => const SizedBox.shrink()),
+          const SizedBox(height: 6),
+          const Text(
+            'Este QR es de monto libre: escribi vos el monto de arriba al escanearlo. Si transferis un monto distinto, la revision de tu comprobante se va a demorar mas.',
+            style: TextStyle(fontSize: 11, color: Color(0xFFB3261E)),
+          ),
           const SizedBox(height: 20),
 
           const Text('COMPROBANTE DE TRANSFERENCIA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),

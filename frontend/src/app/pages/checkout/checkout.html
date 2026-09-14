@@ -89,7 +89,15 @@
             Escanea el QR, transfiere el total de tu compra y sube una foto del comprobante. Un encargado de la
             sucursal lo va a revisar antes de confirmar tu compra.
           </p>
+          <div class="checkout-qr-monto">
+            <span>MONTO EXACTO A TRANSFERIR</span>
+            <strong>{{ cart.totalPrice() | number: '1.2-2' }} Bs</strong>
+          </div>
           <img class="checkout-qr-img" src="/img/pago/qr-transferencia.png" alt="QR para pagar por transferencia" />
+          <p class="checkout-qr-aviso">
+            Este QR es de monto libre: escribi vos el monto de arriba al escanearlo. Si transferis un monto distinto,
+            la revision de tu comprobante se va a demorar mas.
+          </p>
           <label class="checkout-campo">
             <span>Foto del comprobante</span>
             <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onArchivoSeleccionado($event)" />
