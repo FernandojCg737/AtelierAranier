@@ -9,7 +9,14 @@ import 'google_auth.dart';
 import 'google_auth_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.onSuccess});
+
+  /// Si esta pantalla se abrio empujada (push) desde una accion que
+  /// necesitaba sesion (agregar al carrito, reservar, probarse una prenda),
+  /// el llamador pasa esto para volver (pop) y retomar esa misma accion en
+  /// vez del comportamiento por defecto de ir a Home/Admin -- asi el
+  /// cliente no pierde lo que estaba haciendo (reportado por testers).
+  final VoidCallback? onSuccess;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -42,8 +49,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       await ref.read(authProvider.notifier).login(email: _emailCtrl.text.trim(), password: _passwordCtrl.text);
       if (!mounted) return;
-      final auth = ref.read(authProvider);
-      context.go(auth.isStaff ? '/admin' : '/');
+      if (widget.onSuccess != null) {
+        widget.onSuccess!();
+      } else {
+        final auth = ref.read(authProvider);
+        context.go(auth.isStaff ? '/admin' : '/');
+      }
     } catch (e) {
       setState(() => _error = extractErrorMessage(e));
     } finally {
@@ -61,8 +72,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (resultado.cancelled) return;
       await ref.read(authProvider.notifier).loginWithGoogle(resultado.idToken!);
       if (!mounted) return;
-      final auth = ref.read(authProvider);
-      context.go(auth.isStaff ? '/admin' : '/');
+      if (widget.onSuccess != null) {
+        widget.onSuccess!();
+      } else {
+        final auth = ref.read(authProvider);
+        context.go(auth.isStaff ? '/admin' : '/');
+      }
     } catch (e) {
       setState(() => _error = extractErrorMessage(e));
     } finally {

@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { AfterViewInit, Component, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthShowcase } from '../../components/auth-showcase/auth-showcase';
 import { Auth } from '../../services/auth';
 import { GoogleIdentity } from '../../services/google-identity';
@@ -14,6 +14,7 @@ import { GoogleIdentity } from '../../services/google-identity';
 export class Login implements AfterViewInit {
   private readonly auth = inject(Auth);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly googleIdentity = inject(GoogleIdentity);
 
   protected readonly email = signal('');
@@ -58,7 +59,14 @@ export class Login implements AfterViewInit {
   }
 
   private redirectAfterLogin(): void {
-    this.router.navigateByUrl(this.auth.landingRoute());
+    // `returnUrl` viene de authGuard (rutas protegidas, ej. /checkout) o de
+    // acciones que mandaron aca por falta de sesion (agregar al carrito,
+    // reservar, probarse una prenda desde la ficha de producto) -- si esta
+    // presente, volvemos justo ahi en vez de al landing por defecto. Se
+    // valida que sea una ruta interna (empiece con "/") para no abrir una
+    // URL externa arbitraria.
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    this.router.navigateByUrl(returnUrl?.startsWith('/') ? returnUrl : this.auth.landingRoute());
   }
 
   private extractError(err: unknown): string {

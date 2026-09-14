@@ -37,8 +37,14 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
   // una foto), tambien igual que en la web.
   Future<void> _abrirProbadorAr(int productoId) async {
     if (!ref.read(authProvider).isAuthenticated) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
-      return;
+      // Al loguearse, vuelve (pop) y retoma esta misma accion -- antes
+      // mandaba al Home/Admin y el cliente perdia lo que estaba por hacer
+      // (reportado por testers probando "agregar al carrito"/"reservar").
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LoginScreen(onSuccess: () => Navigator.of(context).pop())),
+      );
+      if (!mounted || !ref.read(authProvider).isAuthenticated) return;
+      return _abrirProbadorAr(productoId);
     }
 
     final modo = await showModalBottomSheet<String>(
@@ -75,10 +81,13 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
   }
 
   // CU11 requiere sesion iniciada (el carrito queda ligado al cliente).
-  void _abrirAgregarCarrito(int productoId, String productoNombre) {
+  Future<void> _abrirAgregarCarrito(int productoId, String productoNombre) async {
     if (!ref.read(authProvider).isAuthenticated) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
-      return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LoginScreen(onSuccess: () => Navigator.of(context).pop())),
+      );
+      if (!mounted || !ref.read(authProvider).isAuthenticated) return;
+      return _abrirAgregarCarrito(productoId, productoNombre);
     }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => AgregarCarritoScreen(productoId: productoId, productoNombre: productoNombre)),
@@ -87,10 +96,13 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
 
   // CU10 requiere sesion iniciada (la reserva queda ligada al cliente que
   // la hizo, igual que CU09).
-  void _abrirReserva(int productoId, String productoNombre) {
+  Future<void> _abrirReserva(int productoId, String productoNombre) async {
     if (!ref.read(authProvider).isAuthenticated) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
-      return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LoginScreen(onSuccess: () => Navigator.of(context).pop())),
+      );
+      if (!mounted || !ref.read(authProvider).isAuthenticated) return;
+      return _abrirReserva(productoId, productoNombre);
     }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ReservaFormScreen(productoId: productoId, productoNombre: productoNombre)),

@@ -114,10 +114,35 @@ export class ProductoDetalle implements OnInit {
         this.selectedColor.set(found.colors[0]?.name ?? null);
         this.selectedSize.set(found.sizes[0] ?? null);
         this.activeImage.set(found.gallery[0] ?? found.image);
+        this.continuarIntentoPendiente();
       } catch {
         this.product.set(undefined);
       }
     });
+  }
+
+  // Si el cliente llego aca con `?intent=...` (volviendo de /login despues
+  // de que "agregar al carrito"/"reservar"/"probarme la prenda" lo mandaran
+  // a iniciar sesion) y ya esta logueado, retoma esa misma accion en vez de
+  // dejarlo con la ficha vacia y tener que repetir todo el paso. Se limpia
+  // el query param al toque para que un refresh de la pagina no la reabra.
+  private continuarIntentoPendiente(): void {
+    const intent = this.route.snapshot.queryParamMap.get('intent');
+    if (!intent || !this.auth.currentUser()) return;
+
+    void this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
+
+    if (intent === 'carrito') this.carritoAbierto.set(true);
+    else if (intent === 'reserva') this.reservaAbierta.set(true);
+    else if (intent === 'ar') this.arMenuAbierto.set(true);
+  }
+
+  // Arma la URL de vuelta (con el intent) para pasarsela a /login como
+  // `returnUrl` -- ver `redirectAfterLogin()` en login.ts.
+  private irALoginConIntento(intent: 'carrito' | 'reserva' | 'ar'): void {
+    const id = this.product()?.id ?? this.route.snapshot.paramMap.get('id');
+    const returnUrl = `/producto/${id}?intent=${intent}`;
+    void this.router.navigate(['/login'], { queryParams: { returnUrl } });
   }
 
   protected selectColor(name: string): void {
@@ -134,7 +159,7 @@ export class ProductoDetalle implements OnInit {
     // administracion (P4 > CU09). Si no hay sesion, manda a loguearse (o
     // registrarse, desde ahi) en vez de abrir el menu de opciones.
     if (!this.auth.currentUser()) {
-      void this.router.navigate(['/login']);
+      this.irALoginConIntento('ar');
       return;
     }
     this.arMenuAbierto.set(!this.arMenuAbierto());
@@ -162,7 +187,7 @@ export class ProductoDetalle implements OnInit {
     // CU10: igual que probarse la prenda, reservar requiere sesion
     // iniciada (la reserva queda ligada al cliente que la hizo).
     if (!this.auth.currentUser()) {
-      void this.router.navigate(['/login']);
+      this.irALoginConIntento('reserva');
       return;
     }
     this.reservaAbierta.set(true);
@@ -183,7 +208,7 @@ export class ProductoDetalle implements OnInit {
     // CU11: el carrito ahora es real (backend), asociado al cliente -- igual
     // que probarse la prenda o reservar, hace falta sesion iniciada.
     if (!this.auth.currentUser()) {
-      void this.router.navigate(['/login']);
+      this.irALoginConIntento('carrito');
       return;
     }
     this.carritoAbierto.set(true);
