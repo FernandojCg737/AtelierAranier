@@ -15,6 +15,7 @@ interface BitacoraItem {
   fecha: string;
   detalle: string | null;
   ip_address: string | null;
+  plataforma: string | null;
 }
 
 interface BitacoraPage {

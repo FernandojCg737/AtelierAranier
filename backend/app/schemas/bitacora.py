@@ -14,6 +14,7 @@ class BitacoraItem(BaseModel):
     fecha: datetime
     detalle: str | None
     ip_address: str | None
+    plataforma: str | None
 
     model_config = {"from_attributes": True}
 

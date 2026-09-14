@@ -9,7 +9,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const token = auth.token();
 
-  const authReq = token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
+  // CU17: le dice al backend de que app vino la accion (ver bitacora,
+  // columna "plataforma") -- se manda siempre, no solo autenticado, para
+  // que quede en acciones anonimas como registro/login tambien.
+  const headers: Record<string, string> = { 'X-Client-Platform': 'web' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const authReq = req.clone({ setHeaders: headers });
 
   return next(authReq).pipe(
     catchError((error: unknown) => {

@@ -37,6 +37,10 @@ class ApiClient {
         baseUrl: apiBaseUrl,
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
+        // CU17: le dice al backend de que app vino la accion (bitacora,
+        // columna "plataforma") -- equivalente a lo que manda
+        // `auth-interceptor.ts` en la web.
+        headers: {'X-Client-Platform': 'movil'},
       ),
     );
 

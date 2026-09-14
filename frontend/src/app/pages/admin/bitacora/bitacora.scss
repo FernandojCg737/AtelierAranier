@@ -154,6 +154,11 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   padding: 4px 10px;
+
+  &--plataforma {
+    background: #eef1f4;
+    color: var(--brand-dark);
+  }
 }
 
 .admin-pagination {

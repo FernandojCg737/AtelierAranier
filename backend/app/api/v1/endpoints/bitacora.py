@@ -45,6 +45,7 @@ def list_bitacora(
             fecha=b.fecha,
             detalle=b.detalle,
             ip_address=b.ip_address,
+            plataforma=b.plataforma,
         )
         for b in rows
     ]

@@ -11,6 +11,7 @@ class BitacoraItem {
     required this.fecha,
     this.detalle,
     this.ipAddress,
+    this.plataforma,
   });
 
   final int id;
@@ -23,6 +24,7 @@ class BitacoraItem {
   final DateTime fecha;
   final String? detalle;
   final String? ipAddress;
+  final String? plataforma;
 
   factory BitacoraItem.fromJson(Map<String, dynamic> json) {
     return BitacoraItem(
@@ -36,6 +38,7 @@ class BitacoraItem {
       fecha: DateTime.parse(json['fecha'] as String),
       detalle: json['detalle'] as String?,
       ipAddress: json['ip_address'] as String?,
+      plataforma: json['plataforma'] as String?,
     );
   }
 }

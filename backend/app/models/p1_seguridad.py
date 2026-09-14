@@ -74,6 +74,10 @@ class Bitacora(Base):
     fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     detalle: Mapped[str | None] = mapped_column(Text)
     ip_address: Mapped[str | None] = mapped_column(String(45))
+    # "web" | "movil" -- de que app vino la accion, ver X-Client-Platform en
+    # `app/core/audit.py`. Nullable: acciones registradas antes de este
+    # campo (o llamadas directas a la API sin el header) quedan sin dato.
+    plataforma: Mapped[str | None] = mapped_column(String(20))
 
     usuario: Mapped["Usuario"] = relationship(back_populates="bitacoras")
 
