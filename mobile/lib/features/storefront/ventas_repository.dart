@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/venta.dart';
 import '../auth/auth_provider.dart';
 
-/// CU11, lado cliente: checkout del carrito. Por ahora el mobile solo
-/// soporta el pago por QR (subis la foto del comprobante y un cajero lo
-/// revisa despues) -- PayPal queda pendiente porque necesita un WebView +
-/// deep link de retorno a la app, algo que no se puede armar/probar sin un
-/// dispositivo real a mano.
+/// CU11, lado cliente: checkout del carrito. Soporta pago por QR (subis la
+/// foto del comprobante y un cajero lo revisa despues) y PayPal/tarjeta de
+/// credito (via el link "approve" de PayPal abierto en un WebView, ver
+/// `paypal_webview_screen.dart` -- el movil no tiene el JS SDK que usa la
+/// web, asi que en vez del popup de botones usa el flujo de redireccion
+/// estandar de la API de Orders v2).
 class VentaCreada {
   const VentaCreada({required this.id, required this.estadoPago});
 
@@ -18,6 +19,13 @@ class VentaCreada {
   factory VentaCreada.fromJson(Map<String, dynamic> json) {
     return VentaCreada(id: json['id'] as int, estadoPago: json['estado_pago'] as String);
   }
+}
+
+class OrdenPaypal {
+  const OrdenPaypal({required this.orderId, required this.approveUrl});
+
+  final String orderId;
+  final String approveUrl;
 }
 
 class VentasRepository {
@@ -31,6 +39,17 @@ class VentasRepository {
       'file': await MultipartFile.fromFile(filePath, filename: fileName),
     });
     final res = await _dio.post('/ventas/checkout/qr', data: form);
+    return VentaCreada.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<OrdenPaypal> crearOrdenPaypal() async {
+    final res = await _dio.post('/ventas/checkout/paypal/crear-orden', queryParameters: {'mobile': true});
+    final data = res.data as Map<String, dynamic>;
+    return OrdenPaypal(orderId: data['order_id'] as String, approveUrl: data['approve_url'] as String);
+  }
+
+  Future<VentaCreada> capturarOrdenPaypal({required String orderId, required int sucursalId}) async {
+    final res = await _dio.post('/ventas/checkout/paypal/capturar/$orderId', data: {'sucursal_id': sucursalId});
     return VentaCreada.fromJson(res.data as Map<String, dynamic>);
   }
 

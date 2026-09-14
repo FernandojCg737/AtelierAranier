@@ -10,15 +10,19 @@ import '../../core/theme.dart';
 import '../../models/sucursal.dart';
 import 'cart_provider.dart';
 import 'catalogo_provider.dart';
+import 'paypal_webview_screen.dart';
 import 'ventas_repository.dart';
 
 enum _Estado { formulario, subiendo, listo }
 
-/// CU11, lado cliente: checkout del carrito. Version mobile v1 -- solo pago
-/// por QR (subis la foto del comprobante, un cajero/encargado la revisa
-/// despues). PayPal queda pendiente para una fase siguiente: necesita un
-/// WebView + deep link de retorno a la app que no se puede armar/probar a
-/// ciegas sin un dispositivo real a mano.
+enum _Metodo { paypal, qr }
+
+/// CU11, lado cliente: checkout del carrito. Dos metodos de pago, igual que
+/// la web: PayPal/tarjeta de credito (captura inmediata) y QR por
+/// transferencia (subis la foto del comprobante, un cajero/encargado la
+/// revisa despues). El movil no tiene el JS SDK de botones que usa la web
+/// -- en su lugar abre el link "approve" de la orden en un WebView (ver
+/// `paypal_webview_screen.dart`).
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
 
@@ -28,6 +32,8 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   _Estado _estado = _Estado.formulario;
+  _Metodo _metodo = _Metodo.paypal;
+  _Metodo? _metodoUsado;
   SucursalPublica? _sucursal;
   XFile? _comprobante;
   String _error = '';
@@ -61,6 +67,44 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (mounted) {
         setState(() {
           _ventaId = venta.id;
+          _metodoUsado = _Metodo.qr;
+          _estado = _Estado.listo;
+        });
+      }
+    } catch (err) {
+      if (mounted) {
+        setState(() {
+          _error = extractErrorMessage(err);
+          _estado = _Estado.formulario;
+        });
+      }
+    }
+  }
+
+  Future<void> _pagarConPaypal() async {
+    final sucursal = _sucursal;
+    if (sucursal == null) return;
+
+    setState(() {
+      _estado = _Estado.subiendo;
+      _error = '';
+    });
+    try {
+      final orden = await ref.read(ventasRepositoryProvider).crearOrdenPaypal();
+      if (!mounted) return;
+      final aprobado = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => PaypalWebviewScreen(approveUrl: orden.approveUrl)),
+      );
+      if (aprobado != true) {
+        if (mounted) setState(() => _estado = _Estado.formulario);
+        return;
+      }
+      final venta = await ref.read(ventasRepositoryProvider).capturarOrdenPaypal(orderId: orden.orderId, sucursalId: sucursal.id);
+      await ref.read(cartProvider.notifier).cargar();
+      if (mounted) {
+        setState(() {
+          _ventaId = venta.id;
+          _metodoUsado = _Metodo.paypal;
           _estado = _Estado.listo;
         });
       }
@@ -130,60 +174,83 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
         const Text('METODO DE PAGO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
         const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(border: Border.all(color: AppColors.brandDark, width: 1.5)),
-          child: const Row(
-            children: [
-              Icon(Icons.qr_code_2, color: AppColors.brandDark),
-              SizedBox(width: 10),
-              Expanded(child: Text('QR (transferencia)', style: TextStyle(fontWeight: FontWeight.w700))),
-            ],
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Transferi a nuestro QR y despues subi la foto del comprobante. Un cajero lo revisa y confirma tu compra.',
-          style: TextStyle(fontSize: 12, color: AppColors.grayTextDark),
-        ),
-        const SizedBox(height: 8),
-        Image.asset('assets/qr-transferencia.png', height: 180, errorBuilder: (_, _, _) => const SizedBox.shrink()),
-        const SizedBox(height: 20),
-
-        const Text('COMPROBANTE DE TRANSFERENCIA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
-        const SizedBox(height: 6),
-        if (_comprobante != null) ...[
-          Image.file(File(_comprobante!.path), height: 160, fit: BoxFit.cover),
-          const SizedBox(height: 8),
-        ],
         Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _elegirFoto(ImageSource.camera),
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: const Text('CAMARA'),
-                style: OutlinedButton.styleFrom(shape: const RoundedRectangleBorder()),
+              child: _MetodoOpcion(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'PayPal / Tarjeta',
+                selected: _metodo == _Metodo.paypal,
+                onTap: () => setState(() => _metodo = _Metodo.paypal),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _elegirFoto(ImageSource.gallery),
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('GALERIA'),
-                style: OutlinedButton.styleFrom(shape: const RoundedRectangleBorder()),
+              child: _MetodoOpcion(
+                icon: Icons.qr_code_2,
+                label: 'QR (transferencia)',
+                selected: _metodo == _Metodo.qr,
+                onTap: () => setState(() => _metodo = _Metodo.qr),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 20),
 
-        ElevatedButton(
-          onPressed: (_estado == _Estado.subiendo || _sucursal == null || _comprobante == null) ? null : _confirmar,
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandDark, minimumSize: const Size.fromHeight(48), shape: const RoundedRectangleBorder()),
-          child: Text(_estado == _Estado.subiendo ? 'ENVIANDO...' : 'CONFIRMAR PAGO'),
-        ),
+        if (_metodo == _Metodo.paypal) ...[
+          const Text(
+            'Paga con tu cuenta de PayPal o con tarjeta de credito/debito como invitado. Se abre la pagina segura de PayPal; al terminar volves a la app y tu compra queda confirmada al instante.',
+            style: TextStyle(fontSize: 12, color: AppColors.grayTextDark),
+          ),
+          const SizedBox(height: 28),
+          ElevatedButton(
+            onPressed: (_estado == _Estado.subiendo || _sucursal == null) ? null : _pagarConPaypal,
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandDark, minimumSize: const Size.fromHeight(48), shape: const RoundedRectangleBorder()),
+            child: Text(_estado == _Estado.subiendo ? 'CONECTANDO CON PAYPAL...' : 'PAGAR CON PAYPAL'),
+          ),
+        ] else ...[
+          const Text(
+            'Transferi a nuestro QR y despues subi la foto del comprobante. Un cajero lo revisa y confirma tu compra.',
+            style: TextStyle(fontSize: 12, color: AppColors.grayTextDark),
+          ),
+          const SizedBox(height: 8),
+          Image.asset('assets/qr-transferencia.png', height: 180, errorBuilder: (_, _, _) => const SizedBox.shrink()),
+          const SizedBox(height: 20),
+
+          const Text('COMPROBANTE DE TRANSFERENCIA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+          const SizedBox(height: 6),
+          if (_comprobante != null) ...[
+            Image.file(File(_comprobante!.path), height: 160, fit: BoxFit.cover),
+            const SizedBox(height: 8),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _elegirFoto(ImageSource.camera),
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  label: const Text('CAMARA'),
+                  style: OutlinedButton.styleFrom(shape: const RoundedRectangleBorder()),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _elegirFoto(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('GALERIA'),
+                  style: OutlinedButton.styleFrom(shape: const RoundedRectangleBorder()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 28),
+          ElevatedButton(
+            onPressed: (_estado == _Estado.subiendo || _sucursal == null || _comprobante == null) ? null : _confirmar,
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandDark, minimumSize: const Size.fromHeight(48), shape: const RoundedRectangleBorder()),
+            child: Text(_estado == _Estado.subiendo ? 'ENVIANDO...' : 'CONFIRMAR PAGO'),
+          ),
+        ],
       ],
     );
   }
@@ -199,16 +266,50 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             const SizedBox(height: 16),
             Text('Compra #$_ventaId registrada.', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 8),
-            const Text(
-              'Tu comprobante quedo en revision. Te avisamos apenas un cajero lo confirme.',
+            Text(
+              _metodoUsado == _Metodo.paypal
+                  ? 'Tu pago con PayPal quedo confirmado. Ya podes pasar a recoger tu pedido por la sucursal elegida.'
+                  : 'Tu comprobante quedo en revision. Te avisamos apenas un cajero lo confirme.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () => context.go('/'),
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandDark, shape: const RoundedRectangleBorder()),
               child: const Text('VOLVER AL INICIO'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MetodoOpcion extends StatelessWidget {
+  const _MetodoOpcion({required this.icon, required this.label, required this.selected, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(border: Border.all(color: selected ? AppColors.brandDark : const Color(0xFFCCCCCC), width: selected ? 1.5 : 1)),
+        child: Row(
+          children: [
+            Icon(icon, color: selected ? AppColors.brandDark : Colors.grey, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(fontWeight: selected ? FontWeight.w700 : FontWeight.normal, fontSize: 13, color: selected ? AppColors.brandDark : Colors.black87),
+              ),
             ),
           ],
         ),

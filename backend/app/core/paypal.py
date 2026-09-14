@@ -39,26 +39,41 @@ def _obtener_token_acceso() -> str:
     return resp.json()["access_token"]
 
 
-def crear_orden(total: Decimal, referencia: str) -> dict:
+def crear_orden(total: Decimal, referencia: str, return_url: str | None = None, cancel_url: str | None = None) -> dict:
     """Crea una orden de pago en PayPal (intent=CAPTURE) por el total del
     carrito. Esto NO cobra nada todavia: el frontend usa el order_id
     devuelto para abrir el boton/checkout de PayPal, y el cargo real recien
     ocurre cuando el backend captura la orden (ver capturar_orden), despues
     de que el cliente la aprueba (con su cuenta PayPal o con tarjeta de
-    credito via el checkout de invitado de PayPal)."""
+    credito via el checkout de invitado de PayPal).
+
+    `return_url`/`cancel_url` son opcionales y solo los usa el movil: la web
+    integra el JS SDK de PayPal (botones), que maneja la aprobacion en un
+    popup propio via `onApprove` sin navegar nunca a estas URLs, asi que
+    mandarlas no le cambia nada. El movil en cambio no tiene SDK de JS
+    disponible -- abre el link "approve" en un WebView y necesita una URL
+    propia para detectar cuando PayPal termino, asi que se las pasa."""
     token = _obtener_token_acceso()
+    body: dict = {
+        "intent": "CAPTURE",
+        "purchase_units": [
+            {
+                "reference_id": referencia,
+                "amount": {"currency_code": PAYPAL_CURRENCY, "value": f"{total:.2f}"},
+            }
+        ],
+    }
+    if return_url and cancel_url:
+        body["application_context"] = {
+            "return_url": return_url,
+            "cancel_url": cancel_url,
+            "shipping_preference": "NO_SHIPPING",
+            "user_action": "PAY_NOW",
+        }
     resp = requests.post(
         f"{_paypal_base_url()}/v2/checkout/orders",
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        json={
-            "intent": "CAPTURE",
-            "purchase_units": [
-                {
-                    "reference_id": referencia,
-                    "amount": {"currency_code": PAYPAL_CURRENCY, "value": f"{total:.2f}"},
-                }
-            ],
-        },
+        json=body,
         timeout=15,
     )
     if not resp.ok:
