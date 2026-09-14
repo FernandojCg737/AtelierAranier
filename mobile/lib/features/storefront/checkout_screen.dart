@@ -254,7 +254,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           else if (_paypalController == null)
             const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Center(child: CircularProgressIndicator()))
           else
-            SizedBox(height: 230, child: WebViewWidget(controller: _paypalController!)),
+            // 430 (no 230) porque el boton "Debit or Credit Card" abre un
+            // formulario propio (numero, vencimiento, CSC) dentro del mismo
+            // WebView -- con un alto chico ese formulario se desbordaba
+            // visualmente fuera del contenedor.
+            SizedBox(height: 430, child: WebViewWidget(controller: _paypalController!)),
         ] else ...[
           const Text(
             'Transferi a nuestro QR y despues subi la foto del comprobante. Un cajero lo revisa y confirma tu compra.',
