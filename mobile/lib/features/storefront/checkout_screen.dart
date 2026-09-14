@@ -53,6 +53,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   // termina siendo tan alto como su contenido real, y es la pagina entera
   // del checkout la unica que scrollea.
   double _paypalWebviewHeight = 130;
+  // Diagnostico temporal (ver PaypalDebugChannel en paypal_embed.py): junta
+  // la consola del navegador ahi mismo en pantalla, porque setOnConsoleMessage
+  // no esta llegando al logcat en este build release.
+  final List<String> _paypalDebugLog = [];
 
   @override
   void initState() {
@@ -70,6 +74,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ..setOnConsoleMessage((msg) => debugPrint('[paypal-embed] ${msg.level.name}: ${msg.message}'))
       ..addJavaScriptChannel('PaypalResultChannel', onMessageReceived: (msg) => _onPaypalMensaje(msg.message))
       ..addJavaScriptChannel('PaypalHeightChannel', onMessageReceived: (msg) => _onPaypalAltura(msg.message))
+      ..addJavaScriptChannel('PaypalDebugChannel', onMessageReceived: (msg) {
+        if (mounted) setState(() => _paypalDebugLog.add(msg.message));
+      })
       ..loadRequest(Uri.parse(paypalEmbedUrl(token)));
     setState(() => _paypalController = controller);
   }
@@ -290,6 +297,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               height: _paypalWebviewHeight,
               child: WebViewWidget(controller: _paypalController!),
             ),
+          if (_paypalDebugLog.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text('DIAGNOSTICO (temporal)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              color: const Color(0xFFF7F7F5),
+              child: SelectableText(_paypalDebugLog.join('\n'), style: const TextStyle(fontSize: 10, fontFamily: 'monospace')),
+            ),
+          ],
         ] else ...[
           const Text(
             'Transferi a nuestro QR y despues subi la foto del comprobante. Un cajero lo revisa y confirma tu compra.',
