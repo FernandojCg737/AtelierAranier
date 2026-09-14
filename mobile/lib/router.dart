@@ -15,6 +15,7 @@ import 'features/admin/notificaciones/notificaciones_admin_screen.dart';
 import 'features/admin/productos/productos_screen.dart';
 import 'features/admin/proveedores/proveedores_screen.dart';
 import 'features/admin/recomendaciones/recomendaciones_admin_screen.dart';
+import 'features/admin/reservas/reservas_screen.dart';
 import 'features/admin/sesiones/sesiones_screen.dart';
 import 'features/admin/sucursales/sucursales_screen.dart';
 import 'features/admin/temporadas/temporadas_screen.dart';
@@ -98,6 +99,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/admin/temporadas', builder: (context, state) => const TemporadasScreen()),
       GoRoute(path: '/admin/catalogo', builder: (context, state) => const CatalogoScreen()),
       GoRoute(path: '/admin/inventario', builder: (context, state) => const InventarioScreen()),
+      GoRoute(path: '/admin/reservas', builder: (context, state) => const ReservasScreen()),
       GoRoute(path: '/admin/ventas', builder: (context, state) => const VentasScreen()),
       GoRoute(path: '/admin/carritos', builder: (context, state) => const CarritosScreen()),
       GoRoute(path: '/admin/notificaciones', builder: (context, state) => const NotificacionesAdminScreen()),

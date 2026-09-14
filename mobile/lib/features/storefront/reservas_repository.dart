@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/carrito.dart';
 import '../../models/reserva.dart';
 import '../auth/auth_provider.dart';
 
@@ -39,6 +40,18 @@ class DisponibilidadItem {
   }
 }
 
+/// Convierte el horario elegido en el date/time picker (los numeros que el
+/// usuario ve y tipeo, sin ninguna nocion de zona horaria) a UTC asumiendo
+/// que esos numeros son hora de Bolivia (UTC-4 fijo, sin horario de verano)
+/// -- NO se usa `DateTime.toUtc()` porque eso depende de la zona horaria del
+/// dispositivo, y un celular/emulador configurado en otra zona (ej. UTC)
+/// mandaria un horario corrido (bug real detectado: 4:00 pm elegido en el
+/// picker llegaba al backend como 4:00 pm UTC en vez de 8:00 pm UTC, y la
+/// web -que sí asume Bolivia fija al mostrar- lo mostraba como 12:00 pm).
+String _horarioBoliviaAUtcIso(DateTime horario) {
+  return DateTime.utc(horario.year, horario.month, horario.day, horario.hour + 4, horario.minute).toIso8601String();
+}
+
 /// CU10, lado cliente: reservar una prenda para probarsela/recogerla en una
 /// sucursal en un horario. Misma logica que `reserva-form.ts` en la web.
 class ReservasRepository {
@@ -61,7 +74,7 @@ class ReservasRepository {
   }) {
     return _dio.post('/reservas', data: {
       'sucursal_id': opcion.sucursalId,
-      'horario_atencion': horario.toUtc().toIso8601String(),
+      'horario_atencion': _horarioBoliviaAUtcIso(horario),
       'items': [
         {
           'producto_id': productoId,
@@ -70,6 +83,30 @@ class ReservasRepository {
           'cantidad': cantidad,
         },
       ],
+    });
+  }
+
+  /// Reserva TODO el carrito de una sola vez -- una unica reserva con un
+  /// detalle por cada item, reusando la talla/color/cantidad que el cliente
+  /// ya eligio al agregarlos al carrito (solo se pide sucursal y horario).
+  /// Mismo endpoint y mismo payload que usa la web en `carrito.ts`
+  /// (`confirmarReserva`), asi que el backend ya lo soporta sin cambios.
+  Future<void> crearDesdeCarrito({
+    required int sucursalId,
+    required DateTime horario,
+    required List<DetalleCarrito> items,
+  }) {
+    return _dio.post('/reservas', data: {
+      'sucursal_id': sucursalId,
+      'horario_atencion': _horarioBoliviaAUtcIso(horario),
+      'items': items
+          .map((i) => {
+                'producto_id': i.productoId,
+                'talla_id': i.tallaId,
+                'color_id': i.colorId,
+                'cantidad': i.cantidad,
+              })
+          .toList(),
     });
   }
 

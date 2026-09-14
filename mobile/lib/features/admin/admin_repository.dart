@@ -16,6 +16,7 @@ import '../../models/opcion.dart';
 import '../../models/producto_admin.dart';
 import '../../models/proveedor.dart';
 import '../../models/recomendacion_admin.dart';
+import '../../models/reserva_admin.dart';
 import '../../models/rol.dart';
 import '../../models/sucursal_admin.dart';
 import '../../models/temporada.dart';
@@ -323,6 +324,31 @@ class AdminRepository {
   Future<List<CatalogoProducto>> getCatalogoProductosPorSucursal(int sucursalId) async {
     final res = await _dio.get('/catalogo/sucursales/$sucursalId/productos');
     return (res.data as List<dynamic>).map((e) => CatalogoProducto.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // ---------------------------------------------------------------- CU10
+  Future<ReservaAdminPage> getReservas({int page = 1, int pageSize = 20, String? estado, int? sucursalId}) async {
+    final res = await _dio.get('/reservas', queryParameters: {
+      'page': page,
+      'page_size': pageSize,
+      if (estado != null && estado.isNotEmpty) 'estado': estado,
+      if (sucursalId != null) 'sucursal_id': sucursalId,
+    });
+    return ReservaAdminPage.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<void> cambiarEstadoReserva(int reservaId, String estado) {
+    return _dio.put('/reservas/$reservaId/estado', data: {'estado': estado});
+  }
+
+  /// "Atender" la reserva: el cliente paga en efectivo al recogerla en
+  /// sucursal -- esto genera la venta presencial del lado del backend.
+  Future<void> completarReserva(int reservaId) {
+    return _dio.post('/reservas/$reservaId/completar');
+  }
+
+  Future<void> eliminarReserva(int reservaId) {
+    return _dio.delete('/reservas/$reservaId');
   }
 
   // ---------------------------------------------------------------- CU11

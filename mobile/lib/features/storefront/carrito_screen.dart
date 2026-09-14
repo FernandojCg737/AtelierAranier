@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../models/carrito.dart';
 import 'cart_provider.dart';
 import 'reserva_form_screen.dart';
+import 'reservar_carrito_screen.dart';
 
 /// CU11: replica de `pages/carrito/carrito.html` en la web, pero contra el
 /// carrito real del backend (no local). Mismo header, mismo estado vacio,
@@ -219,28 +220,59 @@ class _CarritoContent extends ConsumerWidget {
   }
 }
 
-/// Abre el formulario de reserva (CU10) para un item del carrito. Si hay
-/// un solo producto, va directo; si hay varios, primero deja elegir cual
-/// -- reservar es una accion por producto (sucursal/talla/color/horario
-/// propios), no tiene sentido "reservar todo el carrito junto".
+const _todoElCarrito = Object();
+
+/// Abre el flujo de reserva (CU10) desde el carrito. Si hay un solo
+/// producto, va directo a reservarlo (deja elegir sucursal/talla/color
+/// libremente, como desde el detalle de producto). Si hay varios, muestra
+/// una hoja para elegir entre reservar TODO el carrito junto -- una sola
+/// reserva con un detalle por producto, igual que "Reservar para pagar y
+/// recoger en sucursal" en la web -- o reservar un unico producto.
 Future<void> _irAReservar(
   BuildContext context,
   List<DetalleCarrito> items,
 ) async {
-  DetalleCarrito? elegido = items.length == 1 ? items.first : null;
+  if (items.length == 1) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReservaFormScreen(
+          productoId: items.first.productoId,
+          productoNombre: items.first.productoNombre,
+        ),
+      ),
+    );
+    return;
+  }
 
-  elegido ??= await showModalBottomSheet<DetalleCarrito>(
+  final resultado = await showModalBottomSheet<Object>(
     context: context,
     builder: (context) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).pop(_todoElCarrito),
+              icon: const Icon(Icons.event_available_outlined),
+              label: Text('RESERVAR TODO EL CARRITO (${items.length})'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.brandWhite,
+                backgroundColor: AppColors.brandDark,
+                side: BorderSide.none,
+                shape: const RoundedRectangleBorder(),
+                minimumSize: const Size.fromHeight(48),
+              ),
+            ),
+          ),
+          const Divider(height: 1),
           const Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'QUE PRODUCTO QUERES RESERVAR?',
+                'O RESERVA UN SOLO PRODUCTO',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -263,11 +295,20 @@ Future<void> _irAReservar(
     ),
   );
 
-  if (elegido == null || !context.mounted) return;
+  if (resultado == null || !context.mounted) return;
+
+  if (identical(resultado, _todoElCarrito)) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ReservarCarritoScreen(items: items)),
+    );
+    return;
+  }
+
+  final elegido = resultado as DetalleCarrito;
   Navigator.of(context).push(
     MaterialPageRoute(
       builder: (_) => ReservaFormScreen(
-        productoId: elegido!.productoId,
+        productoId: elegido.productoId,
         productoNombre: elegido.productoNombre,
       ),
     ),
