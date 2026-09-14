@@ -1,7 +1,11 @@
 .admin-content {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 32px 64px;
+  padding: 24px 16px 48px;
+
+  @media (min-width: 700px) {
+    padding: 40px 32px 64px;
+  }
 
   &__header {
     display: flex;
