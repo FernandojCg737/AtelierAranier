@@ -9,10 +9,26 @@ import 'reservas_repository.dart';
 
 enum _Estado { cargando, formulario, enviando, listo, error, sinStock }
 
+/// Talla+color con el stock sumado entre sucursales -- la sucursal no
+/// importa aca (se elige recien en el checkout), asi que agrupar por
+/// sucursal como antes hacia que la misma combinacion talla/color apareciera
+/// repetida una vez por sucursal en el dropdown.
+class _Variante {
+  const _Variante({required this.tallaId, required this.tallaCodigo, required this.colorId, required this.colorNombre, required this.cantidad});
+
+  final int tallaId;
+  final String tallaCodigo;
+  final int colorId;
+  final String colorNombre;
+  final int cantidad;
+}
+
 /// CU11, lado cliente: elegir talla/color/cantidad antes de agregar al
 /// carrito -- el backend lo exige (no se puede agregar un producto "en
 /// general", tiene que ser una combinacion con stock real). Reusa el mismo
-/// endpoint de disponibilidad que ya usa Reservar (CU10).
+/// endpoint de disponibilidad que ya usa Reservar (CU10). Talla y color se
+/// eligen por separado (pedido explicito del usuario): elegir la talla
+/// primero filtra los colores que de verdad tienen stock en esa talla.
 class AgregarCarritoScreen extends ConsumerStatefulWidget {
   const AgregarCarritoScreen({super.key, required this.productoId, required this.productoNombre});
 
@@ -25,15 +41,28 @@ class AgregarCarritoScreen extends ConsumerStatefulWidget {
 
 class _AgregarCarritoScreenState extends ConsumerState<AgregarCarritoScreen> {
   _Estado _estado = _Estado.cargando;
-  List<DisponibilidadItem> _opciones = [];
-  DisponibilidadItem? _opcionSeleccionada;
+  List<_Variante> _variantes = [];
+  int? _tallaId;
+  int? _colorId;
   int _cantidad = 1;
   String _error = '';
 
-  @override
-  void initState() {
-    super.initState();
-    _cargar();
+  List<_Variante> get _tallas {
+    final vistas = <int>{};
+    final lista = <_Variante>[];
+    for (final v in _variantes) {
+      if (vistas.add(v.tallaId)) lista.add(v);
+    }
+    return lista;
+  }
+
+  List<_Variante> get _coloresParaTallaActual => _variantes.where((v) => v.tallaId == _tallaId).toList();
+
+  _Variante? get _varianteActual {
+    for (final v in _coloresParaTallaActual) {
+      if (v.colorId == _colorId) return v;
+    }
+    return null;
   }
 
   Future<void> _cargar() async {
@@ -44,9 +73,23 @@ class _AgregarCarritoScreenState extends ConsumerState<AgregarCarritoScreen> {
         setState(() => _estado = _Estado.sinStock);
         return;
       }
+      final porClave = <String, _Variante>{};
+      for (final o in opciones) {
+        final clave = '${o.tallaId}-${o.colorId}';
+        final existente = porClave[clave];
+        porClave[clave] = _Variante(
+          tallaId: o.tallaId,
+          tallaCodigo: o.tallaCodigo,
+          colorId: o.colorId,
+          colorNombre: o.colorNombre,
+          cantidad: (existente?.cantidad ?? 0) + o.cantidad,
+        );
+      }
+      final variantes = porClave.values.toList();
       setState(() {
-        _opciones = opciones;
-        _opcionSeleccionada = opciones.first;
+        _variantes = variantes;
+        _tallaId = variantes.first.tallaId;
+        _colorId = variantes.first.colorId;
         _estado = _Estado.formulario;
       });
     } catch (_) {
@@ -54,9 +97,15 @@ class _AgregarCarritoScreenState extends ConsumerState<AgregarCarritoScreen> {
     }
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _cargar();
+  }
+
   Future<void> _enviar() async {
-    final opcion = _opcionSeleccionada;
-    if (opcion == null) return;
+    final variante = _varianteActual;
+    if (variante == null) return;
 
     setState(() {
       _estado = _Estado.enviando;
@@ -65,8 +114,8 @@ class _AgregarCarritoScreenState extends ConsumerState<AgregarCarritoScreen> {
     try {
       await ref.read(cartProvider.notifier).agregar(
             productoId: widget.productoId,
-            tallaId: opcion.tallaId,
-            colorId: opcion.colorId,
+            tallaId: variante.tallaId,
+            colorId: variante.colorId,
             cantidad: _cantidad,
           );
       if (mounted) setState(() => _estado = _Estado.listo);
@@ -131,25 +180,37 @@ class _AgregarCarritoScreenState extends ConsumerState<AgregarCarritoScreen> {
           const SizedBox(height: 16),
         ],
 
-        const Text('SUCURSAL, TALLA Y COLOR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+        const Text('TALLA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
         const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          initialValue: _opcionSeleccionada?.clave,
+        DropdownButtonFormField<int>(
+          initialValue: _tallaId,
           isExpanded: true,
-          items: _opciones
-              .map(
-                (o) => DropdownMenuItem(
-                  value: o.clave,
-                  child: Text(
-                    '${o.sucursalNombre} · ${o.tallaCodigo} · ${o.colorNombre} (${o.cantidad} disponibles)',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: (clave) {
+          items: _tallas.map((v) => DropdownMenuItem(value: v.tallaId, child: Text(v.tallaCodigo))).toList(),
+          onChanged: (tallaId) {
+            if (tallaId == null) return;
             setState(() {
-              _opcionSeleccionada = _opciones.firstWhere((o) => o.clave == clave);
+              _tallaId = tallaId;
+              // La talla nueva puede no tener el mismo color que estaba
+              // elegido -- se cae al primero que si tenga stock en esta talla.
+              _colorId = _variantes.firstWhere((v) => v.tallaId == tallaId).colorId;
+              _cantidad = 1;
+            });
+          },
+        ),
+        const SizedBox(height: 20),
+
+        const Text('COLOR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<int>(
+          initialValue: _colorId,
+          isExpanded: true,
+          items: _coloresParaTallaActual
+              .map((v) => DropdownMenuItem(value: v.colorId, child: Text('${v.colorNombre} (${v.cantidad} disponibles)', overflow: TextOverflow.ellipsis)))
+              .toList(),
+          onChanged: (colorId) {
+            if (colorId == null) return;
+            setState(() {
+              _colorId = colorId;
               _cantidad = 1;
             });
           },
@@ -166,7 +227,7 @@ class _AgregarCarritoScreenState extends ConsumerState<AgregarCarritoScreen> {
             ),
             Text('$_cantidad', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             IconButton(
-              onPressed: (_opcionSeleccionada != null && _cantidad < _opcionSeleccionada!.cantidad)
+              onPressed: (_varianteActual != null && _cantidad < _varianteActual!.cantidad)
                   ? () => setState(() => _cantidad++)
                   : null,
               icon: const Icon(Icons.add_circle_outline),

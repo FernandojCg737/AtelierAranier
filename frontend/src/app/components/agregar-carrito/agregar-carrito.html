@@ -24,10 +24,19 @@
         }
 
         <label class="reserva-campo">
-          <span>Talla y color</span>
-          <select [value]="claveSeleccionada()" (change)="onVarianteChange($any($event.target).value)">
-            @for (v of variantes(); track clave(v)) {
-              <option [value]="clave(v)">{{ v.talla_codigo }} · {{ v.color_nombre }} ({{ v.cantidad }} disponibles)</option>
+          <span>Talla</span>
+          <select [value]="tallaSeleccionada()" (change)="onTallaChange($any($event.target).value)">
+            @for (t of tallas(); track t.talla_id) {
+              <option [value]="t.talla_id">{{ t.talla_codigo }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="reserva-campo">
+          <span>Color</span>
+          <select [value]="colorSeleccionado()" (change)="onColorChange($any($event.target).value)">
+            @for (v of coloresDisponibles(); track v.color_id) {
+              <option [value]="v.color_id">{{ v.color_nombre }} ({{ v.cantidad }} disponibles)</option>
             }
           </select>
         </label>

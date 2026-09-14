@@ -45,20 +45,36 @@ export class AgregarCarrito {
 
   protected readonly estado = signal<Estado>('cargando');
   protected readonly variantes = signal<Variante[]>([]);
-  protected readonly claveSeleccionada = signal('');
+  protected readonly tallaSeleccionada = signal<number | null>(null);
+  protected readonly colorSeleccionado = signal<number | null>(null);
   protected readonly cantidad = signal(1);
   protected readonly errorMsg = signal('');
 
+  // Talla y color se eligen por separado (pedido explicito del usuario, en
+  // vez de un solo combo "talla · color") -- elegir la talla primero filtra
+  // los colores a los que de verdad tienen stock en esa talla.
+  protected readonly tallas = computed(() => {
+    const vistas = new Set<number>();
+    const lista: { talla_id: number; talla_codigo: string }[] = [];
+    for (const v of this.variantes()) {
+      if (!vistas.has(v.talla_id)) {
+        vistas.add(v.talla_id);
+        lista.push({ talla_id: v.talla_id, talla_codigo: v.talla_codigo });
+      }
+    }
+    return lista;
+  });
+
+  protected readonly coloresDisponibles = computed(() =>
+    this.variantes().filter((v) => v.talla_id === this.tallaSeleccionada()),
+  );
+
   protected readonly varianteActual = computed<Variante | undefined>(() =>
-    this.variantes().find((v) => this.clave(v) === this.claveSeleccionada()),
+    this.coloresDisponibles().find((v) => v.color_id === this.colorSeleccionado()),
   );
 
   constructor() {
     afterNextRender(() => void this.cargar());
-  }
-
-  protected clave(v: Variante): string {
-    return `${v.talla_id}-${v.color_id}`;
   }
 
   private async cargar(): Promise<void> {
@@ -90,15 +106,25 @@ export class AgregarCarrito {
 
       const lista = [...porClave.values()];
       this.variantes.set(lista);
-      this.claveSeleccionada.set(this.clave(lista[0]));
+      this.tallaSeleccionada.set(lista[0].talla_id);
+      this.colorSeleccionado.set(lista[0].color_id);
       this.estado.set('formulario');
     } catch {
       this.estado.set('error');
     }
   }
 
-  protected onVarianteChange(clave: string): void {
-    this.claveSeleccionada.set(clave);
+  protected onTallaChange(tallaId: string): void {
+    this.tallaSeleccionada.set(Number(tallaId));
+    // La talla nueva puede no tener el mismo color que estaba elegido --
+    // se cae al primer color que si tenga stock en esta talla.
+    const primerColor = this.variantes().find((v) => v.talla_id === Number(tallaId));
+    this.colorSeleccionado.set(primerColor?.color_id ?? null);
+    this.cantidad.set(1);
+  }
+
+  protected onColorChange(colorId: string): void {
+    this.colorSeleccionado.set(Number(colorId));
     this.cantidad.set(1);
   }
 
