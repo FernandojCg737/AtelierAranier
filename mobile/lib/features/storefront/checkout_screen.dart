@@ -67,6 +67,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
+      ..setOnConsoleMessage((msg) => debugPrint('[paypal-embed] ${msg.level.name}: ${msg.message}'))
       ..addJavaScriptChannel('PaypalResultChannel', onMessageReceived: (msg) => _onPaypalMensaje(msg.message))
       ..addJavaScriptChannel('PaypalHeightChannel', onMessageReceived: (msg) => _onPaypalAltura(msg.message))
       ..loadRequest(Uri.parse(paypalEmbedUrl(token)));
@@ -76,9 +77,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   void _onPaypalAltura(String raw) {
     final alto = double.tryParse(raw);
     if (alto == null || !mounted) return;
-    // Clamps: nunca mas chico que los botones solos, ni mas grande que casi
-    // toda la pantalla (por si algun campo de direccion la infla de mas).
-    final maxAlto = MediaQuery.of(context).size.height * 0.75;
+    // Clamps: nunca mas chico que los botones solos, ni mas grande que la
+    // pantalla completa (por si algun campo de direccion la infla de mas).
+    // El 0.75 anterior le cortaba el formulario justo antes del boton de
+    // "Pagar" final (con direccion de facturacion completa, numero + venc.
+    // + CSC + nombre/direccion/ciudad/estado/zip/telefono no entraban).
+    final maxAlto = MediaQuery.of(context).size.height;
     final nuevo = alto.clamp(130.0, maxAlto).toDouble();
     if ((nuevo - _paypalWebviewHeight).abs() > 2) {
       setState(() => _paypalWebviewHeight = nuevo);

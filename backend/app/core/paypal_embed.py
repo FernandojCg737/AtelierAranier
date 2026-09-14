@@ -40,6 +40,16 @@ def render_paypal_embed_html() -> str:
 <div id="msg-error" hidden>No se pudo cargar PayPal. Volve a intentar.</div>
 <div id="paypal-button-container" hidden></div>
 <script>
+// Instrumentacion temporal: confirmar si PayPal intenta abrir una ventana
+// emergente (window.open) -- el WebView no las soporta por defecto, y si
+// PayPal la necesita para 3D Secure (verificar la tarjeta con el banco),
+// esa llamada se pierde en silencio y el pago termina en un error generico.
+const _origOpen = window.open;
+window.open = function (...args) {{
+  console.log("[diagnostico] window.open llamado con:", args[0]);
+  return _origOpen ? _origOpen.apply(window, args) : null;
+}};
+
 const TOKEN = new URLSearchParams(location.search).get("token");
 const msgCargando = document.getElementById("msg-cargando");
 const msgError = document.getElementById("msg-error");
@@ -91,7 +101,8 @@ script.onload = () => {{
         onCancel: () => {{
           enviarResultado({{ status: "cancelled" }});
         }},
-        onError: () => {{
+        onError: (err) => {{
+          console.log("[diagnostico] onError de PayPal:", err && err.message ? err.message : err);
           enviarResultado({{ status: "error", message: "Ocurrio un error con PayPal." }});
         }},
       }})
