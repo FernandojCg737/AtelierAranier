@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 from app.api.v1.router import api_router
 from app.core.ar_embed import render_ar_embed_html
 from app.core.config import settings
+from app.core.paypal_embed import render_paypal_embed_html
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -39,3 +40,12 @@ def ar_embed(producto_id: int) -> str:
     siquiera expone la API — por eso esta pagina vive en el backend (que en
     produccion es https) en vez de empaquetarse dentro de la app."""
     return render_ar_embed_html(producto_id)
+
+
+@app.get("/paypal-embed", response_class=HTMLResponse, include_in_schema=False)
+def paypal_embed() -> str:
+    """Pagina standalone que renderiza los botones reales del JS SDK de
+    PayPal, pensada para cargarse INLINE (no a pantalla completa) dentro
+    del checkout movil -- misma experiencia que la web en vez del flujo de
+    redireccion con link "approve". Ver `paypal_embed.py`."""
+    return render_paypal_embed_html()

@@ -7,10 +7,6 @@ from pydantic import BaseModel, Field, field_serializer
 class OrdenPaypalOut(BaseModel):
     order_id: str
     total: Decimal
-    # Link "approve" que devuelve PayPal -- solo lo usa el movil (abre esto
-    # en un WebView); el web lo ignora porque su JS SDK ya sabe como
-    # aprobar la orden con el order_id solo.
-    approve_url: str | None = None
 
 
 class CapturarPaypalIn(BaseModel):

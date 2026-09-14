@@ -1,16 +1,19 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../core/api_client.dart';
+import '../../core/api_config.dart';
+import '../../core/secure_storage.dart';
 import '../../core/theme.dart';
 import '../../models/sucursal.dart';
 import 'cart_provider.dart';
 import 'catalogo_provider.dart';
-import 'paypal_webview_screen.dart';
 import 'ventas_repository.dart';
 
 enum _Estado { formulario, subiendo, listo }
@@ -18,11 +21,14 @@ enum _Estado { formulario, subiendo, listo }
 enum _Metodo { paypal, qr }
 
 /// CU11, lado cliente: checkout del carrito. Dos metodos de pago, igual que
-/// la web: PayPal/tarjeta de credito (captura inmediata) y QR por
-/// transferencia (subis la foto del comprobante, un cajero/encargado la
-/// revisa despues). El movil no tiene el JS SDK de botones que usa la web
-/// -- en su lugar abre el link "approve" de la orden en un WebView (ver
-/// `paypal_webview_screen.dart`).
+/// la web: PayPal/tarjeta de credito y QR por transferencia (subis la foto
+/// del comprobante, un cajero/encargado la revisa despues). PayPal se
+/// muestra INLINE con los botones reales del JS SDK (misma pagina que usa
+/// la web, embebida en un WebView chico -- ver `/paypal-embed` en el
+/// backend), en vez de un boton propio que abra algo aparte: asi el
+/// cliente ve, ahi mismo, tanto "Pagar con PayPal" como "Pagar con tarjeta
+/// de debito/credito" (el SDK agrega este segundo boton solo cuando
+/// corresponde), igual que en la web.
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
 
@@ -38,6 +44,69 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   XFile? _comprobante;
   String _error = '';
   int? _ventaId;
+  WebViewController? _paypalController;
+
+  @override
+  void initState() {
+    super.initState();
+    _iniciarPaypalWebview();
+  }
+
+  Future<void> _iniciarPaypalWebview() async {
+    if (_paypalController != null) return;
+    final token = await SecureStorage().readToken();
+    if (token == null || !mounted) return;
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.transparent)
+      ..addJavaScriptChannel('PaypalResultChannel', onMessageReceived: (msg) => _onPaypalMensaje(msg.message))
+      ..loadRequest(Uri.parse(paypalEmbedUrl(token)));
+    setState(() => _paypalController = controller);
+  }
+
+  void _onPaypalMensaje(String raw) {
+    Map<String, dynamic> data;
+    try {
+      data = jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return;
+    }
+    switch (data['status']) {
+      case 'approved':
+        final orderId = data['orderId'] as String?;
+        if (orderId != null) _capturarPaypal(orderId);
+      case 'error':
+        if (mounted) setState(() => _error = (data['message'] as String?) ?? 'Ocurrio un error con PayPal.');
+    }
+  }
+
+  Future<void> _capturarPaypal(String orderId) async {
+    final sucursal = _sucursal;
+    if (sucursal == null) return;
+
+    setState(() {
+      _estado = _Estado.subiendo;
+      _error = '';
+    });
+    try {
+      final venta = await ref.read(ventasRepositoryProvider).capturarOrdenPaypal(orderId: orderId, sucursalId: sucursal.id);
+      await ref.read(cartProvider.notifier).cargar();
+      if (mounted) {
+        setState(() {
+          _ventaId = venta.id;
+          _metodoUsado = _Metodo.paypal;
+          _estado = _Estado.listo;
+        });
+      }
+    } catch (err) {
+      if (mounted) {
+        setState(() {
+          _error = extractErrorMessage(err);
+          _estado = _Estado.formulario;
+        });
+      }
+    }
+  }
 
   Future<void> _elegirFoto(ImageSource source) async {
     try {
@@ -68,43 +137,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         setState(() {
           _ventaId = venta.id;
           _metodoUsado = _Metodo.qr;
-          _estado = _Estado.listo;
-        });
-      }
-    } catch (err) {
-      if (mounted) {
-        setState(() {
-          _error = extractErrorMessage(err);
-          _estado = _Estado.formulario;
-        });
-      }
-    }
-  }
-
-  Future<void> _pagarConPaypal() async {
-    final sucursal = _sucursal;
-    if (sucursal == null) return;
-
-    setState(() {
-      _estado = _Estado.subiendo;
-      _error = '';
-    });
-    try {
-      final orden = await ref.read(ventasRepositoryProvider).crearOrdenPaypal();
-      if (!mounted) return;
-      final aprobado = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => PaypalWebviewScreen(approveUrl: orden.approveUrl)),
-      );
-      if (aprobado != true) {
-        if (mounted) setState(() => _estado = _Estado.formulario);
-        return;
-      }
-      final venta = await ref.read(ventasRepositoryProvider).capturarOrdenPaypal(orderId: orden.orderId, sucursalId: sucursal.id);
-      await ref.read(cartProvider.notifier).cargar();
-      if (mounted) {
-        setState(() {
-          _ventaId = venta.id;
-          _metodoUsado = _Metodo.paypal;
           _estado = _Estado.listo;
         });
       }
@@ -181,7 +213,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 icon: Icons.account_balance_wallet_outlined,
                 label: 'PayPal / Tarjeta',
                 selected: _metodo == _Metodo.paypal,
-                onTap: () => setState(() => _metodo = _Metodo.paypal),
+                onTap: () {
+                  setState(() => _metodo = _Metodo.paypal);
+                  _iniciarPaypalWebview();
+                },
               ),
             ),
             const SizedBox(width: 10),
@@ -199,15 +234,27 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
         if (_metodo == _Metodo.paypal) ...[
           const Text(
-            'Paga con tu cuenta de PayPal o con tarjeta de credito/debito como invitado. Se abre la pagina segura de PayPal; al terminar volves a la app y tu compra queda confirmada al instante.',
+            'Paga con tu cuenta de PayPal o con tarjeta de credito/debito como invitado.',
             style: TextStyle(fontSize: 12, color: AppColors.grayTextDark),
           ),
-          const SizedBox(height: 28),
-          ElevatedButton(
-            onPressed: (_estado == _Estado.subiendo || _sucursal == null) ? null : _pagarConPaypal,
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandDark, minimumSize: const Size.fromHeight(48), shape: const RoundedRectangleBorder()),
-            child: Text(_estado == _Estado.subiendo ? 'CONECTANDO CON PAYPAL...' : 'PAGAR CON PAYPAL'),
-          ),
+          const SizedBox(height: 12),
+          if (_estado == _Estado.subiendo)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text('Confirmando tu pago...', style: TextStyle(fontSize: 12, color: AppColors.grayTextDark)),
+                  ],
+                ),
+              ),
+            )
+          else if (_paypalController == null)
+            const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Center(child: CircularProgressIndicator()))
+          else
+            SizedBox(height: 230, child: WebViewWidget(controller: _paypalController!)),
         ] else ...[
           const Text(
             'Transferi a nuestro QR y despues subi la foto del comprobante. Un cajero lo revisa y confirma tu compra.',

@@ -6,10 +6,11 @@ import '../auth/auth_provider.dart';
 
 /// CU11, lado cliente: checkout del carrito. Soporta pago por QR (subis la
 /// foto del comprobante y un cajero lo revisa despues) y PayPal/tarjeta de
-/// credito (via el link "approve" de PayPal abierto en un WebView, ver
-/// `paypal_webview_screen.dart` -- el movil no tiene el JS SDK que usa la
-/// web, asi que en vez del popup de botones usa el flujo de redireccion
-/// estandar de la API de Orders v2).
+/// credito -- este ultimo con los botones reales del JS SDK de PayPal
+/// embebidos inline en un WebView chico (`/paypal-embed`, misma pagina que
+/// el checkout web), no un boton propio: crear la orden lo hace esa pagina
+/// sola con su propio fetch, este repositorio solo necesita capturarla
+/// despues de que el cliente la aprueba (ver `checkout_screen.dart`).
 class VentaCreada {
   const VentaCreada({required this.id, required this.estadoPago});
 
@@ -19,13 +20,6 @@ class VentaCreada {
   factory VentaCreada.fromJson(Map<String, dynamic> json) {
     return VentaCreada(id: json['id'] as int, estadoPago: json['estado_pago'] as String);
   }
-}
-
-class OrdenPaypal {
-  const OrdenPaypal({required this.orderId, required this.approveUrl});
-
-  final String orderId;
-  final String approveUrl;
 }
 
 class VentasRepository {
@@ -40,12 +34,6 @@ class VentasRepository {
     });
     final res = await _dio.post('/ventas/checkout/qr', data: form);
     return VentaCreada.fromJson(res.data as Map<String, dynamic>);
-  }
-
-  Future<OrdenPaypal> crearOrdenPaypal() async {
-    final res = await _dio.post('/ventas/checkout/paypal/crear-orden', queryParameters: {'mobile': true});
-    final data = res.data as Map<String, dynamic>;
-    return OrdenPaypal(orderId: data['order_id'] as String, approveUrl: data['approve_url'] as String);
   }
 
   Future<VentaCreada> capturarOrdenPaypal({required String orderId, required int sucursalId}) async {

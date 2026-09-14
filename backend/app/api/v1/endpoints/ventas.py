@@ -175,46 +175,23 @@ def _to_admin_out(venta: Venta) -> VentaAdminOut:
     )
 
 
-# URLs "dummy" en el dominio del frontend que el movil usa para que PayPal
-# tenga adonde redirigir despues de la aprobacion/cancelacion -- el WebView
-# del movil (`paypal_webview_screen.dart`) detecta el "final" del pago
-# interceptando la navegacion antes de que estas URLs lleguen a cargarse de
-# verdad, asi que no hace falta que el frontend las sirva.
-PAYPAL_MOBILE_RETURN_URL = "https://atelieraranier-frontend.onrender.com/paypal-retorno"
-PAYPAL_MOBILE_CANCEL_URL = "https://atelieraranier-frontend.onrender.com/paypal-cancelado"
-
-
 @router.post("/checkout/paypal/crear-orden", response_model=OrdenPaypalOut)
 def crear_orden_paypal(
-    mobile: bool = False,
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
 ) -> OrdenPaypalOut:
     """Solo crea la orden en PayPal para que el frontend abra el checkout --
     no cobra nada ni toca el carrito todavia (eso recien pasa al capturar la
-    orden). Asi, si el cliente cierra el popup/WebView de PayPal sin pagar,
-    su carrito sigue intacto.
-
-    `mobile=true` (lo manda la app Flutter) pide ademas el link "approve" y
-    le agrega return_url/cancel_url propios a la orden, que el WebView del
-    movil usa para detectar cuando el cliente termino -- el checkout web no
-    manda este flag, asi que su request a PayPal queda identico a antes."""
+    orden). Asi, si el cliente cierra el boton de PayPal sin pagar, su
+    carrito sigue intacto. La llaman tanto el checkout web (JS SDK) como el
+    WebView inline del checkout movil (`/paypal-embed`, ver `paypal_embed.py`)
+    -- mismo request para los dos, ninguno necesita nada especial aca."""
     cliente = _get_cliente_o_403(db, usuario)
     carrito = _get_carrito_activo_no_vacio(db, cliente.id)
     total = _calcular_total(carrito)
 
-    if mobile:
-        orden = crear_orden(
-            total,
-            referencia=f"carrito-{carrito.id}",
-            return_url=PAYPAL_MOBILE_RETURN_URL,
-            cancel_url=PAYPAL_MOBILE_CANCEL_URL,
-        )
-    else:
-        orden = crear_orden(total, referencia=f"carrito-{carrito.id}")
-
-    approve_url = next((link["href"] for link in orden.get("links", []) if link.get("rel") == "approve"), None)
-    return OrdenPaypalOut(order_id=orden["id"], total=total, approve_url=approve_url)
+    orden = crear_orden(total, referencia=f"carrito-{carrito.id}")
+    return OrdenPaypalOut(order_id=orden["id"], total=total)
 
 
 @router.post("/checkout/paypal/capturar/{order_id}", response_model=VentaOut)

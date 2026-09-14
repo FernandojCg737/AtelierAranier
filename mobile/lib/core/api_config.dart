@@ -44,6 +44,14 @@ String arEmbedUrl(int productoId, {String? token}) {
   return '$base?token=${Uri.encodeQueryComponent(token)}';
 }
 
+/// CU11 (checkout movil): pagina que renderiza los botones reales del SDK
+/// de PayPal (igual que en la web) para embeber inline en el WebView del
+/// checkout. Mismo motivo que `arEmbedUrl` para mandar el token por query
+/// param en vez de un header: la carga un `loadRequest` normal.
+String paypalEmbedUrl(String token) {
+  return '$_backendProduccionUrl/paypal-embed?token=${Uri.encodeQueryComponent(token)}';
+}
+
 /// URL base del frontend Angular. Algunas imagenes de producto (las que
 /// vienen de los assets estaticos del frontend, ej. "/img/productos/x.jpg")
 /// son rutas RELATIVAS: en un navegador se resuelven solas contra el
