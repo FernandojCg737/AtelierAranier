@@ -5,5 +5,5 @@ export const environment = {
   // CU11: Client ID de PayPal (sandbox) -- es publico por diseno, la pagina
   // de checkout de PayPal lo necesita para cargar su SDK en el navegador.
   // El Client Secret nunca sale del backend.
-  paypalClientId: 'BAA5qL7SYwxYqXcObNp7cuq9-DKSDIrlAslsqcoHEFuPoLBrvkEydFDvIsjkKf0Zj49TJZ4AXptEAtzVmc'
+  paypalClientId: 'BAAOnJay1m3QxrO6LM20XYbrOy-YPtLsAf2b7Cybni4mXsf5fPPzsV-pG8eHDI6AgYwrRloAK7eq-OMPJA'
 };
