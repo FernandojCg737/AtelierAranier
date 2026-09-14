@@ -40,28 +40,6 @@ def render_paypal_embed_html() -> str:
 <div id="msg-error" hidden>No se pudo cargar PayPal. Volve a intentar.</div>
 <div id="paypal-button-container" hidden></div>
 <script>
-// Instrumentacion temporal: `setOnConsoleMessage` de Flutter no esta
-// llegando al logcat en release, asi que en vez de eso se manda todo
-// (console.log/error, errores no capturados, y si PayPal intenta abrir una
-// ventana emergente para 3D Secure -- el WebView no las soporta por
-// defecto y esa llamada se perderia en silencio) por un canal JS propio
-// para poder verlo directo en la pantalla de la app.
-function _debug(msg) {{
-  if (window.PaypalDebugChannel) window.PaypalDebugChannel.postMessage(String(msg));
-}}
-const _origLog = console.log;
-const _origError = console.error;
-console.log = function (...args) {{ _debug(args.join(" ")); _origLog.apply(console, args); }};
-console.error = function (...args) {{ _debug("ERROR: " + args.join(" ")); _origError.apply(console, args); }};
-window.addEventListener("error", (e) => _debug("window.onerror: " + e.message));
-window.addEventListener("unhandledrejection", (e) => _debug("promise rechazada: " + (e.reason && e.reason.message ? e.reason.message : e.reason)));
-
-const _origOpen = window.open;
-window.open = function (...args) {{
-  _debug("window.open llamado con: " + args[0]);
-  return _origOpen ? _origOpen.apply(window, args) : null;
-}};
-
 const TOKEN = new URLSearchParams(location.search).get("token");
 const msgCargando = document.getElementById("msg-cargando");
 const msgError = document.getElementById("msg-error");
@@ -94,13 +72,8 @@ async function crearOrden() {{
     method: "POST",
     headers: {{ Authorization: `Bearer ${{TOKEN}}`, "Content-Type": "application/json" }},
   }});
-  if (!res.ok) {{
-    const texto = await res.text().catch(() => "");
-    _debug("crear-orden fallo (" + res.status + "): " + texto);
-    throw new Error("crear-orden");
-  }}
+  if (!res.ok) throw new Error("crear-orden");
   const data = await res.json();
-  _debug("orden creada: " + data.order_id);
   return data.order_id;
 }}
 
@@ -113,15 +86,12 @@ script.onload = () => {{
         style: {{ layout: "vertical", height: 45 }},
         createOrder: () => crearOrden(),
         onApprove: (data) => {{
-          _debug("onApprove: " + data.orderID);
           enviarResultado({{ status: "approved", orderId: data.orderID }});
         }},
         onCancel: () => {{
-          _debug("onCancel");
           enviarResultado({{ status: "cancelled" }});
         }},
-        onError: (err) => {{
-          _debug("onError de PayPal: " + (err && err.message ? err.message : err));
+        onError: () => {{
           enviarResultado({{ status: "error", message: "Ocurrio un error con PayPal." }});
         }},
       }})
