@@ -67,19 +67,6 @@ function reportarAltura() {{
 new ResizeObserver(reportarAltura).observe(document.body);
 window.addEventListener("load", reportarAltura);
 
-// El flujo de "Iniciar sesion con PayPal" (a diferencia del pago con
-// tarjeta de invitado) intenta abrir una ventana emergente via
-// window.open() para el login/checkout -- el WebView de Flutter no
-// soporta multiples ventanas (no hay onCreateWindow configurado), asi
-// que la tarjeta quedaba mostrandose vacia y sin poder tocarse (reportado
-// por el usuario: aparecia "Pagar con PayPal" pero no se podia escribir
-// el correo ni hacer nada). Se fuerza a que ese popup navegue dentro del
-// mismo WebView en vez de abrir una ventana nueva.
-window.open = function (url) {{
-  if (url) location.href = url;
-  return null;
-}};
-
 async function crearOrden() {{
   const res = await fetch("/api/v1/ventas/checkout/paypal/crear-orden", {{
     method: "POST",
@@ -95,8 +82,17 @@ const script = document.createElement("script");
 // funding este habilitado para esa cuenta) no muestran el boton de tarjeta
 // de invitado y solo se ve el boton de PayPal -- forzarlo lo deja visible
 // siempre que este disponible. locale=es_BO: sin esto el texto del boton
-// sale en ingles ("Pay with PayPal") en vez de espanol.
-script.src = "https://www.paypal.com/sdk/js?client-id={settings.PAYPAL_CLIENT_ID}&currency=USD&intent=capture&enable-funding=card&locale=es_BO";
+// sale en ingles ("Pay with PayPal") en vez de espanol. disable-funding=paypal:
+// solo aca (embed movil) -- el boton de "iniciar sesion con PayPal" abre su
+// flujo en un iframe del dominio de PayPal con su propio `window`, que no
+// podemos interceptar desde esta pagina, y el WebView de Flutter no soporta
+// ventanas emergentes (onCreateWindow) para dejarlo navegar a pantalla
+// completa -- quedaba una tarjeta sin nada interactivo (reportado por el
+// usuario probando en su celular). Se saca ese boton solo en movil y se deja
+// unicamente el de tarjeta de invitado, que no depende de ningun popup y ya
+// se probo que funciona bien con toque real. En la web (paypal-sdk.ts) se
+// deja tal cual, con ambos botones, porque ahi si funcionan los popups.
+script.src = "https://www.paypal.com/sdk/js?client-id={settings.PAYPAL_CLIENT_ID}&currency=USD&intent=capture&enable-funding=card&disable-funding=paypal&locale=es_BO";
 script.onload = () => {{
   try {{
     window.paypal
