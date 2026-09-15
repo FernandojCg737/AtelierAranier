@@ -177,6 +177,7 @@ def _to_admin_out(venta: Venta) -> VentaAdminOut:
 
 @router.post("/checkout/paypal/crear-orden", response_model=OrdenPaypalOut)
 def crear_orden_paypal(
+    request: Request,
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
 ) -> OrdenPaypalOut:
@@ -190,8 +191,15 @@ def crear_orden_paypal(
     carrito = _get_carrito_activo_no_vacio(db, cliente.id)
     total = _calcular_total(carrito)
 
-    orden = crear_orden(total, referencia=f"carrito-{carrito.id}")
-    return OrdenPaypalOut(order_id=orden["id"], total=total)
+    base = str(request.base_url).rstrip("/")
+    orden = crear_orden(
+        total,
+        referencia=f"carrito-{carrito.id}",
+        return_url=f"{base}/paypal-embed/retorno",
+        cancel_url=f"{base}/paypal-embed/cancelado",
+    )
+    approve_url = next((link["href"] for link in orden.get("links", []) if link.get("rel") == "approve"), None)
+    return OrdenPaypalOut(order_id=orden["id"], total=total, approve_url=approve_url)
 
 
 @router.post("/checkout/paypal/capturar/{order_id}", response_model=VentaOut)

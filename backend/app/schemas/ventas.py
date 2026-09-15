@@ -7,6 +7,13 @@ from pydantic import BaseModel, Field, field_serializer
 class OrdenPaypalOut(BaseModel):
     order_id: str
     total: Decimal
+    # Link "approve" que devuelve PayPal (checkoutnow?token=...) -- lo usa
+    # solo el WebView del checkout movil para el boton "PayPal" (login con
+    # cuenta): en vez de abrir el popup del boton del JS SDK (que el WebView
+    # de Flutter no soporta), navega dentro del mismo WebView a esta URL real
+    # de PayPal, y PayPal redirige de vuelta a /paypal-embed/retorno al
+    # terminar. La web no lo usa (sigue con el boton del JS SDK normal).
+    approve_url: str | None = None
 
 
 class CapturarPaypalIn(BaseModel):

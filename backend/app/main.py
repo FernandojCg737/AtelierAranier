@@ -1,13 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.api.v1.router import api_router
 from app.core.ar_embed import render_ar_embed_html
 from app.core.config import settings
-from app.core.paypal_embed import render_paypal_embed_html
+from app.core.paypal_embed import render_paypal_embed_html, render_paypal_retorno_html
 
 app = FastAPI(title=settings.PROJECT_NAME)
+
+# Render (como la mayoria de PaaS) termina el https en su proxy y nos
+# reenvia por http puro adentro -- sin esto, `request.base_url` (usado para
+# armar el return_url/cancel_url que le mandamos a PayPal) reportaria
+# "http://" en vez de "https://".
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 app.add_middleware(
     CORSMiddleware,
@@ -49,3 +56,19 @@ def paypal_embed() -> str:
     del checkout movil -- misma experiencia que la web en vez del flujo de
     redireccion con link "approve". Ver `paypal_embed.py`."""
     return render_paypal_embed_html()
+
+
+@app.get("/paypal-embed/retorno", response_class=HTMLResponse, include_in_schema=False)
+def paypal_embed_retorno() -> str:
+    """PayPal redirige aca (return_url) cuando el cliente aprueba el pago
+    en su checkout real -- ver el boton "PayPal" en `paypal_embed.py`. Esta
+    pagina no hace nada mas que avisarle a Flutter por el mismo canal
+    PaypalResultChannel que ya escucha, con el order_id (viene en `token`)."""
+    return render_paypal_retorno_html(aprobado=True)
+
+
+@app.get("/paypal-embed/cancelado", response_class=HTMLResponse, include_in_schema=False)
+def paypal_embed_cancelado() -> str:
+    """PayPal redirige aca (cancel_url) si el cliente cancela su checkout
+    real en vez de aprobarlo."""
+    return render_paypal_retorno_html(aprobado=False)

@@ -39,27 +39,40 @@ def _obtener_token_acceso() -> str:
     return resp.json()["access_token"]
 
 
-def crear_orden(total: Decimal, referencia: str) -> dict:
+def crear_orden(
+    total: Decimal,
+    referencia: str,
+    return_url: str | None = None,
+    cancel_url: str | None = None,
+) -> dict:
     """Crea una orden de pago en PayPal (intent=CAPTURE) por el total del
     carrito. Esto NO cobra nada todavia: el frontend (web o el WebView
     inline del movil, ver `paypal_embed.py`) usa el order_id devuelto para
     abrir el boton/checkout de PayPal, y el cargo real recien ocurre cuando
     el backend captura la orden (ver capturar_orden), despues de que el
     cliente la aprueba (con su cuenta PayPal o con tarjeta de credito via
-    el checkout de invitado de PayPal)."""
+    el checkout de invitado de PayPal).
+
+    return_url/cancel_url son opcionales -- los usa unicamente el boton
+    "PayPal" del WebView movil (ver paypal_embed.py), que en vez del popup
+    del JS SDK navega directo al link "approve" que PayPal devuelve aca
+    mismo (dentro del `links` de la respuesta)."""
     token = _obtener_token_acceso()
+    body: dict = {
+        "intent": "CAPTURE",
+        "purchase_units": [
+            {
+                "reference_id": referencia,
+                "amount": {"currency_code": PAYPAL_CURRENCY, "value": f"{total:.2f}"},
+            }
+        ],
+    }
+    if return_url and cancel_url:
+        body["application_context"] = {"return_url": return_url, "cancel_url": cancel_url}
     resp = requests.post(
         f"{_paypal_base_url()}/v2/checkout/orders",
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        json={
-            "intent": "CAPTURE",
-            "purchase_units": [
-                {
-                    "reference_id": referencia,
-                    "amount": {"currency_code": PAYPAL_CURRENCY, "value": f"{total:.2f}"},
-                }
-            ],
-        },
+        json=body,
         timeout=15,
     )
     if not resp.ok:
