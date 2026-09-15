@@ -67,10 +67,42 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
+      // El SDK de PayPal detecta que esta corriendo dentro de un WebView
+      // embebido (no un navegador de verdad) por el user-agent por defecto
+      // de Android WebView, y por prevencion de phishing degrada la
+      // experiencia a un cartel generico "Pagar con PayPal" sin los
+      // botones reales -- confirmado comparando contra Chrome normal en el
+      // mismo emulador, donde se ve perfecto. Se le pone un user-agent de
+      // Chrome de escritorio/movil normal (sin el marcador propio de
+      // WebView) para que el SDK lo trate como un navegador real.
+      ..setUserAgent(
+        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/133.0.6943.137 Mobile Safari/537.36',
+      )
       ..addJavaScriptChannel('PaypalResultChannel', onMessageReceived: (msg) => _onPaypalMensaje(msg.message))
       ..addJavaScriptChannel('PaypalHeightChannel', onMessageReceived: (msg) => _onPaypalAltura(msg.message))
+      ..setNavigationDelegate(NavigationDelegate(onPageFinished: _onPaypalNavego))
       ..loadRequest(Uri.parse(paypalEmbedUrl(token)));
     setState(() => _paypalController = controller);
+  }
+
+  // El boton "PayPal" (ver paypal_embed.py) navega, dentro de este mismo
+  // WebView, al checkout real de PayPal (otro dominio, fuera de nuestro
+  // control) -- esa pagina no tiene el script que le avisa a Flutter su
+  // alto real (PaypalHeightChannel es nuestro, solo esta en /paypal-embed),
+  // asi que el WebView se quedaba con el ultimo alto chico de ANTES de
+  // navegar y el campo de correo del login de PayPal quedaba fuera de vista
+  // (invisible, no realmente "no funcionaba" -- reportado por el usuario
+  // como que no se podia escribir nada ahi). Mientras la pagina cargada sea
+  // de otro dominio, se usa el alto completo de la pantalla a ciegas; al
+  // volver a nuestro dominio (retorno/cancelado) el propio script de esas
+  // paginas vuelve a reportar su alto real y se encoge de nuevo.
+  void _onPaypalNavego(String url) {
+    if (!mounted) return;
+    final esNuestroDominio = Uri.parse(url).host == Uri.parse(paypalEmbedUrl('')).host;
+    if (!esNuestroDominio) {
+      setState(() => _paypalWebviewHeight = MediaQuery.of(context).size.height);
+    }
   }
 
   void _onPaypalAltura(String raw) {
