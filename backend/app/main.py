@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
@@ -49,26 +49,38 @@ def ar_embed(producto_id: int) -> str:
     return render_ar_embed_html(producto_id)
 
 
+# Sin esto, el WebView de la app movil (a diferencia de un navegador normal,
+# que revalida mas seguido) puede quedarse sirviendo una version vieja de
+# estas paginas desde su cache HTTP interna despues de un deploy nuevo --
+# como la URL no cambia entre sesiones (mismo JWT mientras dure el login),
+# nada la fuerza a pedir una version fresca. Se aplica a las 3 paginas del
+# flujo de PayPal del WebView movil.
+_SIN_CACHE = {"Cache-Control": "no-store"}
+
+
 @app.get("/paypal-embed", response_class=HTMLResponse, include_in_schema=False)
-def paypal_embed() -> str:
+def paypal_embed(response: Response) -> str:
     """Pagina standalone que renderiza los botones reales del JS SDK de
     PayPal, pensada para cargarse INLINE (no a pantalla completa) dentro
     del checkout movil -- misma experiencia que la web en vez del flujo de
     redireccion con link "approve". Ver `paypal_embed.py`."""
+    response.headers.update(_SIN_CACHE)
     return render_paypal_embed_html()
 
 
 @app.get("/paypal-embed/retorno", response_class=HTMLResponse, include_in_schema=False)
-def paypal_embed_retorno() -> str:
+def paypal_embed_retorno(response: Response) -> str:
     """PayPal redirige aca (return_url) cuando el cliente aprueba el pago
     en su checkout real -- ver el boton "PayPal" en `paypal_embed.py`. Esta
     pagina no hace nada mas que avisarle a Flutter por el mismo canal
     PaypalResultChannel que ya escucha, con el order_id (viene en `token`)."""
+    response.headers.update(_SIN_CACHE)
     return render_paypal_retorno_html(aprobado=True)
 
 
 @app.get("/paypal-embed/cancelado", response_class=HTMLResponse, include_in_schema=False)
-def paypal_embed_cancelado() -> str:
+def paypal_embed_cancelado(response: Response) -> str:
     """PayPal redirige aca (cancel_url) si el cliente cancela su checkout
     real en vez de aprobarlo."""
+    response.headers.update(_SIN_CACHE)
     return render_paypal_retorno_html(aprobado=False)
