@@ -67,6 +67,19 @@ function reportarAltura() {{
 new ResizeObserver(reportarAltura).observe(document.body);
 window.addEventListener("load", reportarAltura);
 
+// El flujo de "Iniciar sesion con PayPal" (a diferencia del pago con
+// tarjeta de invitado) intenta abrir una ventana emergente via
+// window.open() para el login/checkout -- el WebView de Flutter no
+// soporta multiples ventanas (no hay onCreateWindow configurado), asi
+// que la tarjeta quedaba mostrandose vacia y sin poder tocarse (reportado
+// por el usuario: aparecia "Pagar con PayPal" pero no se podia escribir
+// el correo ni hacer nada). Se fuerza a que ese popup navegue dentro del
+// mismo WebView en vez de abrir una ventana nueva.
+window.open = function (url) {{
+  if (url) location.href = url;
+  return null;
+}};
+
 async function crearOrden() {{
   const res = await fetch("/api/v1/ventas/checkout/paypal/crear-orden", {{
     method: "POST",
