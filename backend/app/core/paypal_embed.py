@@ -78,7 +78,12 @@ async function crearOrden() {{
 }}
 
 const script = document.createElement("script");
-script.src = "https://www.paypal.com/sdk/js?client-id={settings.PAYPAL_CLIENT_ID}&currency=USD&intent=capture";
+// enable-funding=card: sin esto, algunas cuentas de PayPal (depende de que
+// funding este habilitado para esa cuenta) no muestran el boton de tarjeta
+// de invitado y solo se ve el boton de PayPal -- forzarlo lo deja visible
+// siempre que este disponible. locale=es_BO: sin esto el texto del boton
+// sale en ingles ("Pay with PayPal") en vez de espanol.
+script.src = "https://www.paypal.com/sdk/js?client-id={settings.PAYPAL_CLIENT_ID}&currency=USD&intent=capture&enable-funding=card&locale=es_BO";
 script.onload = () => {{
   try {{
     window.paypal

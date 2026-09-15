@@ -20,7 +20,12 @@ export class PaypalSdk {
 
     this.promesa = new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = `https://www.paypal.com/sdk/js?client-id=${environment.paypalClientId}&currency=USD&intent=capture`;
+      // enable-funding=card: sin esto, algunas cuentas de PayPal no muestran
+      // el boton de tarjeta de invitado (depende de que funding tenga
+      // habilitado esa cuenta) y solo se ve el boton de PayPal -- forzarlo
+      // lo deja visible siempre que este disponible. locale=es_BO: sin esto
+      // el texto del boton sale en ingles en vez de espanol.
+      script.src = `https://www.paypal.com/sdk/js?client-id=${environment.paypalClientId}&currency=USD&intent=capture&enable-funding=card&locale=es_BO`;
       script.onload = () => resolve(window.paypal);
       script.onerror = () => reject(new Error('No se pudo cargar el SDK de PayPal.'));
       document.head.appendChild(script);
