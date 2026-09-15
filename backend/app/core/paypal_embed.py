@@ -129,14 +129,20 @@ const script = document.createElement("script");
 // enable-funding=card: sin esto, algunas cuentas de PayPal (depende de que
 // funding este habilitado para esa cuenta) no muestran el boton de tarjeta
 // de invitado -- forzarlo lo deja visible siempre que este disponible.
-// disable-funding=paypal: el boton "PayPal" del SDK se reemplaza por el
-// boton propio de arriba (ver docstring), asi que se le pide al SDK que no
-// renderice el suyo. locale=es_BO: sin esto el texto sale en ingles.
-script.src = "https://www.paypal.com/sdk/js?client-id={settings.PAYPAL_CLIENT_ID}&currency=USD&intent=capture&enable-funding=card&disable-funding=paypal&locale=es_BO";
+// locale=es_BO: sin esto el texto sale en ingles. A proposito NO se manda
+// disable-funding=paypal aca: para esta cuenta sandbox, deshabilitar ese
+// funding globalmente hacia que el SDK ni siquiera pudiera renderizar el
+// boton de tarjeta (Buttons() tiraba error de entrada, "zero valid
+// buttons"). En vez de eso, el funding "paypal" se deja habilitado a nivel
+// SDK pero simplemente no se le pide un boton para el (fundingSource:
+// CARD) -- asi el propio SDK sigue conforme y solo se renderiza el de
+// tarjeta; el boton "PayPal" que ve el usuario es el propio de arriba.
+script.src = "https://www.paypal.com/sdk/js?client-id={settings.PAYPAL_CLIENT_ID}&currency=USD&intent=capture&enable-funding=card&locale=es_BO";
 script.onload = () => {{
   try {{
     window.paypal
       .Buttons({{
+        fundingSource: window.paypal.FUNDING.CARD,
         style: {{ layout: "vertical", height: 45 }},
         createOrder: () => crearOrden().then((d) => d.order_id),
         onApprove: (data) => {{
