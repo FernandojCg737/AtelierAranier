@@ -10,14 +10,14 @@ ALLOWED_CONTENT_TYPES = {
     "image/png": "png",
     "image/webp": "webp",
 }
-MAX_IMAGE_BYTES = 5 * 1024 * 1024
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
 
 def upload_producto_imagen(producto_id: int, content: bytes, content_type: str) -> str:
     if content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Formato de imagen no soportado (usa JPG, PNG o WEBP).")
     if len(content) > MAX_IMAGE_BYTES:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La imagen supera el tamano maximo de 5MB.")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La imagen supera el tamano maximo de 10MB.")
     if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_KEY:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Almacenamiento de imagenes no configurado.")
 
@@ -54,7 +54,7 @@ def upload_prenda_ar_imagen(producto_id: int, content: bytes, content_type: str)
             "La imagen debe ser JPG, PNG o WEBP.",
         )
     if len(content) > MAX_IMAGE_BYTES:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La imagen supera el tamano maximo de 5MB.")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La imagen supera el tamano maximo de 10MB.")
     if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_KEY:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Almacenamiento de imagenes no configurado.")
 
@@ -85,7 +85,7 @@ def upload_comprobante_pago(cliente_id: int, content: bytes, content_type: str) 
     if content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Formato de imagen no soportado (usa JPG, PNG o WEBP).")
     if len(content) > MAX_IMAGE_BYTES:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La imagen supera el tamano maximo de 5MB.")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La imagen supera el tamano maximo de 10MB.")
     if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_KEY:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Almacenamiento de imagenes no configurado.")
 
