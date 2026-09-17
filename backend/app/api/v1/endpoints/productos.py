@@ -41,6 +41,7 @@ from app.schemas.productos import (
     ArFotoTrabajoOut,
     ArSesionOut,
     CatalogoBaseOut,
+    ColorCreate,
     DisponibilidadOut,
     ImagenOut,
     InventarioCantidadUpdate,
@@ -160,6 +161,23 @@ def create_marca(
 
     marca = db.query(Marca).filter(Marca.id == marca_id).first()
     return MarcaOut.model_validate(marca)
+
+
+@router.post("/colores", response_model=OpcionOut, status_code=status.HTTP_201_CREATED)
+def create_color(
+    payload: ColorCreate,
+    db: Session = Depends(get_db),
+    _usuario: Usuario = Depends(require_permiso("CU05")),
+) -> OpcionOut:
+    """Igual que sp_crear_marca (find-or-create por nombre): usado por la
+    opcion "Otro..." al cargar inventario, para colores que no estan en el
+    catalogo fijo."""
+    result = db.execute(text("SELECT sp_crear_color(:nombre)"), {"nombre": payload.nombre})
+    color_id = result.scalar_one()
+    db.commit()
+
+    color = db.query(Color).filter(Color.id == color_id).first()
+    return OpcionOut.model_validate(color)
 
 
 def _to_publico(producto: Producto) -> ProductoPublicoOut:

@@ -298,7 +298,16 @@
               @for (c of catalogo().colores; track c.id) {
                 <option [value]="c.id" [selected]="c.id === nStockColorId()">{{ c.nombre }}</option>
               }
+              <option [value]="colorOtro" [selected]="colorOtro === nStockColorId()">Otro...</option>
             </select>
+            @if (nStockColorId() === colorOtro) {
+              <input
+                type="text"
+                placeholder="Nombre del color nuevo"
+                [value]="nStockColorNuevo()"
+                (input)="nStockColorNuevo.set($any($event.target).value)"
+              />
+            }
             <input
               type="number"
               min="0"

@@ -122,6 +122,10 @@ class MarcaOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ColorCreate(BaseModel):
+    nombre: str = Field(min_length=1, max_length=50)
+
+
 class InventarioOut(BaseModel):
     id: int
     sucursal_id: int

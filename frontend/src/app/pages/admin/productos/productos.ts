@@ -73,6 +73,7 @@ interface CatalogoBase {
 }
 
 const MARCA_OTRO = -1;
+const COLOR_OTRO = -1;
 
 @Component({
   selector: 'app-admin-productos',
@@ -95,6 +96,7 @@ export class AdminProductos implements OnInit {
     colores: [],
   });
   protected readonly marcaOtro = MARCA_OTRO;
+  protected readonly colorOtro = COLOR_OTRO;
   protected readonly buscar = signal('');
   protected readonly loading = signal(false);
   protected readonly error = signal('');
@@ -122,6 +124,7 @@ export class AdminProductos implements OnInit {
   protected readonly nStockSucursalId = signal<number | null>(null);
   protected readonly nStockTallaId = signal<number | null>(null);
   protected readonly nStockColorId = signal<number | null>(null);
+  protected readonly nStockColorNuevo = signal('');
   protected readonly nStockCantidad = signal('');
   protected readonly savingStock = signal(false);
   protected readonly stockError = signal('');
@@ -369,6 +372,7 @@ export class AdminProductos implements OnInit {
     this.nStockSucursalId.set(this.catalogo().sucursales[0]?.id ?? null);
     this.nStockTallaId.set(this.catalogo().tallas[0]?.id ?? null);
     this.nStockColorId.set(this.catalogo().colores[0]?.id ?? null);
+    this.nStockColorNuevo.set('');
     this.nStockCantidad.set('');
     this.stockError.set('');
   }
@@ -410,15 +414,28 @@ export class AdminProductos implements OnInit {
       this.stockError.set('Completa sucursal, talla, color y cantidad.');
       return;
     }
+    if (this.nStockColorId() === this.colorOtro && !this.nStockColorNuevo().trim()) {
+      this.stockError.set('Escribe el nombre del color nuevo.');
+      return;
+    }
 
     this.stockError.set('');
     this.savingStock.set(true);
     try {
+      let colorId = this.nStockColorId();
+      if (colorId === this.colorOtro) {
+        const color = await firstValueFrom(
+          this.http.post<Opcion>(`${environment.apiUrl}/productos/colores`, { nombre: this.nStockColorNuevo().trim() }),
+        );
+        this.catalogo.update((c) => ({ ...c, colores: [...c.colores, color].sort((a, b) => a.nombre.localeCompare(b.nombre)) }));
+        colorId = color.id;
+      }
+
       const nuevo = await firstValueFrom(
         this.http.post<Inventario>(`${environment.apiUrl}/productos/${producto.id}/inventario`, {
           sucursal_id: this.nStockSucursalId(),
           talla_id: this.nStockTallaId(),
-          color_id: this.nStockColorId(),
+          color_id: colorId,
           cantidad: Number(this.nStockCantidad()),
         }),
       );
