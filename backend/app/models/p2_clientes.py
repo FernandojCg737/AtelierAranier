@@ -48,6 +48,7 @@ class Cliente(Usuario):
     ventas: Mapped[list["Venta"]] = relationship(back_populates="cliente")
     notificaciones: Mapped[list["Notificacion"]] = relationship(back_populates="cliente")
     recomendaciones: Mapped[list["Recomendacion"]] = relationship(back_populates="cliente")
+    vistas_producto: Mapped[list["VistaProducto"]] = relationship(back_populates="cliente")
     chats: Mapped[list["Chatbot"]] = relationship(back_populates="cliente")
     calificaciones: Mapped[list["Calificacion"]] = relationship(back_populates="cliente")
 

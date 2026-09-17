@@ -178,6 +178,8 @@
     </div>
   </div>
 
+  <app-relacionados [productoId]="p.id" />
+
   @if (arAbierto() && p.hasPhotos) {
     <app-ar-tryon [productoId]="p.id" (closed)="cerrarAr()" />
   }

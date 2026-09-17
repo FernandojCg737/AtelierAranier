@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_permiso
-from app.core.gemini import generar_razones
+from app.api.deps import get_current_user, get_current_user_optional, require_permiso
+from app.core.gemini import generar_razones, generar_razones_relacionados
 from app.db.session import get_db
 from app.models import Cliente, Usuario
 from app.schemas.recomendaciones import (
@@ -14,6 +14,7 @@ from app.schemas.recomendaciones import (
     RecomendacionOut,
     RecomendacionPage,
     RecomendacionResumen,
+    RelacionadoOut,
 )
 
 router = APIRouter()
@@ -301,3 +302,184 @@ def listar_recomendaciones(
         page=page,
         page_size=page_size,
     )
+
+
+# ----------------------------------------------------------------------
+# "Tambien te puede interesar" (detalle de producto) -- a diferencia de
+# "Recomendado para ti" (dashboard, arriba), esto no depende del historial
+# de UN cliente: el ranking se arma por PRODUCTO, en base a que otros
+# productos vieron juntos los clientes que pasaron por este mismo, con la
+# misma logica de respaldo en cascada que el resto del motor (co-vista ->
+# misma categoria/marca -> mas vendido). Se muestra a cualquier visitante,
+# tenga sesion o no; solo se registra la vista (para alimentar la senal de
+# co-vista a futuro) cuando hay un cliente autenticado.
+# ----------------------------------------------------------------------
+
+_UMBRAL_REFRESH_RELACIONADOS = timedelta(hours=24)
+
+
+def _generar_relacionados(db: Session, producto_id: int, n: int = 6) -> list[dict]:
+    candidatos: list[dict] = []
+    vistos: set[int] = {producto_id}
+
+    co_vista = db.execute(
+        text(
+            """
+            SELECT vp2.producto_id, COUNT(DISTINCT vp2.cliente_id) AS frecuencia
+            FROM vista_producto vp1
+            JOIN vista_producto vp2 ON vp2.cliente_id = vp1.cliente_id AND vp2.producto_id != vp1.producto_id
+            WHERE vp1.producto_id = :pid
+              AND EXISTS (SELECT 1 FROM producto pr WHERE pr.id = vp2.producto_id AND pr.estado = 'activo')
+              AND EXISTS (SELECT 1 FROM inventario inv WHERE inv.producto_id = vp2.producto_id AND inv.cantidad > 0)
+            GROUP BY vp2.producto_id
+            ORDER BY frecuencia DESC
+            LIMIT 6
+            """
+        ),
+        {"pid": producto_id},
+    ).all()
+    if co_vista:
+        max_frec = max(f for _, f in co_vista)
+        for pid, frecuencia in co_vista:
+            candidatos.append({"producto_id": pid, "score": round(float(frecuencia) / max_frec, 4), "origen": "vistos_juntos"})
+            vistos.add(pid)
+
+    if len(candidatos) < n:
+        contenido = db.execute(
+            text(
+                """
+                SELECT p.id, (CASE WHEN p.categoria_id = pb.categoria_id THEN 1 ELSE 0 END
+                            + CASE WHEN p.marca_id = pb.marca_id THEN 1 ELSE 0 END) AS coincidencias
+                FROM producto p, producto pb
+                WHERE pb.id = :pid AND p.id != :pid AND p.estado = 'activo'
+                  AND (p.categoria_id = pb.categoria_id OR p.marca_id = pb.marca_id)
+                  AND EXISTS (SELECT 1 FROM inventario inv WHERE inv.producto_id = p.id AND inv.cantidad > 0)
+                ORDER BY coincidencias DESC, p.id
+                LIMIT 12
+                """
+            ),
+            {"pid": producto_id},
+        ).all()
+        for pid, coincidencias in contenido:
+            if len(candidatos) >= n:
+                break
+            if pid in vistos:
+                continue
+            candidatos.append({"producto_id": pid, "score": round(0.5 + 0.15 * coincidencias, 4), "origen": "similar_categoria"})
+            vistos.add(pid)
+
+    if len(candidatos) < n:
+        excluidos = list(vistos)
+        mas_vendidos = db.execute(
+            text(
+                f"""
+                WITH dvc AS ({_DETALLE_BASE})
+                SELECT dvc.producto_id, SUM(dvc.cantidad) AS unidades
+                FROM dvc
+                WHERE dvc.producto_id NOT IN :excluidos
+                  AND EXISTS (SELECT 1 FROM producto pr WHERE pr.id = dvc.producto_id AND pr.estado = 'activo')
+                  AND EXISTS (SELECT 1 FROM inventario inv WHERE inv.producto_id = dvc.producto_id AND inv.cantidad > 0)
+                GROUP BY dvc.producto_id
+                ORDER BY unidades DESC
+                LIMIT 20
+                """
+            ).bindparams(bindparam("excluidos", expanding=True)),
+            {"excluidos": excluidos},
+        ).all()
+        max_unidades = max((u for _, u in mas_vendidos), default=1)
+        for pid, unidades in mas_vendidos:
+            if len(candidatos) >= n:
+                break
+            if pid in vistos:
+                continue
+            candidatos.append({"producto_id": pid, "score": round((float(unidades) / max_unidades) * 0.4, 4), "origen": "mas_vendido"})
+            vistos.add(pid)
+
+    return candidatos
+
+
+def _regenerar_relacionados(db: Session, producto_id: int, producto_nombre: str) -> None:
+    candidatos = _generar_relacionados(db, producto_id)
+    if not candidatos:
+        return
+
+    ids = [c["producto_id"] for c in candidatos]
+    nombres = dict(
+        db.execute(
+            text("SELECT id, nombre FROM producto WHERE id IN :ids").bindparams(bindparam("ids", expanding=True)),
+            {"ids": ids},
+        ).all()
+    )
+    for c in candidatos:
+        c["nombre"] = nombres.get(c["producto_id"], "")
+
+    razones = generar_razones_relacionados(producto_nombre, candidatos)
+
+    for c in candidatos:
+        db.execute(
+            text(
+                """
+                INSERT INTO producto_relacionado (producto_id, relacionado_id, score, origen, fecha, razon)
+                VALUES (:producto_id, :relacionado_id, :score, :origen, now(), :razon)
+                ON CONFLICT (producto_id, relacionado_id) DO UPDATE SET
+                    score = EXCLUDED.score, origen = EXCLUDED.origen, fecha = EXCLUDED.fecha, razon = EXCLUDED.razon
+                """
+            ),
+            {
+                "producto_id": producto_id,
+                "relacionado_id": c["producto_id"],
+                "score": c["score"],
+                "origen": c["origen"],
+                "razon": razones.get(c["producto_id"], ""),
+            },
+        )
+    db.commit()
+
+
+@router.post("/vista/{producto_id}", status_code=status.HTTP_204_NO_CONTENT)
+def registrar_vista(
+    producto_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario | None = Depends(get_current_user_optional),
+) -> None:
+    """Se llama al abrir el detalle de un producto (web y movil), sin
+    bloquear la pagina por el resultado. Si no hay sesion (cliente
+    navegando sin loguearse) simplemente no queda registro -- la vista no
+    es obligatoria para VER la pagina, solo alimenta la senal de "vistos
+    juntos" para clientes logueados."""
+    if usuario is None:
+        return
+    cliente = db.query(Cliente).filter(Cliente.id == usuario.id).first()
+    if cliente is None:
+        return
+    db.execute(
+        text("INSERT INTO vista_producto (cliente_id, producto_id, fecha) VALUES (:cid, :pid, now())"),
+        {"cid": cliente.id, "pid": producto_id},
+    )
+    db.commit()
+
+
+@router.get("/relacionados/{producto_id}", response_model=list[RelacionadoOut])
+def productos_relacionados(producto_id: int, db: Session = Depends(get_db)) -> list[RelacionadoOut]:
+    producto = db.execute(text("SELECT nombre FROM producto WHERE id = :pid"), {"pid": producto_id}).first()
+    if producto is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Producto no encontrado.")
+
+    ultima = db.execute(
+        text("SELECT MAX(fecha) FROM producto_relacionado WHERE producto_id = :pid"), {"pid": producto_id}
+    ).scalar_one()
+    if ultima is None or (datetime.utcnow() - ultima) > _UMBRAL_REFRESH_RELACIONADOS:
+        _regenerar_relacionados(db, producto_id, producto[0])
+
+    filas = db.execute(
+        text(
+            "SELECT pr.relacionado_id, p.nombre, pr.origen, pr.razon "
+            "FROM producto_relacionado pr JOIN producto p ON p.id = pr.relacionado_id "
+            "WHERE pr.producto_id = :pid AND p.estado = 'activo' ORDER BY pr.score DESC"
+        ),
+        {"pid": producto_id},
+    ).all()
+
+    return [
+        RelacionadoOut(producto_id=f[0], producto_nombre=f[1], origen=f[2], razon=f[3] or "") for f in filas
+    ]

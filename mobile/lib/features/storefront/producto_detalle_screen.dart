@@ -1,15 +1,18 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 import '../../models/producto_publico.dart';
+import '../../widgets/product_card.dart';
 import '../auth/auth_provider.dart';
 import '../auth/login_screen.dart';
 import 'agregar_carrito_screen.dart';
 import 'ar_foto_screen.dart';
 import 'ar_tryon_screen.dart';
 import 'catalogo_provider.dart';
+import 'relacionados_provider.dart';
 import 'reserva_form_screen.dart';
 
 class ProductoDetalleScreen extends ConsumerStatefulWidget {
@@ -254,9 +257,63 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
                   ],
                 ),
               ),
+              _RelacionadosSection(productoId: p.id),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// CU18 extendido: "Tambien te puede interesar" -- ver relacionados_provider.dart.
+class _RelacionadosSection extends ConsumerWidget {
+  const _RelacionadosSection({required this.productoId});
+
+  final int productoId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final relacionados = ref.watch(relacionadosProvider(productoId)).valueOrNull ?? [];
+    if (relacionados.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(height: 1),
+          const SizedBox(height: 24),
+          const Text(
+            'TAMBIEN TE PUEDE INTERESAR',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic, color: AppColors.brandDark),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Elegido segun lo que estas viendo -- con ayuda de IA.',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.grayText),
+          ),
+          const SizedBox(height: 16),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: relacionados.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.56,
+            ),
+            itemBuilder: (context, i) {
+              final r = relacionados[i];
+              return ProductCard(
+                producto: r.producto,
+                caption: r.razon,
+                onTap: () => context.push('/producto/${r.producto.id}'),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

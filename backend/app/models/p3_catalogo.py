@@ -108,6 +108,7 @@ class Producto(Base):
     inventarios: Mapped[list["Inventario"]] = relationship(back_populates="producto")
     items_linea: Mapped[list["ItemLinea"]] = relationship(back_populates="producto")
     recomendaciones: Mapped[list["Recomendacion"]] = relationship(back_populates="producto")
+    vistas: Mapped[list["VistaProducto"]] = relationship(back_populates="producto")
     imagenes: Mapped[list["ProductoImagen"]] = relationship(
         back_populates="producto", order_by="ProductoImagen.orden", cascade="all, delete-orphan"
     )

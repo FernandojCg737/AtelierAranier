@@ -12,6 +12,13 @@ class RecomendacionOut(BaseModel):
     razon: str
 
 
+class RelacionadoOut(BaseModel):
+    producto_id: int
+    producto_nombre: str
+    origen: str
+    razon: str
+
+
 class RecomendacionAdminOut(BaseModel):
     id: int
     cliente_id: int

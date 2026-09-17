@@ -45,8 +45,10 @@ from app.models.p5_analitica import (
     ChatbotMensaje,
     Dashboard,
     Notificacion,
+    ProductoRelacionado,
     Recomendacion,
     Reporte,
+    VistaProducto,
 )
 
 __all__ = [
@@ -91,6 +93,8 @@ __all__ = [
     "Reporte",
     "Dashboard",
     "Recomendacion",
+    "VistaProducto",
+    "ProductoRelacionado",
     "Calificacion",
     "Chatbot",
     "ChatbotMensaje",

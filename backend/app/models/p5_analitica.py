@@ -79,6 +79,37 @@ class Calificacion(Base):
     cliente: Mapped["Cliente"] = relationship(back_populates="calificaciones")
 
 
+class VistaProducto(Base):
+    __tablename__ = "vista_producto"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cliente_id: Mapped[int] = mapped_column(ForeignKey("cliente.id"))
+    producto_id: Mapped[int] = mapped_column(ForeignKey("producto.id"))
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    cliente: Mapped["Cliente"] = relationship(back_populates="vistas_producto")
+    producto: Mapped["Producto"] = relationship(back_populates="vistas")
+
+
+class ProductoRelacionado(Base):
+    """Cache de "tambien te puede interesar" para el detalle de producto
+    (CU18) -- se recalcula por producto (no por cliente) cada 24h, igual
+    criterio que Recomendacion, para no depender de Gemini en cada visita.
+    Tiene DOS FK a producto (el que se esta viendo y el sugerido), por eso
+    no se le pone relationship() de ida y vuelta -- se consulta con SQL
+    directo en el endpoint, igual que el resto del motor de recomendaciones."""
+
+    __tablename__ = "producto_relacionado"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    producto_id: Mapped[int] = mapped_column(ForeignKey("producto.id"))
+    relacionado_id: Mapped[int] = mapped_column(ForeignKey("producto.id"))
+    score: Mapped[Decimal] = mapped_column(Numeric(5, 4))
+    origen: Mapped[str] = mapped_column(String(50))
+    razon: Mapped[str | None] = mapped_column(Text)
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class Chatbot(Base):
     __tablename__ = "chatbot"
 

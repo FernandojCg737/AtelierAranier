@@ -42,6 +42,22 @@ def get_current_user(
     return usuario
 
 
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> Usuario | None:
+    """Igual que get_current_user, pero para endpoints publicos que se
+    comportan distinto si hay sesion (ej. registrar que vista de producto)
+    sin exigir login: cualquier token ausente/invalido/vencido devuelve
+    None en vez de 401."""
+    if credentials is None:
+        return None
+    try:
+        return get_current_user(credentials, db)
+    except HTTPException:
+        return None
+
+
 def require_staff(usuario: Usuario = Depends(get_current_user)) -> Usuario:
     if usuario.tipo not in STAFF_TIPOS:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Acceso restringido al personal de la tienda.")

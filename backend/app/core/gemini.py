@@ -13,6 +13,7 @@ _RAZON_GENERICA = {
     "compra_conjunta": "Los clientes que compraron algo parecido tambien eligieron esto.",
     "similar_categoria": "Va a juego con productos que ya elegiste.",
     "mas_vendido": "Uno de los productos mas vendidos de la tienda.",
+    "vistos_juntos": "Otros clientes que vieron esto tambien miraron esto.",
 }
 
 
@@ -64,29 +65,14 @@ def generar_respuesta_chat(historial: list[tuple[str, str]], contexto: str, mens
         return _RESPUESTA_SIN_IA
 
 
-def generar_razones(
-    cliente_nombre: str, historial: list[str], candidatos: list[dict]
-) -> dict[int, str]:
-    """candidatos: [{"producto_id": int, "nombre": str, "origen": str}, ...].
-    Devuelve {producto_id: razon}. Si no hay API key configurada o la
-    llamada falla/no se puede parsear, cae en una razon generica por
-    origen -- la recomendacion en si (el ranking) no depende de esto."""
+def _pedir_razones(prompt: str, candidatos: list[dict]) -> dict[int, str]:
+    """Logica compartida por generar_razones y generar_razones_relacionados:
+    le manda el prompt ya armado a Gemini y espera un array JSON de strings
+    en el mismo orden que candidatos. Si no hay API key, la llamada falla o
+    la respuesta no tiene la forma esperada, cae en una razon generica por
+    origen -- el ranking en si nunca depende de esto."""
     if not settings.GEMINI_API_KEY or not candidatos:
         return {c["producto_id"]: _razon_de_respaldo(c["origen"]) for c in candidatos}
-
-    lista_candidatos = "\n".join(f'{i + 1}. "{c["nombre"]}" (motivo interno: {c["origen"]})' for i, c in enumerate(candidatos))
-    historial_texto = ", ".join(historial) if historial else "todavia no tiene compras registradas"
-
-    prompt = (
-        "Sos el motor de recomendaciones de Atelier Aranier, una tienda de ropa. "
-        f"El cliente se llama {cliente_nombre} y compro antes: {historial_texto}. "
-        "Le vamos a mostrar estos productos recomendados:\n"
-        f"{lista_candidatos}\n\n"
-        "Para cada uno, escribi una razon breve y personalizada (maximo 12 palabras, en espanol, "
-        "tono cercano y directo, sin comillas ni emojis) de por que se lo recomendamos. "
-        'Responde SOLO con un array JSON de strings, en el mismo orden, ejemplo: ["razon 1", "razon 2"]. '
-        "No agregues nada mas fuera del JSON."
-    )
 
     try:
         res = requests.post(
@@ -107,3 +93,51 @@ def generar_razones(
         return {c["producto_id"]: str(r).strip() for c, r in zip(candidatos, razones)}
     except Exception:
         return {c["producto_id"]: _razon_de_respaldo(c["origen"]) for c in candidatos}
+
+
+def generar_razones(
+    cliente_nombre: str, historial: list[str], candidatos: list[dict]
+) -> dict[int, str]:
+    """candidatos: [{"producto_id": int, "nombre": str, "origen": str}, ...].
+    Devuelve {producto_id: razon}, personalizada segun el HISTORIAL DE
+    COMPRAS del cliente -- para el listado "Recomendado para ti" (dashboard
+    del cliente)."""
+    if not candidatos:
+        return {}
+    lista_candidatos = "\n".join(f'{i + 1}. "{c["nombre"]}" (motivo interno: {c["origen"]})' for i, c in enumerate(candidatos))
+    historial_texto = ", ".join(historial) if historial else "todavia no tiene compras registradas"
+
+    prompt = (
+        "Sos el motor de recomendaciones de Atelier Aranier, una tienda de ropa. "
+        f"El cliente se llama {cliente_nombre} y compro antes: {historial_texto}. "
+        "Le vamos a mostrar estos productos recomendados:\n"
+        f"{lista_candidatos}\n\n"
+        "Para cada uno, escribi una razon breve y personalizada (maximo 12 palabras, en espanol, "
+        "tono cercano y directo, sin comillas ni emojis) de por que se lo recomendamos. "
+        'Responde SOLO con un array JSON de strings, en el mismo orden, ejemplo: ["razon 1", "razon 2"]. '
+        "No agregues nada mas fuera del JSON."
+    )
+    return _pedir_razones(prompt, candidatos)
+
+
+def generar_razones_relacionados(producto_base_nombre: str, candidatos: list[dict]) -> dict[int, str]:
+    """candidatos: [{"producto_id": int, "nombre": str, "origen": str}, ...].
+    Devuelve {producto_id: razon}, redactada en base a QUE PRODUCTO esta
+    mirando el cliente ahora mismo (seccion "Tambien te puede interesar" en
+    el detalle de producto) -- a diferencia de generar_razones, no depende
+    de que el cliente tenga historial ni sesion iniciada."""
+    if not candidatos:
+        return {}
+    lista_candidatos = "\n".join(f'{i + 1}. "{c["nombre"]}" (motivo interno: {c["origen"]})' for i, c in enumerate(candidatos))
+
+    prompt = (
+        "Sos el motor de recomendaciones de Atelier Aranier, una tienda de ropa. "
+        f'Un cliente esta viendo el producto "{producto_base_nombre}". '
+        "Le vamos a mostrar estos otros productos relacionados, justo debajo:\n"
+        f"{lista_candidatos}\n\n"
+        "Para cada uno, escribi una razon breve (maximo 10 palabras, en espanol, tono cercano, "
+        "sin comillas ni emojis) de por que se lo mostramos junto al producto que esta viendo. "
+        'Responde SOLO con un array JSON de strings, en el mismo orden, ejemplo: ["razon 1", "razon 2"]. '
+        "No agregues nada mas fuera del JSON."
+    )
+    return _pedir_razones(prompt, candidatos)

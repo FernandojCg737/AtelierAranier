@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 import { AgregarCarrito } from '../../components/agregar-carrito/agregar-carrito';
 import { ArFoto } from '../../components/ar-foto/ar-foto';
 import { ArTryon } from '../../components/ar-tryon/ar-tryon';
+import { Relacionados } from '../../components/relacionados/relacionados';
 import { ReservaForm } from '../../components/reserva-form/reserva-form';
 import { Product } from '../../data/products';
 import { Auth } from '../../services/auth';
@@ -71,7 +72,7 @@ function toProduct(p: ProductoPublico): Product {
 
 @Component({
   selector: 'app-producto-detalle',
-  imports: [RouterLink, ArTryon, ArFoto, ReservaForm, AgregarCarrito],
+  imports: [RouterLink, ArTryon, ArFoto, ReservaForm, AgregarCarrito, Relacionados],
   templateUrl: './producto-detalle.html',
   styleUrl: './producto-detalle.scss',
 })

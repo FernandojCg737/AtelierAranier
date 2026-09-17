@@ -1,0 +1,37 @@
+@if (productos().length > 0) {
+  <section class="relacionados">
+    <div class="relacionados-header">
+      <h2>También te puede interesar</h2>
+      <p>Elegido según lo que estás viendo -- con ayuda de IA.</p>
+    </div>
+
+    <div class="relacionados-grid">
+      @for (product of productos(); track product.id) {
+        <a class="product-card" [routerLink]="['/producto', product.id]">
+          <div class="product-card__image">
+            @if (isAgotado(product)) {
+              <span class="product-card__badge product-card__badge--agotado">Agotado</span>
+            }
+            <img [src]="product.image" [alt]="product.name" />
+            <button
+              class="product-card__add-to-cart"
+              type="button"
+              [disabled]="isAgotado(product)"
+              (click)="$event.preventDefault(); $event.stopPropagation(); seleccionar(product)"
+            >
+              {{ isAgotado(product) ? 'Sin stock' : 'Elegir talla y color' }}
+            </button>
+          </div>
+          <div class="product-card__info">
+            @if (product.brand) {
+              <span class="product-card__brand">{{ product.brand }}</span>
+            }
+            <span class="product-card__name">{{ product.name }}</span>
+            <span class="product-card__price">{{ product.price }} Bs</span>
+            <span class="relacionados-razon">{{ product.razon }}</span>
+          </div>
+        </a>
+      }
+    </div>
+  </section>
+}
