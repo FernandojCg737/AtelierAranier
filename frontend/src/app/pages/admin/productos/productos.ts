@@ -408,6 +408,22 @@ export class AdminProductos implements OnInit {
     }
   }
 
+  protected async eliminarInventario(inv: Inventario): Promise<void> {
+    const producto = this.editingProducto();
+    if (!producto) return;
+    if (!confirm(`Eliminar el stock de ${inv.sucursal_nombre} · ${inv.talla_codigo} · ${inv.color_nombre}?`)) return;
+
+    this.stockError.set('');
+    try {
+      await firstValueFrom(
+        this.http.delete(`${environment.apiUrl}/productos/${producto.id}/inventario/${inv.id}`),
+      );
+      this.inventario.update((lista) => lista.filter((i) => i.id !== inv.id));
+    } catch (err) {
+      this.stockError.set(this.extractError(err));
+    }
+  }
+
   protected async agregarStock(): Promise<void> {
     const producto = this.editingProducto();
     if (!producto || !this.nStockSucursalId() || !this.nStockTallaId() || !this.nStockColorId() || !this.nStockCantidad()) {

@@ -401,6 +401,23 @@
   }
 }
 
+.stock-eliminar {
+  border: 1px solid #f3d3cf;
+  background: #fff;
+  color: #b3261e;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    background: #fdecea;
+  }
+}
+
 .stock-nuevo {
   display: flex;
   flex-wrap: wrap;

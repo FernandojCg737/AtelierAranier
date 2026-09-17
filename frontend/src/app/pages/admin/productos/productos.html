@@ -251,16 +251,17 @@
                 <th>Talla</th>
                 <th>Color</th>
                 <th>Cantidad</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               @if (loadingInventario()) {
                 <tr>
-                  <td colspan="4" class="admin-table__empty">Cargando...</td>
+                  <td colspan="5" class="admin-table__empty">Cargando...</td>
                 </tr>
               } @else if (inventario().length === 0) {
                 <tr>
-                  <td colspan="4" class="admin-table__empty">Sin stock registrado.</td>
+                  <td colspan="5" class="admin-table__empty">Sin stock registrado.</td>
                 </tr>
               } @else {
                 @for (inv of inventario(); track inv.id) {
@@ -276,6 +277,9 @@
                         [value]="inv.cantidad"
                         (change)="actualizarCantidad(inv, $any($event.target).value)"
                       />
+                    </td>
+                    <td>
+                      <button type="button" class="stock-eliminar" (click)="eliminarInventario(inv)">Eliminar</button>
                     </td>
                   </tr>
                 }

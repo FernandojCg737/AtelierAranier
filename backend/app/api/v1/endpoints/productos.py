@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, require_permiso
@@ -560,6 +561,44 @@ def update_inventario_cantidad(
         db, admin, "ACTUALIZAR", "producto", producto_id, f"Stock actualizado para: {producto.nombre}", request
     )
     return _to_inventario_out(inventario)
+
+
+@router.delete("/{producto_id}/inventario/{inventario_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_inventario(
+    producto_id: int,
+    inventario_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(require_permiso("CU05", "CU12")),
+) -> None:
+    producto = _get_producto_or_404(db, producto_id)
+
+    inventario = (
+        db.query(Inventario)
+        .filter(Inventario.id == inventario_id, Inventario.producto_id == producto_id)
+        .first()
+    )
+    if inventario is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Registro de inventario no encontrado.")
+
+    # CU12: Encargado/Cajero solo controlan el inventario de SU sucursal --
+    # Administrador (con o sin sucursal asignada) sigue viendo/editando todas.
+    if admin.tipo != "administrador" and inventario.sucursal_id != getattr(admin, "sucursal_id", None):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "No podes modificar el inventario de otra sucursal.")
+
+    try:
+        db.delete(inventario)
+        db.commit()
+    except DBAPIError:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "No se puede eliminar: este registro tiene movimientos de stock asociados.",
+        )
+
+    log_bitacora(
+        db, admin, "ELIMINAR", "producto", producto_id, f"Registro de stock eliminado para: {producto.nombre}", request
+    )
 
 
 @router.post("/{producto_id}/imagenes", response_model=ImagenOut, status_code=status.HTTP_201_CREATED)
