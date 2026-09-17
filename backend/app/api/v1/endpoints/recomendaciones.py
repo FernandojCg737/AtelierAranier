@@ -14,7 +14,10 @@ from app.schemas.recomendaciones import (
     RecomendacionOut,
     RecomendacionPage,
     RecomendacionResumen,
+    RelacionadoAdminOut,
     RelacionadoOut,
+    RelacionadoPage,
+    RelacionadoResumen,
 )
 
 router = APIRouter()
@@ -511,3 +514,66 @@ def productos_relacionados(producto_id: int, db: Session = Depends(get_db)) -> l
     return [
         RelacionadoOut(producto_id=f[0], producto_nombre=f[1], origen=f[2], razon=f[3] or "") for f in filas
     ]
+
+
+@router.get("/relacionados-admin", response_model=RelacionadoPage)
+def listar_relacionados_admin(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    origen: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _empleado: Usuario = Depends(require_permiso("CU18")),
+) -> RelacionadoPage:
+    """Auditoria de "Tambien te puede interesar" (tabla producto_relacionado,
+    separada de "recomendacion"): a diferencia del panel de arriba, aca no
+    hay conversion que medir (no es una recomendacion personalizada a UN
+    cliente) -- lo que importa auditar es la COBERTURA: cuantos de los
+    productos activos ya tienen su cache de relacionados generada, para
+    confirmar que ningun producto se quede sin recomendaciones (el bug que
+    reporto el usuario y que motivo el fallback "catalogo_general")."""
+    where = "1=1" if not origen else "pr.origen = :origen"
+    params: dict = {"origen": origen} if origen else {}
+
+    productos_totales = db.execute(
+        text("SELECT COUNT(*) FROM producto WHERE estado = 'activo'")
+    ).scalar_one()
+    productos_cubiertos = db.execute(
+        text("SELECT COUNT(DISTINCT producto_id) FROM producto_relacionado")
+    ).scalar_one()
+    cobertura = round((productos_cubiertos / productos_totales * 100), 1) if productos_totales else 0.0
+
+    total = db.execute(text(f"SELECT COUNT(*) FROM producto_relacionado pr WHERE {where}"), params).scalar_one()
+
+    rows = db.execute(
+        text(
+            f"""
+            SELECT pr.id, pr.producto_id, pbase.nombre, pr.relacionado_id, prel.nombre, pr.score, pr.origen,
+                   pr.razon, pr.fecha
+            FROM producto_relacionado pr
+            JOIN producto pbase ON pbase.id = pr.producto_id
+            JOIN producto prel ON prel.id = pr.relacionado_id
+            WHERE {where}
+            ORDER BY pr.fecha DESC
+            LIMIT :limit OFFSET :offset
+            """
+        ),
+        {**params, "limit": page_size, "offset": (page - 1) * page_size},
+    ).all()
+
+    items = [
+        RelacionadoAdminOut(
+            id=r[0], producto_id=r[1], producto_nombre=r[2], relacionado_id=r[3], relacionado_nombre=r[4],
+            score=Decimal(str(r[5])), origen=r[6], razon=r[7], fecha=r[8],
+        )
+        for r in rows
+    ]
+
+    return RelacionadoPage(
+        resumen=RelacionadoResumen(
+            productos_totales=int(productos_totales), productos_cubiertos=int(productos_cubiertos), cobertura_pct=cobertura
+        ),
+        items=items,
+        total=int(total),
+        page=page,
+        page_size=page_size,
+    )

@@ -51,3 +51,35 @@ class RecomendacionPage(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class RelacionadoAdminOut(BaseModel):
+    id: int
+    producto_id: int
+    producto_nombre: str
+    relacionado_id: int
+    relacionado_nombre: str
+    score: Decimal
+    origen: str
+    razon: str | None
+    fecha: datetime
+
+    @field_serializer("fecha")
+    def _serialize_fecha(self, value: datetime) -> str:
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.isoformat()
+
+
+class RelacionadoResumen(BaseModel):
+    productos_totales: int
+    productos_cubiertos: int
+    cobertura_pct: float
+
+
+class RelacionadoPage(BaseModel):
+    resumen: RelacionadoResumen
+    items: list[RelacionadoAdminOut]
+    total: int
+    page: int
+    page_size: int

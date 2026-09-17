@@ -24,10 +24,35 @@ interface RecomendacionPage {
   page_size: number;
 }
 
+interface RelacionadoItem {
+  id: number;
+  producto_nombre: string;
+  relacionado_nombre: string;
+  score: string;
+  origen: string;
+  razon: string | null;
+  fecha: string;
+}
+
+interface RelacionadoPage {
+  resumen: { productos_totales: number; productos_cubiertos: number; cobertura_pct: number };
+  items: RelacionadoItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
 const ORIGEN_LABEL: Record<string, string> = {
   compra_conjunta: 'Comprado junto a...',
   similar_categoria: 'Similar a tus compras',
   mas_vendido: 'Mas vendido',
+};
+
+const ORIGEN_LABEL_RELACIONADOS: Record<string, string> = {
+  vistos_juntos: 'Vistos juntos',
+  similar_categoria: 'Misma categoria/marca',
+  mas_vendido: 'Mas vendido',
+  catalogo_general: 'Catalogo general (respaldo)',
 };
 
 // CU18 "Recomendar Prendas por IA": panel de solo lectura -- el ranking lo
@@ -54,12 +79,26 @@ export class AdminRecomendaciones implements OnInit {
   protected readonly error = signal('');
   protected readonly origenLabel = ORIGEN_LABEL;
 
+  protected readonly resumenRel = signal<RelacionadoPage['resumen'] | null>(null);
+  protected readonly itemsRel = signal<RelacionadoItem[]>([]);
+  protected readonly totalRel = signal(0);
+  protected readonly pageRel = signal(1);
+  protected readonly filtroOrigenRel = signal('');
+  protected readonly loadingRel = signal(false);
+  protected readonly errorRel = signal('');
+  protected readonly origenLabelRel = ORIGEN_LABEL_RELACIONADOS;
+
   protected get totalPages(): number {
     return Math.max(1, Math.ceil(this.total() / this.pageSize));
   }
 
+  protected get totalPagesRel(): number {
+    return Math.max(1, Math.ceil(this.totalRel() / this.pageSize));
+  }
+
   ngOnInit(): void {
     void this.load();
+    void this.loadRelacionados();
   }
 
   protected filtrar(): void {
@@ -71,6 +110,17 @@ export class AdminRecomendaciones implements OnInit {
     if (page < 1 || page > this.totalPages) return;
     this.page.set(page);
     void this.load();
+  }
+
+  protected filtrarRelacionados(): void {
+    this.pageRel.set(1);
+    void this.loadRelacionados();
+  }
+
+  protected goToPageRelacionados(page: number): void {
+    if (page < 1 || page > this.totalPagesRel) return;
+    this.pageRel.set(page);
+    void this.loadRelacionados();
   }
 
   private async load(): Promise<void> {
@@ -90,6 +140,26 @@ export class AdminRecomendaciones implements OnInit {
       this.error.set('No se pudo cargar las recomendaciones.');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  private async loadRelacionados(): Promise<void> {
+    this.loadingRel.set(true);
+    this.errorRel.set('');
+    try {
+      const params: Record<string, string> = { page: String(this.pageRel()), page_size: String(this.pageSize) };
+      if (this.filtroOrigenRel()) params['origen'] = this.filtroOrigenRel();
+
+      const res = await firstValueFrom(
+        this.http.get<RelacionadoPage>(`${environment.apiUrl}/recomendaciones/relacionados-admin`, { params }),
+      );
+      this.resumenRel.set(res.resumen);
+      this.itemsRel.set(res.items);
+      this.totalRel.set(res.total);
+    } catch {
+      this.errorRel.set('No se pudo cargar "Tambien te puede interesar".');
+    } finally {
+      this.loadingRel.set(false);
     }
   }
 }

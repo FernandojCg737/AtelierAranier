@@ -93,4 +93,87 @@
     <span>Pagina {{ page() }} de {{ totalPages }}</span>
     <button type="button" [disabled]="page() >= totalPages" (click)="goToPage(page() + 1)">Siguiente</button>
   </div>
+
+  <div class="admin-section-divider">
+    <div>
+      <h2>"Tambien te puede interesar"</h2>
+      <p>
+        Extension de CU18 en el detalle de producto (web y movil): a diferencia de arriba, esto no depende de que el
+        cliente tenga sesion ni historial de compras -- el ranking se arma por PRODUCTO. Lo que importa auditar aca
+        es la cobertura: que ningun producto activo se quede sin recomendaciones.
+      </p>
+    </div>
+
+    <div class="admin-filtros">
+      <select [value]="filtroOrigenRel()" (change)="filtroOrigenRel.set($any($event.target).value); filtrarRelacionados()">
+        <option value="">Todos los origenes</option>
+        <option value="vistos_juntos">Vistos juntos</option>
+        <option value="similar_categoria">Misma categoria/marca</option>
+        <option value="mas_vendido">Mas vendido</option>
+        <option value="catalogo_general">Catalogo general (respaldo)</option>
+      </select>
+    </div>
+  </div>
+
+  @if (resumenRel(); as rr) {
+    <div class="recom-kpis">
+      <div class="recom-kpi">
+        <strong>{{ rr.productos_cubiertos }} / {{ rr.productos_totales }}</strong>
+        <span>Productos con recomendaciones</span>
+      </div>
+      <div class="recom-kpi">
+        <strong>{{ rr.cobertura_pct | number: '1.1-1' }}%</strong>
+        <span>Cobertura del catalogo</span>
+      </div>
+    </div>
+  }
+
+  @if (errorRel()) {
+    <div class="admin-error">{{ errorRel() }}</div>
+  }
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Producto visto</th>
+          <th>Relacionado sugerido</th>
+          <th>Origen</th>
+          <th>Razon (IA)</th>
+          <th>Score</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loadingRel()) {
+          <tr>
+            <td colspan="6" class="admin-table__empty">Cargando...</td>
+          </tr>
+        } @else if (itemsRel().length === 0) {
+          <tr>
+            <td colspan="6" class="admin-table__empty">No hay relacionados para estos filtros.</td>
+          </tr>
+        } @else {
+          @for (r of itemsRel(); track r.id) {
+            <tr>
+              <td>{{ r.producto_nombre }}</td>
+              <td>{{ r.relacionado_nombre }}</td>
+              <td>{{ origenLabelRel[r.origen] ?? r.origen }}</td>
+              <td class="recom-razon">{{ r.razon ?? '-' }}</td>
+              <td>{{ r.score | number: '1.2-2' }}</td>
+              <td>{{ r.fecha | date: "d MMM yyyy, h:mm a" }}</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="admin-pagination">
+    <button type="button" [disabled]="pageRel() <= 1" (click)="goToPageRelacionados(pageRel() - 1)">Anterior</button>
+    <span>Pagina {{ pageRel() }} de {{ totalPagesRel }}</span>
+    <button type="button" [disabled]="pageRel() >= totalPagesRel" (click)="goToPageRelacionados(pageRel() + 1)">
+      Siguiente
+    </button>
+  </div>
 </div>
