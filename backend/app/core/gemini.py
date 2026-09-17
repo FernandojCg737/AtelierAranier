@@ -14,6 +14,7 @@ _RAZON_GENERICA = {
     "similar_categoria": "Va a juego con productos que ya elegiste.",
     "mas_vendido": "Uno de los productos mas vendidos de la tienda.",
     "vistos_juntos": "Otros clientes que vieron esto tambien miraron esto.",
+    "catalogo_general": "Otra prenda de la tienda que te podria gustar.",
 }
 
 

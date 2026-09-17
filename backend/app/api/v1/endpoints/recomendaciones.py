@@ -395,6 +395,34 @@ def _generar_relacionados(db: Session, producto_id: int, n: int = 6) -> list[dic
             candidatos.append({"producto_id": pid, "score": round((float(unidades) / max_unidades) * 0.4, 4), "origen": "mas_vendido"})
             vistos.add(pid)
 
+    # Ultimo respaldo: si el producto no tiene vistas en conjunto todavia,
+    # no comparte categoria/marca con ningun otro producto activo, y nunca
+    # se vendio (asi que tampoco aparece en "mas_vendido"), los pasos de
+    # arriba pueden devolver la lista vacia -- reportado por el usuario
+    # probando: "algunos productos no tienen recomendaciones". Este ultimo
+    # nivel no filtra por nada mas que "activo y con stock", asi que
+    # siempre hay candidatos mientras exista al menos otro producto asi en
+    # el catalogo.
+    if len(candidatos) < n:
+        excluidos = list(vistos)
+        resto = db.execute(
+            text(
+                """
+                SELECT p.id FROM producto p
+                WHERE p.id NOT IN :excluidos AND p.estado = 'activo'
+                  AND EXISTS (SELECT 1 FROM inventario inv WHERE inv.producto_id = p.id AND inv.cantidad > 0)
+                ORDER BY p.id
+                LIMIT 12
+                """
+            ).bindparams(bindparam("excluidos", expanding=True)),
+            {"excluidos": excluidos},
+        ).all()
+        for (pid,) in resto:
+            if len(candidatos) >= n:
+                break
+            candidatos.append({"producto_id": pid, "score": 0.1, "origen": "catalogo_general"})
+            vistos.add(pid)
+
     return candidatos
 
 
