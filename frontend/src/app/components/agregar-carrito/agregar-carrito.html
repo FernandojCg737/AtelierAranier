@@ -25,9 +25,9 @@
 
         <label class="reserva-campo">
           <span>Talla</span>
-          <select [value]="tallaSeleccionada()" (change)="onTallaChange($any($event.target).value)">
-            @for (t of tallas(); track t.talla_id) {
-              <option [value]="t.talla_id">{{ t.talla_codigo }}</option>
+          <select [value]="tallaSucursalSeleccionada()" (change)="onTallaSucursalChange($any($event.target).value)">
+            @for (t of tallasSucursal(); track t.key) {
+              <option [value]="t.key">{{ t.talla_codigo }} -- {{ t.sucursal_nombre }} (Stock {{ t.total }})</option>
             }
           </select>
         </label>

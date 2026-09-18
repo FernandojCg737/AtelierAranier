@@ -9,26 +9,33 @@ import 'reservas_repository.dart';
 
 enum _Estado { cargando, formulario, enviando, listo, error, sinStock }
 
-/// Talla+color con el stock sumado entre sucursales -- la sucursal no
-/// importa aca (se elige recien en el checkout), asi que agrupar por
-/// sucursal como antes hacia que la misma combinacion talla/color apareciera
-/// repetida una vez por sucursal en el dropdown.
-class _Variante {
-  const _Variante({required this.tallaId, required this.tallaCodigo, required this.colorId, required this.colorNombre, required this.cantidad});
+class _TallaSucursal {
+  const _TallaSucursal({
+    required this.tallaId,
+    required this.tallaCodigo,
+    required this.sucursalId,
+    required this.sucursalNombre,
+    required this.total,
+  });
 
   final int tallaId;
   final String tallaCodigo;
-  final int colorId;
-  final String colorNombre;
-  final int cantidad;
+  final int sucursalId;
+  final String sucursalNombre;
+  final int total;
+
+  String get key => '$tallaId:$sucursalId';
 }
 
 /// CU11, lado cliente: elegir talla/color/cantidad antes de agregar al
 /// carrito -- el backend lo exige (no se puede agregar un producto "en
 /// general", tiene que ser una combinacion con stock real). Reusa el mismo
-/// endpoint de disponibilidad que ya usa Reservar (CU10). Talla y color se
-/// eligen por separado (pedido explicito del usuario): elegir la talla
-/// primero filtra los colores que de verdad tienen stock en esa talla.
+/// endpoint de disponibilidad que ya usa Reservar (CU10).
+///
+/// Pedido explicito del usuario: la sucursal de retiro se elige ACA, por
+/// producto -- ya no en el checkout. La talla viene "atada" a una sucursal
+/// (ej. "XL -- Sucursal Norte, Stock 10"): elegirla fija ambas cosas de una,
+/// y el color se filtra a los que esa sucursal tiene en esa talla.
 class AgregarCarritoScreen extends ConsumerStatefulWidget {
   const AgregarCarritoScreen({super.key, required this.productoId, required this.productoNombre});
 
@@ -41,24 +48,42 @@ class AgregarCarritoScreen extends ConsumerStatefulWidget {
 
 class _AgregarCarritoScreenState extends ConsumerState<AgregarCarritoScreen> {
   _Estado _estado = _Estado.cargando;
-  List<_Variante> _variantes = [];
-  int? _tallaId;
+  List<DisponibilidadItem> _variantes = [];
+  String? _tallaSucursalKey;
   int? _colorId;
   int _cantidad = 1;
   String _error = '';
 
-  List<_Variante> get _tallas {
-    final vistas = <int>{};
-    final lista = <_Variante>[];
+  List<_TallaSucursal> get _tallasSucursal {
+    final vistos = <String>{};
+    final lista = <_TallaSucursal>[];
     for (final v in _variantes) {
-      if (vistas.add(v.tallaId)) lista.add(v);
+      final key = '${v.tallaId}:${v.sucursalId}';
+      if (!vistos.add(key)) continue;
+      final total = _variantes
+          .where((x) => x.tallaId == v.tallaId && x.sucursalId == v.sucursalId)
+          .fold(0, (sum, x) => sum + x.cantidad);
+      lista.add(_TallaSucursal(
+        tallaId: v.tallaId,
+        tallaCodigo: v.tallaCodigo,
+        sucursalId: v.sucursalId,
+        sucursalNombre: v.sucursalNombre,
+        total: total,
+      ));
     }
     return lista;
   }
 
-  List<_Variante> get _coloresParaTallaActual => _variantes.where((v) => v.tallaId == _tallaId).toList();
+  List<DisponibilidadItem> get _coloresParaTallaActual {
+    final key = _tallaSucursalKey;
+    if (key == null) return [];
+    final partes = key.split(':');
+    final tallaId = int.parse(partes[0]);
+    final sucursalId = int.parse(partes[1]);
+    return _variantes.where((v) => v.tallaId == tallaId && v.sucursalId == sucursalId).toList();
+  }
 
-  _Variante? get _varianteActual {
+  DisponibilidadItem? get _varianteActual {
     for (final v in _coloresParaTallaActual) {
       if (v.colorId == _colorId) return v;
     }
@@ -73,23 +98,11 @@ class _AgregarCarritoScreenState extends ConsumerState<AgregarCarritoScreen> {
         setState(() => _estado = _Estado.sinStock);
         return;
       }
-      final porClave = <String, _Variante>{};
-      for (final o in opciones) {
-        final clave = '${o.tallaId}-${o.colorId}';
-        final existente = porClave[clave];
-        porClave[clave] = _Variante(
-          tallaId: o.tallaId,
-          tallaCodigo: o.tallaCodigo,
-          colorId: o.colorId,
-          colorNombre: o.colorNombre,
-          cantidad: (existente?.cantidad ?? 0) + o.cantidad,
-        );
-      }
-      final variantes = porClave.values.toList();
+      final primero = opciones.first;
       setState(() {
-        _variantes = variantes;
-        _tallaId = variantes.first.tallaId;
-        _colorId = variantes.first.colorId;
+        _variantes = opciones;
+        _tallaSucursalKey = '${primero.tallaId}:${primero.sucursalId}';
+        _colorId = primero.colorId;
         _estado = _Estado.formulario;
       });
     } catch (_) {
@@ -116,6 +129,7 @@ class _AgregarCarritoScreenState extends ConsumerState<AgregarCarritoScreen> {
             productoId: widget.productoId,
             tallaId: variante.tallaId,
             colorId: variante.colorId,
+            sucursalId: variante.sucursalId,
             cantidad: _cantidad,
           );
       if (mounted) setState(() => _estado = _Estado.listo);
@@ -182,17 +196,30 @@ class _AgregarCarritoScreenState extends ConsumerState<AgregarCarritoScreen> {
 
         const Text('TALLA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
         const SizedBox(height: 6),
-        DropdownButtonFormField<int>(
-          initialValue: _tallaId,
+        DropdownButtonFormField<String>(
+          initialValue: _tallaSucursalKey,
           isExpanded: true,
-          items: _tallas.map((v) => DropdownMenuItem(value: v.tallaId, child: Text(v.tallaCodigo))).toList(),
-          onChanged: (tallaId) {
-            if (tallaId == null) return;
+          items: _tallasSucursal
+              .map((t) => DropdownMenuItem(
+                    value: t.key,
+                    child: Text(
+                      '${t.tallaCodigo} -- ${t.sucursalNombre} (Stock ${t.total})',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ))
+              .toList(),
+          onChanged: (key) {
+            if (key == null) return;
             setState(() {
-              _tallaId = tallaId;
-              // La talla nueva puede no tener el mismo color que estaba
-              // elegido -- se cae al primero que si tenga stock en esta talla.
-              _colorId = _variantes.firstWhere((v) => v.tallaId == tallaId).colorId;
+              _tallaSucursalKey = key;
+              // La talla/sucursal nueva puede no tener el mismo color que
+              // estaba elegido -- se cae al primero que si tenga stock ahi.
+              final partes = key.split(':');
+              final tallaId = int.parse(partes[0]);
+              final sucursalId = int.parse(partes[1]);
+              _colorId = _variantes
+                  .firstWhere((v) => v.tallaId == tallaId && v.sucursalId == sucursalId)
+                  .colorId;
               _cantidad = 1;
             });
           },

@@ -8,6 +8,7 @@ class CarritoItemCreate(BaseModel):
     producto_id: int
     talla_id: int
     color_id: int
+    sucursal_id: int
     cantidad: int = Field(ge=1)
 
 
@@ -24,6 +25,8 @@ class DetalleCarritoOut(BaseModel):
     talla_codigo: str
     color_id: int
     color_nombre: str
+    sucursal_id: int
+    sucursal_nombre: str
     cantidad: int
     precio_unitario: Decimal
     subtotal: Decimal

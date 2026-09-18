@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, require_permiso
 from app.db.session import get_db
-from app.models import Carrito, Cliente, Color, DetalleCarrito, Producto, Talla, Usuario
+from app.models import Carrito, Cliente, Color, DetalleCarrito, Inventario, Producto, Sucursal, Talla, Usuario
 from app.schemas.carrito import CarritoAdminOut, CarritoItemCreate, CarritoItemUpdate, CarritoOut, DetalleCarritoOut
 
 router = APIRouter()
@@ -25,6 +25,7 @@ def _query_con_detalles(db: Session):
         joinedload(Carrito.detalles).joinedload(DetalleCarrito.producto).joinedload(Producto.imagenes),
         joinedload(Carrito.detalles).joinedload(DetalleCarrito.talla),
         joinedload(Carrito.detalles).joinedload(DetalleCarrito.color),
+        joinedload(Carrito.detalles).joinedload(DetalleCarrito.sucursal),
     )
 
 
@@ -48,6 +49,8 @@ def _to_detalle_out(d: DetalleCarrito) -> DetalleCarritoOut:
         talla_codigo=d.talla.codigo,
         color_id=d.color_id,
         color_nombre=d.color.nombre,
+        sucursal_id=d.sucursal_id,
+        sucursal_nombre=d.sucursal.nombre,
         cantidad=d.cantidad,
         precio_unitario=d.precio_unitario,
         subtotal=subtotal,
@@ -90,22 +93,44 @@ def agregar_item(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Producto no encontrado.")
     talla = db.query(Talla).filter(Talla.id == payload.talla_id).first()
     color = db.query(Color).filter(Color.id == payload.color_id).first()
-    if talla is None or color is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Talla o color no encontrado.")
+    sucursal = db.query(Sucursal).filter(Sucursal.id == payload.sucursal_id).first()
+    if talla is None or color is None or sucursal is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Talla, color o sucursal no encontrado.")
+
+    # Pedido del usuario: la sucursal de retiro se fija ACA (no recien en el
+    # checkout), asi que el stock se valida de una contra la sucursal real
+    # elegida -- no alcanza con que exista stock "en algun lado".
+    inventario = (
+        db.query(Inventario)
+        .filter(
+            Inventario.producto_id == payload.producto_id,
+            Inventario.talla_id == payload.talla_id,
+            Inventario.color_id == payload.color_id,
+            Inventario.sucursal_id == payload.sucursal_id,
+        )
+        .first()
+    )
+    if inventario is None or inventario.cantidad < payload.cantidad:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f'No hay suficiente stock de "{producto.nombre}" ({talla.codigo}, {color.nombre}) en {sucursal.nombre}.',
+        )
 
     carrito = _get_carrito_activo(db, cliente.id)
 
     # sp_agregar_item_carrito ya resuelve el "sumar si es la misma
-    # combinacion producto/talla/color" (UX estandar de carrito de compras).
+    # combinacion producto/talla/color/sucursal" (UX estandar de carrito).
     db.execute(
         text(
-            "SELECT sp_agregar_item_carrito(:carrito_id, :producto_id, :talla_id, :color_id, :cantidad, :precio)"
+            "SELECT sp_agregar_item_carrito(:carrito_id, :producto_id, :talla_id, :color_id, "
+            ":sucursal_id, :cantidad, :precio)"
         ),
         {
             "carrito_id": carrito.id,
             "producto_id": payload.producto_id,
             "talla_id": payload.talla_id,
             "color_id": payload.color_id,
+            "sucursal_id": payload.sucursal_id,
             "cantidad": payload.cantidad,
             "precio": producto.precio,
         },
@@ -125,7 +150,24 @@ def actualizar_item(
 ) -> CarritoOut:
     cliente = _get_cliente_o_403(db, usuario)
     carrito = _get_carrito_activo(db, cliente.id)
-    _get_detalle_o_404(carrito, detalle_id)
+    detalle = _get_detalle_o_404(carrito, detalle_id)
+
+    inventario = (
+        db.query(Inventario)
+        .filter(
+            Inventario.producto_id == detalle.producto_id,
+            Inventario.talla_id == detalle.talla_id,
+            Inventario.color_id == detalle.color_id,
+            Inventario.sucursal_id == detalle.sucursal_id,
+        )
+        .first()
+    )
+    if inventario is None or inventario.cantidad < payload.cantidad:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f'No hay suficiente stock de "{detalle.producto.nombre}" ({detalle.talla.codigo}, '
+            f'{detalle.color.nombre}) en {detalle.sucursal.nombre}.',
+        )
 
     db.execute(text("SELECT sp_actualizar_item_carrito(:id, :cantidad)"), {"id": detalle_id, "cantidad": payload.cantidad})
     db.commit()

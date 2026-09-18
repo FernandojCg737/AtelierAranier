@@ -35,6 +35,7 @@
             <div class="carrito-item__info">
               <span class="carrito-item__name">{{ item.producto_nombre }}</span>
               <span class="carrito-item__variante">{{ item.talla_codigo }} · {{ item.color_nombre }}</span>
+              <span class="carrito-item__variante">Retiro en {{ item.sucursal_nombre }}</span>
               <span class="carrito-item__price">{{ item.precio_unitario | number: '1.2-2' }} Bs</span>
             </div>
 

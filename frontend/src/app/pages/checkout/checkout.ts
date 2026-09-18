@@ -4,14 +4,8 @@ import { AfterViewInit, Component, ElementRef, OnInit, computed, inject, signal,
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Cart } from '../../services/cart';
+import { Cart, DetalleCarrito } from '../../services/cart';
 import { PaypalSdk } from '../../services/paypal-sdk';
-
-interface Sucursal {
-  id: number;
-  nombre: string;
-  direccion: string;
-}
 
 interface StockItem {
   detalle_id: number;
@@ -19,9 +13,16 @@ interface StockItem {
   producto_nombre: string;
   talla_codigo: string;
   color_nombre: string;
+  sucursal_id: number;
+  sucursal_nombre: string;
   cantidad_pedida: number;
   cantidad_disponible: number;
   disponible: boolean;
+}
+
+interface VentaCreada {
+  id: number;
+  sucursal_nombre: string;
 }
 
 type Metodo = 'paypal' | 'qr';
@@ -31,6 +32,11 @@ type Estado = 'cargando' | 'formulario' | 'procesando' | 'listo' | 'listo-qr' | 
 // SDK de PayPal muestra su propio boton, que llama a nuestro backend para
 // crear y despues capturar la orden); el pago por QR sube un comprobante y
 // queda pendiente de que un cajero/encargado lo revise.
+//
+// La sucursal de retiro de CADA producto se elige al agregarlo al carrito
+// (pedido explicito del usuario), no aca -- si el carrito termina con
+// productos de sucursales distintas, un solo pago (PayPal o QR) se reparte
+// en varias ventas, una por sucursal.
 @Component({
   selector: 'app-checkout',
   imports: [RouterLink, DecimalPipe],
@@ -46,20 +52,34 @@ export class Checkout implements OnInit, AfterViewInit {
   private readonly paypalContainer = viewChild<ElementRef<HTMLDivElement>>('paypalContainer');
 
   protected readonly estado = signal<Estado>('cargando');
-  protected readonly sucursales = signal<Sucursal[]>([]);
-  protected readonly sucursalId = signal<number | null>(null);
   protected readonly metodo = signal<Metodo>('paypal');
   protected readonly errorMsg = signal('');
   protected readonly archivoComprobante = signal<File | null>(null);
   protected readonly stockStatus = signal<StockItem[] | null>(null);
   protected readonly verificandoStock = signal(false);
+  protected readonly ventasCreadas = signal<VentaCreada[]>([]);
 
-  // CU11, pedido del usuario: antes esto solo se descubria recien al tratar
-  // de pagar (aprobando en PayPal o subiendo el comprobante QR). Ahora se
-  // chequea cada vez que se elige/cambia la sucursal, ANTES de mostrar los
-  // metodos de pago, para avisar producto por producto.
+  // Chequeo proactivo (pedido del usuario): antes esto solo se descubria
+  // recien al aprobar el pago en PayPal o subir el comprobante QR. Cada
+  // item del carrito ya trae su propia sucursal (elegida al agregarlo), asi
+  // que esto solo re-confirma que el stock siga estando.
   protected readonly itemsSinStock = computed(() => this.stockStatus()?.filter((i) => !i.disponible) ?? []);
   protected readonly stockOk = computed(() => this.stockStatus() !== null && this.itemsSinStock().length === 0);
+
+  // Agrupa el resumen del carrito por sucursal de retiro, para que el
+  // cliente vea claramente si su pedido se va a repartir en mas de un lugar.
+  protected readonly gruposPorSucursal = computed(() => {
+    const grupos = new Map<string, { sucursal_nombre: string; items: DetalleCarrito[] }>();
+    for (const item of this.cart.items()) {
+      const existente = grupos.get(item.sucursal_nombre);
+      if (existente) {
+        existente.items.push(item);
+      } else {
+        grupos.set(item.sucursal_nombre, { sucursal_nombre: item.sucursal_nombre, items: [item] });
+      }
+    }
+    return [...grupos.values()];
+  });
 
   private botonesPaypalRenderizados = false;
 
@@ -69,8 +89,8 @@ export class Checkout implements OnInit, AfterViewInit {
 
   ngAfterViewInit(): void {
     // Se intenta renderizar el boton de PayPal cada vez que Angular
-    // actualiza la vista (cambia sucursal/metodo); si ya esta renderizado o
-    // todavia no corresponde mostrarlo, renderizarBotonPaypal() no hace nada.
+    // actualiza la vista; si ya esta renderizado o todavia no corresponde
+    // mostrarlo, renderizarBotonPaypal() no hace nada.
     void this.renderizarBotonPaypal();
   }
 
@@ -80,33 +100,15 @@ export class Checkout implements OnInit, AfterViewInit {
       this.estado.set('vacio');
       return;
     }
-    try {
-      const res = await firstValueFrom(this.http.get<Sucursal[]>(`${environment.apiUrl}/sucursales/publico`));
-      this.sucursales.set(res);
-      this.sucursalId.set(res[0]?.id ?? null);
-      this.estado.set('formulario');
-      void this.verificarStock();
-    } catch {
-      this.estado.set('error');
-    }
-  }
-
-  protected onSucursalChange(id: string): void {
-    this.sucursalId.set(Number(id));
-    this.botonesPaypalRenderizados = false;
-    this.stockStatus.set(null);
+    this.estado.set('formulario');
     void this.verificarStock();
-    setTimeout(() => void this.renderizarBotonPaypal());
   }
 
   private async verificarStock(): Promise<void> {
-    const sucursalId = this.sucursalId();
-    if (!sucursalId) return;
-
     this.verificandoStock.set(true);
     try {
       const res = await firstValueFrom(
-        this.http.get<StockItem[]>(`${environment.apiUrl}/ventas/checkout/verificar-stock/${sucursalId}`),
+        this.http.get<StockItem[]>(`${environment.apiUrl}/ventas/checkout/verificar-stock`),
       );
       this.stockStatus.set(res);
     } catch {
@@ -151,11 +153,10 @@ export class Checkout implements OnInit, AfterViewInit {
           onApprove: async (data: { orderID: string }) => {
             this.estado.set('procesando');
             try {
-              await firstValueFrom(
-                this.http.post(`${environment.apiUrl}/ventas/checkout/paypal/capturar/${data.orderID}`, {
-                  sucursal_id: this.sucursalId(),
-                }),
+              const ventas = await firstValueFrom(
+                this.http.post<VentaCreada[]>(`${environment.apiUrl}/ventas/checkout/paypal/capturar/${data.orderID}`, {}),
               );
+              this.ventasCreadas.set(ventas);
               this.estado.set('listo');
             } catch (err) {
               this.errorMsg.set(this.extraerError(err));
@@ -181,16 +182,17 @@ export class Checkout implements OnInit, AfterViewInit {
 
   protected async enviarQr(): Promise<void> {
     const archivo = this.archivoComprobante();
-    const sucursalId = this.sucursalId();
-    if (!archivo || !sucursalId || !this.stockOk()) return;
+    if (!archivo || !this.stockOk()) return;
 
     this.estado.set('procesando');
     this.errorMsg.set('');
     try {
       const formData = new FormData();
-      formData.append('sucursal_id', String(sucursalId));
       formData.append('file', archivo);
-      await firstValueFrom(this.http.post(`${environment.apiUrl}/ventas/checkout/qr`, formData));
+      const ventas = await firstValueFrom(
+        this.http.post<VentaCreada[]>(`${environment.apiUrl}/ventas/checkout/qr`, formData),
+      );
+      this.ventasCreadas.set(ventas);
       this.estado.set('listo-qr');
     } catch (err) {
       this.errorMsg.set(this.extraerError(err));

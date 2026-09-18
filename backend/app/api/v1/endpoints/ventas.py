@@ -1,7 +1,7 @@
 import json
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
@@ -29,7 +29,6 @@ from app.models import (
     VentaPresencial,
 )
 from app.schemas.ventas import (
-    CapturarPaypalIn,
     ClienteBusquedaOut,
     DetalleVentaOut,
     OrdenPaypalOut,
@@ -65,6 +64,7 @@ def _get_carrito_activo_no_vacio(db: Session, cliente_id: int) -> Carrito:
             joinedload(Carrito.detalles).joinedload(DetalleCarrito.producto),
             joinedload(Carrito.detalles).joinedload(DetalleCarrito.talla),
             joinedload(Carrito.detalles).joinedload(DetalleCarrito.color),
+            joinedload(Carrito.detalles).joinedload(DetalleCarrito.sucursal),
         )
         .filter(Carrito.cliente_id == cliente_id, Carrito.estado == "activo")
         .first()
@@ -76,6 +76,18 @@ def _get_carrito_activo_no_vacio(db: Session, cliente_id: int) -> Carrito:
 
 def _calcular_total(carrito: Carrito) -> Decimal:
     return sum((d.precio_unitario * d.cantidad for d in carrito.detalles), Decimal("0"))
+
+
+def _agrupar_por_sucursal(detalles: list["DetalleCarrito"]) -> dict[int, list["DetalleCarrito"]]:
+    """Pedido del usuario: la sucursal de retiro se elige POR PRODUCTO al
+    agregarlo al carrito (DetalleCarrito.sucursal_id), no una sola vez en el
+    checkout -- si el carrito queda con productos de sucursales distintas,
+    se reparte en una venta por sucursal, todas fondeadas por el mismo pago
+    (un solo PayPal/comprobante QR)."""
+    grupos: dict[int, list["DetalleCarrito"]] = {}
+    for d in detalles:
+        grupos.setdefault(d.sucursal_id, []).append(d)
+    return grupos
 
 
 def _items_json(items) -> str:
@@ -94,11 +106,13 @@ def _items_json(items) -> str:
     )
 
 
-def _verificar_stock_carrito(db: Session, carrito: Carrito, sucursal_id: int) -> None:
+def _verificar_stock_carrito(db: Session, carrito: Carrito) -> None:
     """Chequeo 'amigable' en Python (con el nombre real del producto en el
     mensaje) antes de llamar a la funcion -- la funcion vuelve a validar con
     lock por su cuenta como resguardo de bajo nivel ante condiciones de
-    carrera, igual que ya hace sp_actualizar_inventario_cantidad."""
+    carrera, igual que ya hace sp_actualizar_inventario_cantidad. Cada item
+    se valida contra SU PROPIA sucursal (la que se eligio al agregarlo al
+    carrito), no una sola sucursal global."""
     for d in carrito.detalles:
         inventario = (
             db.query(Inventario)
@@ -106,14 +120,15 @@ def _verificar_stock_carrito(db: Session, carrito: Carrito, sucursal_id: int) ->
                 Inventario.producto_id == d.producto_id,
                 Inventario.talla_id == d.talla_id,
                 Inventario.color_id == d.color_id,
-                Inventario.sucursal_id == sucursal_id,
+                Inventario.sucursal_id == d.sucursal_id,
             )
             .first()
         )
         if inventario is None or inventario.cantidad < d.cantidad:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
-                f'No hay suficiente stock de "{d.producto.nombre}" ({d.talla.codigo}, {d.color.nombre}) en esa sucursal.',
+                f'No hay suficiente stock de "{d.producto.nombre}" ({d.talla.codigo}, {d.color.nombre}) '
+                f"en {d.sucursal.nombre}.",
             )
 
 
@@ -176,19 +191,16 @@ def _to_admin_out(venta: Venta) -> VentaAdminOut:
     )
 
 
-@router.get("/checkout/verificar-stock/{sucursal_id}", response_model=list[VerificarStockItemOut])
+@router.get("/checkout/verificar-stock", response_model=list[VerificarStockItemOut])
 def verificar_stock_checkout(
-    sucursal_id: int,
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
 ) -> list[VerificarStockItemOut]:
     """Chequeo proactivo, ANTES de pagar (pedido del usuario): antes esto
-    solo se validaba recien al capturar el pago (_verificar_stock_carrito),
-    asi que un cliente podia elegir sucursal, metodo de pago, y hasta llegar
-    a aprobar en PayPal, para recien ahi enterarse de que algo de su carrito
-    no tenia stock en esa sucursal. El checkout llama esto cada vez que
-    cambia la sucursal elegida, para avisar producto por producto ANTES de
-    mostrar los botones de pago."""
+    solo se validaba recien al capturar el pago (_verificar_stock_carrito).
+    Cada item del carrito ya trae SU sucursal (elegida al agregarlo, ver
+    DetalleCarrito.sucursal_id) -- esto solo re-confirma que el stock siga
+    estando, por si cambio desde que se agrego al carrito."""
     cliente = _get_cliente_o_403(db, usuario)
     carrito = _get_carrito_activo_no_vacio(db, cliente.id)
 
@@ -200,7 +212,7 @@ def verificar_stock_checkout(
                 Inventario.producto_id == d.producto_id,
                 Inventario.talla_id == d.talla_id,
                 Inventario.color_id == d.color_id,
-                Inventario.sucursal_id == sucursal_id,
+                Inventario.sucursal_id == d.sucursal_id,
             )
             .first()
         )
@@ -212,6 +224,8 @@ def verificar_stock_checkout(
                 producto_nombre=d.producto.nombre,
                 talla_codigo=d.talla.codigo,
                 color_nombre=d.color.nombre,
+                sucursal_id=d.sucursal_id,
+                sucursal_nombre=d.sucursal.nombre,
                 cantidad_pedida=d.cantidad,
                 cantidad_disponible=cantidad_disponible,
                 disponible=cantidad_disponible >= d.cantidad,
@@ -247,89 +261,94 @@ def crear_orden_paypal(
     return OrdenPaypalOut(order_id=orden["id"], total=total, approve_url=approve_url)
 
 
-@router.post("/checkout/paypal/capturar/{order_id}", response_model=VentaOut)
+@router.post("/checkout/paypal/capturar/{order_id}", response_model=list[VentaOut])
 def capturar_orden_paypal(
     order_id: str,
-    payload: CapturarPaypalIn,
     request: Request,
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
-) -> VentaOut:
+) -> list[VentaOut]:
+    """Un solo pago de PayPal puede terminar repartido en varias ventas
+    (pedido del usuario): la sucursal de cada item ya quedo fija al
+    agregarlo al carrito (DetalleCarrito.sucursal_id), asi que aca solo se
+    agrupa por sucursal y se crea una venta por grupo -- todas fondeadas por
+    la MISMA orden de PayPal (mismo order_id como referencia_externa en
+    cada una)."""
     cliente = _get_cliente_o_403(db, usuario)
     carrito = _get_carrito_activo_no_vacio(db, cliente.id)
 
-    sucursal = db.query(Sucursal).filter(Sucursal.id == payload.sucursal_id).first()
-    if sucursal is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sucursal no encontrada.")
-
-    _verificar_stock_carrito(db, carrito, payload.sucursal_id)
+    _verificar_stock_carrito(db, carrito)
 
     resultado = capturar_orden(order_id)
     if resultado.get("status") != "COMPLETED":
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "PayPal no confirmo el pago.")
 
-    result = db.execute(
-        text(
-            "SELECT sp_crear_venta_digital_paypal(:cliente_id, :sucursal_id, :carrito_id, CAST(:items AS JSONB), :referencia)"
-        ),
-        {
-            "cliente_id": cliente.id,
-            "sucursal_id": payload.sucursal_id,
-            "carrito_id": carrito.id,
-            "items": _items_json(carrito.detalles),
-            "referencia": order_id,
-        },
-    )
-    venta_id = result.scalar_one()
+    venta_ids = []
+    for sucursal_id, detalles in _agrupar_por_sucursal(carrito.detalles).items():
+        result = db.execute(
+            text(
+                "SELECT sp_crear_venta_digital_paypal(:cliente_id, :sucursal_id, :carrito_id, CAST(:items AS JSONB), :referencia)"
+            ),
+            {
+                "cliente_id": cliente.id,
+                "sucursal_id": sucursal_id,
+                "carrito_id": carrito.id,
+                "items": _items_json(detalles),
+                "referencia": order_id,
+            },
+        )
+        venta_ids.append(result.scalar_one())
     db.commit()
 
-    log_bitacora(db, usuario, "CREAR", "venta", venta_id, f"Venta digital pagada con PayPal (orden {order_id})", request)
+    for venta_id in venta_ids:
+        log_bitacora(db, usuario, "CREAR", "venta", venta_id, f"Venta digital pagada con PayPal (orden {order_id})", request)
 
-    venta = _query_venta_con_detalles(db).filter(Venta.id == venta_id).first()
-    return _to_out(venta)
+    ventas = _query_venta_con_detalles(db).filter(Venta.id.in_(venta_ids)).all()
+    return [_to_out(v) for v in ventas]
 
 
-@router.post("/checkout/qr", response_model=VentaOut, status_code=status.HTTP_201_CREATED)
+@router.post("/checkout/qr", response_model=list[VentaOut], status_code=status.HTTP_201_CREATED)
 async def checkout_qr(
     request: Request,
-    sucursal_id: int = Form(...),
     file: UploadFile = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
-) -> VentaOut:
+) -> list[VentaOut]:
     """Pago por QR: no hay pasarela que lo verifique solo, asi que el
-    cliente sube la foto del comprobante y la venta queda pendiente de que
-    un cajero/encargado la revise (el stock recien se descuenta cuando se
-    aprueba, no aca)."""
+    cliente sube la foto del comprobante y la(s) venta(s) quedan pendientes
+    de que un cajero/encargado las revise (el stock recien se descuenta
+    cuando se aprueba, no aca). Si el carrito tiene items de mas de una
+    sucursal, se crea una venta por sucursal, todas apuntando a la MISMA
+    foto de comprobante -- cada sucursal revisa su propia parte."""
     cliente = _get_cliente_o_403(db, usuario)
     carrito = _get_carrito_activo_no_vacio(db, cliente.id)
 
-    sucursal = db.query(Sucursal).filter(Sucursal.id == sucursal_id).first()
-    if sucursal is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sucursal no encontrada.")
     if file is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Debes subir una foto del comprobante.")
 
     content = await file.read()
     comprobante_url = upload_comprobante_pago(cliente.id, content, file.content_type or "")
 
-    result = db.execute(
-        text("SELECT sp_crear_venta_digital_qr(:cliente_id, :sucursal_id, :carrito_id, CAST(:items AS JSONB), :comprobante)"),
-        {
-            "cliente_id": cliente.id,
-            "sucursal_id": sucursal_id,
-            "carrito_id": carrito.id,
-            "items": _items_json(carrito.detalles),
-            "comprobante": comprobante_url,
-        },
-    )
-    venta_id = result.scalar_one()
+    venta_ids = []
+    for sucursal_id, detalles in _agrupar_por_sucursal(carrito.detalles).items():
+        result = db.execute(
+            text("SELECT sp_crear_venta_digital_qr(:cliente_id, :sucursal_id, :carrito_id, CAST(:items AS JSONB), :comprobante)"),
+            {
+                "cliente_id": cliente.id,
+                "sucursal_id": sucursal_id,
+                "carrito_id": carrito.id,
+                "items": _items_json(detalles),
+                "comprobante": comprobante_url,
+            },
+        )
+        venta_ids.append(result.scalar_one())
     db.commit()
 
-    log_bitacora(db, usuario, "CREAR", "venta", venta_id, "Venta digital con comprobante QR pendiente de verificacion", request)
+    for venta_id in venta_ids:
+        log_bitacora(db, usuario, "CREAR", "venta", venta_id, "Venta digital con comprobante QR pendiente de verificacion", request)
 
-    venta = _query_venta_con_detalles(db).filter(Venta.id == venta_id).first()
-    return _to_out(venta)
+    ventas = _query_venta_con_detalles(db).filter(Venta.id.in_(venta_ids)).all()
+    return [_to_out(v) for v in ventas]
 
 
 @router.get("/mias", response_model=list[VentaOut])

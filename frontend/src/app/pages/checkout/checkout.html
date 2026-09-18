@@ -30,14 +30,26 @@
     <div class="checkout-content">
       <div class="checkout-resumen">
         <h2>Resumen</h2>
-        <ul>
-          @for (item of cart.items(); track item.id) {
-            <li>
-              <span>{{ item.cantidad }}x {{ item.producto_nombre }} ({{ item.talla_codigo }}, {{ item.color_nombre }})</span>
-              <span>{{ item.subtotal | number: '1.2-2' }} Bs</span>
-            </li>
-          }
-        </ul>
+
+        @for (grupo of gruposPorSucursal(); track grupo.sucursal_nombre) {
+          <p class="checkout-resumen__sucursal">Retiras en {{ grupo.sucursal_nombre }}</p>
+          <ul>
+            @for (item of grupo.items; track item.id) {
+              <li>
+                <span>{{ item.cantidad }}x {{ item.producto_nombre }} ({{ item.talla_codigo }}, {{ item.color_nombre }})</span>
+                <span>{{ item.subtotal | number: '1.2-2' }} Bs</span>
+              </li>
+            }
+          </ul>
+        }
+
+        @if (gruposPorSucursal().length > 1) {
+          <p class="checkout-nota">
+            Tu pedido se retira en {{ gruposPorSucursal().length }} sucursales distintas -- se va a generar una
+            compra separada por cada una, todas pagadas de una sola vez.
+          </p>
+        }
+
         <div class="checkout-resumen__total">
           <span>Total</span>
           <span>{{ cart.totalPrice() | number: '1.2-2' }} Bs</span>
@@ -49,31 +61,22 @@
           <div class="checkout-error">{{ errorMsg() }}</div>
         }
 
-        <label class="checkout-campo">
-          <span>Sucursal donde recoges tu pedido</span>
-          <select [value]="sucursalId()" (change)="onSucursalChange($any($event.target).value)">
-            @for (s of sucursales(); track s.id) {
-              <option [value]="s.id">{{ s.nombre }} · {{ s.direccion }}</option>
-            }
-          </select>
-        </label>
-
         @if (verificandoStock()) {
-          <p class="checkout-nota">Comprobando stock en esta sucursal...</p>
+          <p class="checkout-nota">Comprobando stock...</p>
         }
 
         @if (!verificandoStock() && itemsSinStock().length > 0) {
           <div class="checkout-error">
-            <p>Esta sucursal no tiene stock suficiente de:</p>
+            <p>Ya no hay stock suficiente de:</p>
             <ul>
               @for (item of itemsSinStock(); track item.detalle_id) {
                 <li>
-                  {{ item.producto_nombre }} ({{ item.talla_codigo }}, {{ item.color_nombre }}) -- pediste
-                  {{ item.cantidad_pedida }}, hay {{ item.cantidad_disponible }}
+                  {{ item.producto_nombre }} ({{ item.talla_codigo }}, {{ item.color_nombre }}) en
+                  {{ item.sucursal_nombre }} -- pediste {{ item.cantidad_pedida }}, hay {{ item.cantidad_disponible }}
                 </li>
               }
             </ul>
-            <p>Elegi otra sucursal o ajusta las cantidades en tu carrito.</p>
+            <p>Volve al carrito y ajusta las cantidades o saca esos productos.</p>
           </div>
         }
 
@@ -139,7 +142,16 @@
   @if (estado() === 'listo') {
     <div class="checkout-exito">
       <h2>Tu compra fue pagada con exito</h2>
-      <p>Te esperamos en la sucursal que elegiste para recoger tu pedido.</p>
+      @if (ventasCreadas().length > 1) {
+        <p>Se generaron {{ ventasCreadas().length }} compras (una por sucursal). Te esperamos en cada una para recoger tu pedido:</p>
+        <ul>
+          @for (venta of ventasCreadas(); track venta.id) {
+            <li>Compra #{{ venta.id }} -- {{ venta.sucursal_nombre }}</li>
+          }
+        </ul>
+      } @else {
+        <p>Te esperamos en la sucursal que elegiste para recoger tu pedido.</p>
+      }
       <button type="button" (click)="irATienda()">Seguir comprando</button>
     </div>
   }
@@ -147,7 +159,11 @@
   @if (estado() === 'listo-qr') {
     <div class="checkout-exito">
       <h2>Comprobante recibido</h2>
-      <p>Tu compra queda pendiente de verificacion. Te avisaremos cuando se confirme el pago.</p>
+      @if (ventasCreadas().length > 1) {
+        <p>Tu compra queda pendiente de verificacion en {{ ventasCreadas().length }} sucursales distintas. Te avisaremos cuando se confirme cada pago.</p>
+      } @else {
+        <p>Tu compra queda pendiente de verificacion. Te avisaremos cuando se confirme el pago.</p>
+      }
       <button type="button" (click)="irATienda()">Seguir comprando</button>
     </div>
   }

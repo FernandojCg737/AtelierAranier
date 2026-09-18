@@ -16,16 +16,14 @@ class OrdenPaypalOut(BaseModel):
     approve_url: str | None = None
 
 
-class CapturarPaypalIn(BaseModel):
-    sucursal_id: int
-
-
 class VerificarStockItemOut(BaseModel):
     detalle_id: int
     producto_id: int
     producto_nombre: str
     talla_codigo: str
     color_nombre: str
+    sucursal_id: int
+    sucursal_nombre: str
     cantidad_pedida: int
     cantidad_disponible: int
     disponible: bool

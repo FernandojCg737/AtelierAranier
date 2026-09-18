@@ -14,21 +14,27 @@ interface DisponibilidadItem {
   cantidad: number;
 }
 
-interface Variante {
+interface TallaSucursal {
+  key: string;
   talla_id: number;
   talla_codigo: string;
-  color_id: number;
-  color_nombre: string;
-  cantidad: number;
+  sucursal_id: number;
+  sucursal_nombre: string;
+  total: number;
 }
 
 type Estado = 'cargando' | 'formulario' | 'agregando' | 'listo' | 'error' | 'sin-stock';
 
-// CU11: agregar al carrito requiere elegir una combinacion talla/color que
-// de verdad tenga stock -- reutiliza el mismo endpoint de disponibilidad
-// que ya usa ReservaForm (GET /reservas/disponibilidad), pero acumulando
-// cantidad entre sucursales: el carrito no fija sucursal todavia (eso se
-// elige recien en el checkout).
+function clave(tallaId: number, sucursalId: number): string {
+  return `${tallaId}:${sucursalId}`;
+}
+
+// CU11, pedido explicito del usuario: la sucursal de retiro se elige ACA,
+// por producto, al agregarlo al carrito -- no recien en el checkout. La
+// talla ya viene "atada" a una sucursal (ej. "XL -- Sucursal Norte, Stock
+// 10"): elegirla fija ambas cosas de una, y el color se filtra a los que
+// esa sucursal tiene en esa talla. Si el carrito termina con productos de
+// sucursales distintas, el checkout reparte el pago en varias ventas.
 @Component({
   selector: 'app-agregar-carrito',
   imports: [],
@@ -44,32 +50,42 @@ export class AgregarCarrito {
   private readonly cart = inject(Cart);
 
   protected readonly estado = signal<Estado>('cargando');
-  protected readonly variantes = signal<Variante[]>([]);
-  protected readonly tallaSeleccionada = signal<number | null>(null);
+  protected readonly variantes = signal<DisponibilidadItem[]>([]);
+  protected readonly tallaSucursalSeleccionada = signal<string | null>(null);
   protected readonly colorSeleccionado = signal<number | null>(null);
   protected readonly cantidad = signal(1);
   protected readonly errorMsg = signal('');
 
-  // Talla y color se eligen por separado (pedido explicito del usuario, en
-  // vez de un solo combo "talla · color") -- elegir la talla primero filtra
-  // los colores a los que de verdad tienen stock en esa talla.
-  protected readonly tallas = computed(() => {
-    const vistas = new Set<number>();
-    const lista: { talla_id: number; talla_codigo: string }[] = [];
+  protected readonly tallasSucursal = computed<TallaSucursal[]>(() => {
+    const vistos = new Set<string>();
+    const lista: TallaSucursal[] = [];
     for (const v of this.variantes()) {
-      if (!vistas.has(v.talla_id)) {
-        vistas.add(v.talla_id);
-        lista.push({ talla_id: v.talla_id, talla_codigo: v.talla_codigo });
-      }
+      const key = clave(v.talla_id, v.sucursal_id);
+      if (vistos.has(key)) continue;
+      vistos.add(key);
+      const total = this.variantes()
+        .filter((x) => x.talla_id === v.talla_id && x.sucursal_id === v.sucursal_id)
+        .reduce((sum, x) => sum + x.cantidad, 0);
+      lista.push({
+        key,
+        talla_id: v.talla_id,
+        talla_codigo: v.talla_codigo,
+        sucursal_id: v.sucursal_id,
+        sucursal_nombre: v.sucursal_nombre,
+        total,
+      });
     }
     return lista;
   });
 
-  protected readonly coloresDisponibles = computed(() =>
-    this.variantes().filter((v) => v.talla_id === this.tallaSeleccionada()),
-  );
+  protected readonly coloresDisponibles = computed(() => {
+    const key = this.tallaSucursalSeleccionada();
+    if (!key) return [];
+    const [tallaId, sucursalId] = key.split(':').map(Number);
+    return this.variantes().filter((v) => v.talla_id === tallaId && v.sucursal_id === sucursalId);
+  });
 
-  protected readonly varianteActual = computed<Variante | undefined>(() =>
+  protected readonly varianteActual = computed<DisponibilidadItem | undefined>(() =>
     this.coloresDisponibles().find((v) => v.color_id === this.colorSeleccionado()),
   );
 
@@ -87,38 +103,22 @@ export class AgregarCarrito {
         return;
       }
 
-      const porClave = new Map<string, Variante>();
-      for (const item of res) {
-        const clave = `${item.talla_id}-${item.color_id}`;
-        const existente = porClave.get(clave);
-        if (existente) {
-          existente.cantidad += item.cantidad;
-        } else {
-          porClave.set(clave, {
-            talla_id: item.talla_id,
-            talla_codigo: item.talla_codigo,
-            color_id: item.color_id,
-            color_nombre: item.color_nombre,
-            cantidad: item.cantidad,
-          });
-        }
-      }
-
-      const lista = [...porClave.values()];
-      this.variantes.set(lista);
-      this.tallaSeleccionada.set(lista[0].talla_id);
-      this.colorSeleccionado.set(lista[0].color_id);
+      this.variantes.set(res);
+      const primero = res[0];
+      this.tallaSucursalSeleccionada.set(clave(primero.talla_id, primero.sucursal_id));
+      this.colorSeleccionado.set(primero.color_id);
       this.estado.set('formulario');
     } catch {
       this.estado.set('error');
     }
   }
 
-  protected onTallaChange(tallaId: string): void {
-    this.tallaSeleccionada.set(Number(tallaId));
-    // La talla nueva puede no tener el mismo color que estaba elegido --
-    // se cae al primer color que si tenga stock en esta talla.
-    const primerColor = this.variantes().find((v) => v.talla_id === Number(tallaId));
+  protected onTallaSucursalChange(key: string): void {
+    this.tallaSucursalSeleccionada.set(key);
+    const [tallaId, sucursalId] = key.split(':').map(Number);
+    // La talla/sucursal nueva puede no tener el mismo color que estaba
+    // elegido -- se cae al primero que si tenga stock en esa combinacion.
+    const primerColor = this.variantes().find((v) => v.talla_id === tallaId && v.sucursal_id === sucursalId);
     this.colorSeleccionado.set(primerColor?.color_id ?? null);
     this.cantidad.set(1);
   }
@@ -135,7 +135,7 @@ export class AgregarCarrito {
     this.estado.set('agregando');
     this.errorMsg.set('');
     try {
-      await this.cart.agregar(Number(this.productoId()), v.talla_id, v.color_id, this.cantidad());
+      await this.cart.agregar(Number(this.productoId()), v.talla_id, v.color_id, v.sucursal_id, this.cantidad());
       this.estado.set('listo');
     } catch (err) {
       this.errorMsg.set(this.extraerError(err));

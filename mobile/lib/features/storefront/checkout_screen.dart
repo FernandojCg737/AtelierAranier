@@ -11,9 +11,8 @@ import '../../core/api_client.dart';
 import '../../core/api_config.dart';
 import '../../core/secure_storage.dart';
 import '../../core/theme.dart';
-import '../../models/sucursal.dart';
+import '../../models/carrito.dart';
 import 'cart_provider.dart';
-import 'catalogo_provider.dart';
 import 'ventas_repository.dart';
 
 enum _Estado { formulario, subiendo, listo }
@@ -29,6 +28,11 @@ enum _Metodo { paypal, qr }
 /// cliente ve, ahi mismo, tanto "Pagar con PayPal" como "Pagar con tarjeta
 /// de debito/credito" (el SDK agrega este segundo boton solo cuando
 /// corresponde), igual que en la web.
+///
+/// La sucursal de retiro de CADA producto se elige al agregarlo al carrito
+/// (pedido explicito del usuario), no aca -- si el carrito termina con
+/// productos de sucursales distintas, un solo pago se reparte en varias
+/// ventas, una por sucursal.
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
 
@@ -40,13 +44,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   _Estado _estado = _Estado.formulario;
   _Metodo _metodo = _Metodo.paypal;
   _Metodo? _metodoUsado;
-  SucursalPublica? _sucursal;
   XFile? _comprobante;
   String _error = '';
-  int? _ventaId;
+  List<VentaCreada> _ventasCreadas = [];
   List<StockCheckoutItem> _stockStatus = [];
   bool _verificandoStock = false;
-  int? _sucursalVerificada;
+  bool _stockVerificado = false;
   WebViewController? _paypalController;
   // Arranca chico (solo los botones) y despues la pagina misma le avisa
   // (canal PaypalHeightChannel) cuanto mide de verdad cuando el formulario
@@ -58,30 +61,31 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   double _paypalWebviewHeight = 130;
 
   List<StockCheckoutItem> get _itemsSinStock => _stockStatus.where((i) => !i.disponible).toList();
-  bool get _stockOk => !_verificandoStock && _sucursalVerificada != null && _itemsSinStock.isEmpty;
+  bool get _stockOk => !_verificandoStock && _stockVerificado && _itemsSinStock.isEmpty;
 
   @override
   void initState() {
     super.initState();
     _iniciarPaypalWebview();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _verificarStock());
   }
 
   // CU11, pedido del usuario: antes esto solo se descubria recien al
-  // aprobar el pago en PayPal o subir el comprobante QR. Se chequea cada
-  // vez que cambia la sucursal elegida, ANTES de mostrar los metodos de
-  // pago, avisando producto por producto -- mismo endpoint que usa el
+  // aprobar el pago en PayPal o subir el comprobante QR. Cada item del
+  // carrito ya trae su propia sucursal (elegida al agregarlo), asi que esto
+  // solo re-confirma que el stock siga estando -- mismo endpoint que usa el
   // checkout web.
-  Future<void> _verificarStock(int sucursalId) async {
+  Future<void> _verificarStock() async {
     setState(() {
       _verificandoStock = true;
-      _sucursalVerificada = null;
+      _stockVerificado = false;
     });
     try {
-      final items = await ref.read(ventasRepositoryProvider).verificarStock(sucursalId);
+      final items = await ref.read(ventasRepositoryProvider).verificarStock();
       if (!mounted) return;
       setState(() {
         _stockStatus = items;
-        _sucursalVerificada = sucursalId;
+        _stockVerificado = true;
         _verificandoStock = false;
       });
     } catch (_) {
@@ -90,14 +94,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       // real y definitiva sigue estando del lado del backend al capturar.
       setState(() {
         _stockStatus = [];
-        _sucursalVerificada = sucursalId;
+        _stockVerificado = true;
         _verificandoStock = false;
       });
+    } finally {
+      if (mounted) {
+        setState(() {});
+        _iniciarPaypalWebview();
+      }
     }
   }
 
   Future<void> _iniciarPaypalWebview() async {
-    if (_paypalController != null) return;
+    if (_paypalController != null || !_stockOk) return;
     final token = await SecureStorage().readToken();
     if (token == null || !mounted) return;
     final controller = WebViewController()
@@ -173,19 +182,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Future<void> _capturarPaypal(String orderId) async {
-    final sucursal = _sucursal;
-    if (sucursal == null || !_stockOk) return;
+    if (!_stockOk) return;
 
     setState(() {
       _estado = _Estado.subiendo;
       _error = '';
     });
     try {
-      final venta = await ref.read(ventasRepositoryProvider).capturarOrdenPaypal(orderId: orderId, sucursalId: sucursal.id);
+      final ventas = await ref.read(ventasRepositoryProvider).capturarOrdenPaypal(orderId: orderId);
       await ref.read(cartProvider.notifier).cargar();
       if (mounted) {
         setState(() {
-          _ventaId = venta.id;
+          _ventasCreadas = ventas;
           _metodoUsado = _Metodo.paypal;
           _estado = _Estado.listo;
         });
@@ -210,24 +218,22 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Future<void> _confirmar() async {
-    final sucursal = _sucursal;
     final comprobante = _comprobante;
-    if (sucursal == null || comprobante == null || !_stockOk) return;
+    if (comprobante == null || !_stockOk) return;
 
     setState(() {
       _estado = _Estado.subiendo;
       _error = '';
     });
     try {
-      final venta = await ref.read(ventasRepositoryProvider).checkoutQr(
-            sucursalId: sucursal.id,
+      final ventas = await ref.read(ventasRepositoryProvider).checkoutQr(
             filePath: comprobante.path,
             fileName: comprobante.name,
           );
       await ref.read(cartProvider.notifier).cargar();
       if (mounted) {
         setState(() {
-          _ventaId = venta.id;
+          _ventasCreadas = ventas;
           _metodoUsado = _Metodo.qr;
           _estado = _Estado.listo;
         });
@@ -245,7 +251,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = ref.watch(cartProvider);
-    final sucursalesAsync = ref.watch(sucursalesPublicasProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('FINALIZAR COMPRA')),
@@ -254,28 +259,48 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             ? _exito()
             : cart.items.isEmpty
                 ? const Center(child: Text('Tu carrito esta vacio.'))
-                : sucursalesAsync.when(
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (_, _) => const Center(child: Text('No pudimos cargar las sucursales.')),
-                    data: (sucursales) {
-                      _sucursal ??= sucursales.isEmpty ? null : sucursales.first;
-                      final sucursal = _sucursal;
-                      if (sucursal != null && _sucursalVerificada != sucursal.id && !_verificandoStock) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) => _verificarStock(sucursal.id));
-                      }
-                      return _formulario(cart.total, sucursales);
-                    },
-                  ),
+                : _formulario(cart.total, cart.items),
       ),
     );
   }
 
-  Widget _formulario(double total, List<SucursalPublica> sucursales) {
+  Map<String, List<DetalleCarrito>> _agruparPorSucursal(List<DetalleCarrito> items) {
+    final grupos = <String, List<DetalleCarrito>>{};
+    for (final item in items) {
+      grupos.putIfAbsent(item.sucursalNombre, () => []).add(item);
+    }
+    return grupos;
+  }
+
+  Widget _formulario(double total, List<DetalleCarrito> items) {
+    final grupos = _agruparPorSucursal(items);
+
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         const Text('RESUMEN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
         const SizedBox(height: 8),
+        for (final entry in grupos.entries) ...[
+          Text('RETIRAS EN ${entry.key.toUpperCase()}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+          const SizedBox(height: 4),
+          for (final item in entry.value)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                '${item.cantidad}x ${item.productoNombre} (${item.tallaCodigo}, ${item.colorNombre})',
+                style: const TextStyle(fontSize: 12, color: AppColors.grayTextDark),
+              ),
+            ),
+          const SizedBox(height: 8),
+        ],
+        if (grupos.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'Tu pedido se retira en ${grupos.length} sucursales distintas -- se va a generar una compra separada por cada una, todas pagadas de una sola vez.',
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ),
         Text('${total.toStringAsFixed(2)} Bs', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.brandDark)),
         const Divider(height: 32),
 
@@ -288,24 +313,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           const SizedBox(height: 16),
         ],
 
-        const Text('SUCURSAL DONDE RECOGES TU PEDIDO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<int>(
-          initialValue: _sucursal?.id,
-          isExpanded: true,
-          items: sucursales
-              .map((s) => DropdownMenuItem(value: s.id, child: Text('${s.nombre} · ${s.direccion}', overflow: TextOverflow.ellipsis)))
-              .toList(),
-          onChanged: (id) {
-            final nueva = sucursales.firstWhere((s) => s.id == id);
-            setState(() => _sucursal = nueva);
-            _verificarStock(nueva.id);
-          },
-        ),
-        const SizedBox(height: 12),
-
         if (_verificandoStock)
-          const Text('Comprobando stock en esta sucursal...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const Text('Comprobando stock...', style: TextStyle(fontSize: 12, color: Colors.grey)),
 
         if (!_verificandoStock && _itemsSinStock.isNotEmpty) ...[
           Container(
@@ -315,23 +324,24 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Esta sucursal no tiene stock suficiente de:', style: TextStyle(color: Color(0xFFB3261E), fontSize: 13, fontWeight: FontWeight.bold)),
+                const Text('Ya no hay stock suficiente de:', style: TextStyle(color: Color(0xFFB3261E), fontSize: 13, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
                 for (final item in _itemsSinStock)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 2),
                     child: Text(
-                      '${item.productoNombre} (${item.tallaCodigo}, ${item.colorNombre}) -- pediste ${item.cantidadPedida}, hay ${item.cantidadDisponible}',
+                      '${item.productoNombre} (${item.tallaCodigo}, ${item.colorNombre}) en ${item.sucursalNombre} -- '
+                      'pediste ${item.cantidadPedida}, hay ${item.cantidadDisponible}',
                       style: const TextStyle(color: Color(0xFFB3261E), fontSize: 12),
                     ),
                   ),
                 const SizedBox(height: 6),
-                const Text('Elegi otra sucursal o ajusta las cantidades en tu carrito.', style: TextStyle(color: Color(0xFFB3261E), fontSize: 12)),
+                const Text('Volve al carrito y ajusta las cantidades o saca esos productos.', style: TextStyle(color: Color(0xFFB3261E), fontSize: 12)),
               ],
             ),
           ),
+          const SizedBox(height: 12),
         ],
-        const SizedBox(height: 12),
 
         if (_stockOk) ...[
         const Text('METODO DE PAGO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
@@ -460,7 +470,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           ),
           const SizedBox(height: 28),
           ElevatedButton(
-            onPressed: (_estado == _Estado.subiendo || _sucursal == null || _comprobante == null) ? null : _confirmar,
+            onPressed: (_estado == _Estado.subiendo || _comprobante == null) ? null : _confirmar,
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandDark, minimumSize: const Size.fromHeight(48), shape: const RoundedRectangleBorder()),
             child: Text(_estado == _Estado.subiendo ? 'ENVIANDO...' : 'CONFIRMAR PAGO'),
           ),
@@ -479,12 +489,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           children: [
             const Icon(Icons.check_circle_outline, size: 56, color: AppColors.brandDark),
             const SizedBox(height: 16),
-            Text('Compra #$_ventaId registrada.', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              _ventasCreadas.length > 1 ? 'Se generaron ${_ventasCreadas.length} compras.' : 'Compra #${_ventasCreadas.firstOrNull?.id} registrada.',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            if (_ventasCreadas.length > 1) ...[
+              const SizedBox(height: 8),
+              for (final venta in _ventasCreadas)
+                Text('Compra #${venta.id} -- ${venta.sucursalNombre}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+            ],
             const SizedBox(height: 8),
             Text(
               _metodoUsado == _Metodo.paypal
-                  ? 'Tu pago con PayPal quedo confirmado. Ya podes pasar a recoger tu pedido por la sucursal elegida.'
-                  : 'Tu comprobante quedo en revision. Te avisamos apenas un cajero lo confirme.',
+                  ? 'Tu pago con PayPal quedo confirmado. Ya podes pasar a recoger tu pedido.'
+                  : 'Tu comprobante quedo en revision. Te avisamos apenas se confirme.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),

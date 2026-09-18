@@ -361,6 +361,15 @@ class _CarritoItemRow extends ConsumerWidget {
                     ),
                   ),
                   Text(
+                    'Retiro en ${item.sucursalNombre}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF9A9A9A),
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  Text(
                     item.productoNombre,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

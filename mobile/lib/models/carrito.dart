@@ -14,6 +14,8 @@ class DetalleCarrito {
     required this.tallaCodigo,
     required this.colorId,
     required this.colorNombre,
+    required this.sucursalId,
+    required this.sucursalNombre,
     required this.cantidad,
     required this.precioUnitario,
     required this.subtotal,
@@ -27,6 +29,8 @@ class DetalleCarrito {
   final String tallaCodigo;
   final int colorId;
   final String colorNombre;
+  final int sucursalId;
+  final String sucursalNombre;
   final int cantidad;
   final double precioUnitario;
   final double subtotal;
@@ -43,6 +47,8 @@ class DetalleCarrito {
       tallaCodigo: json['talla_codigo'] as String,
       colorId: json['color_id'] as int,
       colorNombre: json['color_nombre'] as String,
+      sucursalId: json['sucursal_id'] as int,
+      sucursalNombre: json['sucursal_nombre'] as String,
       cantidad: json['cantidad'] as int,
       precioUnitario: num.parse(json['precio_unitario'].toString()).toDouble(),
       subtotal: num.parse(json['subtotal'].toString()).toDouble(),

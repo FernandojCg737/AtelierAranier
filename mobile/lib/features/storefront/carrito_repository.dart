@@ -20,11 +20,18 @@ class CarritoRepository {
     required int productoId,
     required int tallaId,
     required int colorId,
+    required int sucursalId,
     required int cantidad,
   }) async {
     final res = await _dio.post(
       '/carrito/items',
-      data: {'producto_id': productoId, 'talla_id': tallaId, 'color_id': colorId, 'cantidad': cantidad},
+      data: {
+        'producto_id': productoId,
+        'talla_id': tallaId,
+        'color_id': colorId,
+        'sucursal_id': sucursalId,
+        'cantidad': cantidad,
+      },
     );
     return Carrito.fromJson(res.data as Map<String, dynamic>);
   }

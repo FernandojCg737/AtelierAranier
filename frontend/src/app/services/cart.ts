@@ -12,6 +12,8 @@ export interface DetalleCarrito {
   talla_codigo: string;
   color_id: number;
   color_nombre: string;
+  sucursal_id: number;
+  sucursal_nombre: string;
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
@@ -26,6 +28,8 @@ interface DetalleCarritoApi {
   talla_codigo: string;
   color_id: number;
   color_nombre: string;
+  sucursal_id: number;
+  sucursal_nombre: string;
   cantidad: number;
   precio_unitario: string;
   subtotal: string;
@@ -76,12 +80,13 @@ export class Cart {
     this._items.set([]);
   }
 
-  async agregar(productoId: number, tallaId: number, colorId: number, cantidad: number): Promise<void> {
+  async agregar(productoId: number, tallaId: number, colorId: number, sucursalId: number, cantidad: number): Promise<void> {
     const res = await firstValueFrom(
       this.http.post<CarritoApi>(`${environment.apiUrl}/carrito/items`, {
         producto_id: productoId,
         talla_id: tallaId,
         color_id: colorId,
+        sucursal_id: sucursalId,
         cantidad,
       }),
     );

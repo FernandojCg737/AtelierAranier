@@ -73,8 +73,14 @@ class DetalleCarrito(ItemLinea):
     id: Mapped[int] = mapped_column(ForeignKey("item_linea.id"), primary_key=True)
     carrito_id: Mapped[int] = mapped_column(ForeignKey("carrito.id"))
     precio_unitario: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    # Sucursal de retiro elegida AL AGREGAR el producto (pedido del usuario):
+    # si el carrito termina con items de mas de una sucursal, el checkout
+    # reparte el pago en varias ventas, una por sucursal -- ver
+    # capturar_orden_paypal/checkout_qr en ventas.py.
+    sucursal_id: Mapped[int] = mapped_column(ForeignKey("sucursal.id"))
 
     carrito: Mapped["Carrito"] = relationship(back_populates="detalles")
+    sucursal: Mapped["Sucursal"] = relationship()
 
     __mapper_args__ = {"polymorphic_identity": "detalle_carrito"}
 

@@ -12,13 +12,18 @@ import '../auth/auth_provider.dart';
 /// sola con su propio fetch, este repositorio solo necesita capturarla
 /// despues de que el cliente la aprueba (ver `checkout_screen.dart`).
 class VentaCreada {
-  const VentaCreada({required this.id, required this.estadoPago});
+  const VentaCreada({required this.id, required this.estadoPago, required this.sucursalNombre});
 
   final int id;
   final String estadoPago;
+  final String sucursalNombre;
 
   factory VentaCreada.fromJson(Map<String, dynamic> json) {
-    return VentaCreada(id: json['id'] as int, estadoPago: json['estado_pago'] as String);
+    return VentaCreada(
+      id: json['id'] as int,
+      estadoPago: json['estado_pago'] as String,
+      sucursalNombre: json['sucursal_nombre'] as String,
+    );
   }
 }
 
@@ -28,6 +33,7 @@ class StockCheckoutItem {
     required this.productoNombre,
     required this.tallaCodigo,
     required this.colorNombre,
+    required this.sucursalNombre,
     required this.cantidadPedida,
     required this.cantidadDisponible,
     required this.disponible,
@@ -37,6 +43,7 @@ class StockCheckoutItem {
   final String productoNombre;
   final String tallaCodigo;
   final String colorNombre;
+  final String sucursalNombre;
   final int cantidadPedida;
   final int cantidadDisponible;
   final bool disponible;
@@ -47,6 +54,7 @@ class StockCheckoutItem {
       productoNombre: json['producto_nombre'] as String,
       tallaCodigo: json['talla_codigo'] as String,
       colorNombre: json['color_nombre'] as String,
+      sucursalNombre: json['sucursal_nombre'] as String,
       cantidadPedida: json['cantidad_pedida'] as int,
       cantidadDisponible: json['cantidad_disponible'] as int,
       disponible: json['disponible'] as bool,
@@ -59,29 +67,30 @@ class VentasRepository {
 
   final Dio _dio;
 
-  // CU11, pedido del usuario: chequeo proactivo de stock por sucursal ANTES
-  // de mostrar los metodos de pago (antes solo se sabia al aprobar el pago
-  // en PayPal o subir el comprobante QR, ya tarde). Mismo endpoint que usa
-  // el checkout web.
-  Future<List<StockCheckoutItem>> verificarStock(int sucursalId) async {
-    final res = await _dio.get('/ventas/checkout/verificar-stock/$sucursalId');
+  // CU11, pedido del usuario: chequeo proactivo de stock ANTES de mostrar
+  // los metodos de pago (antes solo se sabia al aprobar el pago en PayPal o
+  // subir el comprobante QR, ya tarde). Cada item del carrito ya trae su
+  // propia sucursal (elegida al agregarlo), asi que esto no necesita
+  // parametro -- mismo endpoint que usa el checkout web.
+  Future<List<StockCheckoutItem>> verificarStock() async {
+    final res = await _dio.get('/ventas/checkout/verificar-stock');
     return (res.data as List<dynamic>)
         .map((e) => StockCheckoutItem.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  Future<VentaCreada> checkoutQr({required int sucursalId, required String filePath, required String fileName}) async {
-    final form = FormData.fromMap({
-      'sucursal_id': sucursalId.toString(),
-      'file': await MultipartFile.fromFile(filePath, filename: fileName),
-    });
+  // Pedido del usuario: la sucursal de cada item ya quedo fija al agregarlo
+  // al carrito -- si el carrito tiene items de mas de una sucursal, un solo
+  // pago (comprobante QR o captura de PayPal) se reparte en varias ventas.
+  Future<List<VentaCreada>> checkoutQr({required String filePath, required String fileName}) async {
+    final form = FormData.fromMap({'file': await MultipartFile.fromFile(filePath, filename: fileName)});
     final res = await _dio.post('/ventas/checkout/qr', data: form);
-    return VentaCreada.fromJson(res.data as Map<String, dynamic>);
+    return (res.data as List<dynamic>).map((e) => VentaCreada.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  Future<VentaCreada> capturarOrdenPaypal({required String orderId, required int sucursalId}) async {
-    final res = await _dio.post('/ventas/checkout/paypal/capturar/$orderId', data: {'sucursal_id': sucursalId});
-    return VentaCreada.fromJson(res.data as Map<String, dynamic>);
+  Future<List<VentaCreada>> capturarOrdenPaypal({required String orderId}) async {
+    final res = await _dio.post('/ventas/checkout/paypal/capturar/$orderId');
+    return (res.data as List<dynamic>).map((e) => VentaCreada.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<List<Venta>> misCompras() async {

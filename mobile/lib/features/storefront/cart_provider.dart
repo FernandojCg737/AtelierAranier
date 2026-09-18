@@ -52,12 +52,14 @@ class CartNotifier extends StateNotifier<CartState> {
     required int productoId,
     required int tallaId,
     required int colorId,
+    required int sucursalId,
     required int cantidad,
   }) async {
     final carrito = await _repo.agregar(
       productoId: productoId,
       tallaId: tallaId,
       colorId: colorId,
+      sucursalId: sucursalId,
       cantidad: cantidad,
     );
     state = state.copyWith(carrito: carrito);
