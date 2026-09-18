@@ -44,6 +44,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   XFile? _comprobante;
   String _error = '';
   int? _ventaId;
+  List<StockCheckoutItem> _stockStatus = [];
+  bool _verificandoStock = false;
+  int? _sucursalVerificada;
   WebViewController? _paypalController;
   // Arranca chico (solo los botones) y despues la pagina misma le avisa
   // (canal PaypalHeightChannel) cuanto mide de verdad cuando el formulario
@@ -54,10 +57,43 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   // del checkout la unica que scrollea.
   double _paypalWebviewHeight = 130;
 
+  List<StockCheckoutItem> get _itemsSinStock => _stockStatus.where((i) => !i.disponible).toList();
+  bool get _stockOk => !_verificandoStock && _sucursalVerificada != null && _itemsSinStock.isEmpty;
+
   @override
   void initState() {
     super.initState();
     _iniciarPaypalWebview();
+  }
+
+  // CU11, pedido del usuario: antes esto solo se descubria recien al
+  // aprobar el pago en PayPal o subir el comprobante QR. Se chequea cada
+  // vez que cambia la sucursal elegida, ANTES de mostrar los metodos de
+  // pago, avisando producto por producto -- mismo endpoint que usa el
+  // checkout web.
+  Future<void> _verificarStock(int sucursalId) async {
+    setState(() {
+      _verificandoStock = true;
+      _sucursalVerificada = null;
+    });
+    try {
+      final items = await ref.read(ventasRepositoryProvider).verificarStock(sucursalId);
+      if (!mounted) return;
+      setState(() {
+        _stockStatus = items;
+        _sucursalVerificada = sucursalId;
+        _verificandoStock = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      // Si falla el chequeo no bloqueamos el pago con esto -- la validacion
+      // real y definitiva sigue estando del lado del backend al capturar.
+      setState(() {
+        _stockStatus = [];
+        _sucursalVerificada = sucursalId;
+        _verificandoStock = false;
+      });
+    }
   }
 
   Future<void> _iniciarPaypalWebview() async {
@@ -138,7 +174,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   Future<void> _capturarPaypal(String orderId) async {
     final sucursal = _sucursal;
-    if (sucursal == null) return;
+    if (sucursal == null || !_stockOk) return;
 
     setState(() {
       _estado = _Estado.subiendo;
@@ -176,7 +212,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Future<void> _confirmar() async {
     final sucursal = _sucursal;
     final comprobante = _comprobante;
-    if (sucursal == null || comprobante == null) return;
+    if (sucursal == null || comprobante == null || !_stockOk) return;
 
     setState(() {
       _estado = _Estado.subiendo;
@@ -223,6 +259,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     error: (_, _) => const Center(child: Text('No pudimos cargar las sucursales.')),
                     data: (sucursales) {
                       _sucursal ??= sucursales.isEmpty ? null : sucursales.first;
+                      final sucursal = _sucursal;
+                      if (sucursal != null && _sucursalVerificada != sucursal.id && !_verificandoStock) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) => _verificarStock(sucursal.id));
+                      }
                       return _formulario(cart.total, sucursales);
                     },
                   ),
@@ -256,10 +296,44 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           items: sucursales
               .map((s) => DropdownMenuItem(value: s.id, child: Text('${s.nombre} · ${s.direccion}', overflow: TextOverflow.ellipsis)))
               .toList(),
-          onChanged: (id) => setState(() => _sucursal = sucursales.firstWhere((s) => s.id == id)),
+          onChanged: (id) {
+            final nueva = sucursales.firstWhere((s) => s.id == id);
+            setState(() => _sucursal = nueva);
+            _verificarStock(nueva.id);
+          },
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
 
+        if (_verificandoStock)
+          const Text('Comprobando stock en esta sucursal...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+
+        if (!_verificandoStock && _itemsSinStock.isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            color: const Color(0xFFFDECEA),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Esta sucursal no tiene stock suficiente de:', style: TextStyle(color: Color(0xFFB3261E), fontSize: 13, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                for (final item in _itemsSinStock)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text(
+                      '${item.productoNombre} (${item.tallaCodigo}, ${item.colorNombre}) -- pediste ${item.cantidadPedida}, hay ${item.cantidadDisponible}',
+                      style: const TextStyle(color: Color(0xFFB3261E), fontSize: 12),
+                    ),
+                  ),
+                const SizedBox(height: 6),
+                const Text('Elegi otra sucursal o ajusta las cantidades en tu carrito.', style: TextStyle(color: Color(0xFFB3261E), fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
+
+        if (_stockOk) ...[
         const Text('METODO DE PAGO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
         const SizedBox(height: 6),
         Row(
@@ -390,6 +464,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandDark, minimumSize: const Size.fromHeight(48), shape: const RoundedRectangleBorder()),
             child: Text(_estado == _Estado.subiendo ? 'ENVIANDO...' : 'CONFIRMAR PAGO'),
           ),
+        ],
         ],
       ],
     );

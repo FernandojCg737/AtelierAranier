@@ -22,10 +22,53 @@ class VentaCreada {
   }
 }
 
+class StockCheckoutItem {
+  const StockCheckoutItem({
+    required this.detalleId,
+    required this.productoNombre,
+    required this.tallaCodigo,
+    required this.colorNombre,
+    required this.cantidadPedida,
+    required this.cantidadDisponible,
+    required this.disponible,
+  });
+
+  final int detalleId;
+  final String productoNombre;
+  final String tallaCodigo;
+  final String colorNombre;
+  final int cantidadPedida;
+  final int cantidadDisponible;
+  final bool disponible;
+
+  factory StockCheckoutItem.fromJson(Map<String, dynamic> json) {
+    return StockCheckoutItem(
+      detalleId: json['detalle_id'] as int,
+      productoNombre: json['producto_nombre'] as String,
+      tallaCodigo: json['talla_codigo'] as String,
+      colorNombre: json['color_nombre'] as String,
+      cantidadPedida: json['cantidad_pedida'] as int,
+      cantidadDisponible: json['cantidad_disponible'] as int,
+      disponible: json['disponible'] as bool,
+    );
+  }
+}
+
 class VentasRepository {
   VentasRepository(this._dio);
 
   final Dio _dio;
+
+  // CU11, pedido del usuario: chequeo proactivo de stock por sucursal ANTES
+  // de mostrar los metodos de pago (antes solo se sabia al aprobar el pago
+  // en PayPal o subir el comprobante QR, ya tarde). Mismo endpoint que usa
+  // el checkout web.
+  Future<List<StockCheckoutItem>> verificarStock(int sucursalId) async {
+    final res = await _dio.get('/ventas/checkout/verificar-stock/$sucursalId');
+    return (res.data as List<dynamic>)
+        .map((e) => StockCheckoutItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
 
   Future<VentaCreada> checkoutQr({required int sucursalId, required String filePath, required String fileName}) async {
     final form = FormData.fromMap({

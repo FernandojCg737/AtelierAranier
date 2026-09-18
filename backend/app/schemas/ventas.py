@@ -20,6 +20,17 @@ class CapturarPaypalIn(BaseModel):
     sucursal_id: int
 
 
+class VerificarStockItemOut(BaseModel):
+    detalle_id: int
+    producto_id: int
+    producto_nombre: str
+    talla_codigo: str
+    color_nombre: str
+    cantidad_pedida: int
+    cantidad_disponible: int
+    disponible: bool
+
+
 class DetalleVentaOut(BaseModel):
     id: int
     producto_id: int

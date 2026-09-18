@@ -1,6 +1,6 @@
 import { DecimalPipe } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { AfterViewInit, Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -11,6 +11,17 @@ interface Sucursal {
   id: number;
   nombre: string;
   direccion: string;
+}
+
+interface StockItem {
+  detalle_id: number;
+  producto_id: number;
+  producto_nombre: string;
+  talla_codigo: string;
+  color_nombre: string;
+  cantidad_pedida: number;
+  cantidad_disponible: number;
+  disponible: boolean;
 }
 
 type Metodo = 'paypal' | 'qr';
@@ -40,6 +51,15 @@ export class Checkout implements OnInit, AfterViewInit {
   protected readonly metodo = signal<Metodo>('paypal');
   protected readonly errorMsg = signal('');
   protected readonly archivoComprobante = signal<File | null>(null);
+  protected readonly stockStatus = signal<StockItem[] | null>(null);
+  protected readonly verificandoStock = signal(false);
+
+  // CU11, pedido del usuario: antes esto solo se descubria recien al tratar
+  // de pagar (aprobando en PayPal o subiendo el comprobante QR). Ahora se
+  // chequea cada vez que se elige/cambia la sucursal, ANTES de mostrar los
+  // metodos de pago, para avisar producto por producto.
+  protected readonly itemsSinStock = computed(() => this.stockStatus()?.filter((i) => !i.disponible) ?? []);
+  protected readonly stockOk = computed(() => this.stockStatus() !== null && this.itemsSinStock().length === 0);
 
   private botonesPaypalRenderizados = false;
 
@@ -65,6 +85,7 @@ export class Checkout implements OnInit, AfterViewInit {
       this.sucursales.set(res);
       this.sucursalId.set(res[0]?.id ?? null);
       this.estado.set('formulario');
+      void this.verificarStock();
     } catch {
       this.estado.set('error');
     }
@@ -73,7 +94,30 @@ export class Checkout implements OnInit, AfterViewInit {
   protected onSucursalChange(id: string): void {
     this.sucursalId.set(Number(id));
     this.botonesPaypalRenderizados = false;
+    this.stockStatus.set(null);
+    void this.verificarStock();
     setTimeout(() => void this.renderizarBotonPaypal());
+  }
+
+  private async verificarStock(): Promise<void> {
+    const sucursalId = this.sucursalId();
+    if (!sucursalId) return;
+
+    this.verificandoStock.set(true);
+    try {
+      const res = await firstValueFrom(
+        this.http.get<StockItem[]>(`${environment.apiUrl}/ventas/checkout/verificar-stock/${sucursalId}`),
+      );
+      this.stockStatus.set(res);
+    } catch {
+      // Si falla el chequeo, no bloqueamos el pago con esto -- la validacion
+      // real y definitiva sigue estando del lado del backend al capturar.
+      this.stockStatus.set([]);
+    } finally {
+      this.verificandoStock.set(false);
+      this.botonesPaypalRenderizados = false;
+      void this.renderizarBotonPaypal();
+    }
   }
 
   protected onMetodoChange(m: Metodo): void {
@@ -85,7 +129,7 @@ export class Checkout implements OnInit, AfterViewInit {
   }
 
   private async renderizarBotonPaypal(): Promise<void> {
-    if (this.metodo() !== 'paypal' || this.estado() !== 'formulario') return;
+    if (this.metodo() !== 'paypal' || this.estado() !== 'formulario' || !this.stockOk()) return;
     if (this.botonesPaypalRenderizados) return;
     const contenedor = this.paypalContainer()?.nativeElement;
     if (!contenedor) return;
@@ -138,7 +182,7 @@ export class Checkout implements OnInit, AfterViewInit {
   protected async enviarQr(): Promise<void> {
     const archivo = this.archivoComprobante();
     const sucursalId = this.sucursalId();
-    if (!archivo || !sucursalId) return;
+    if (!archivo || !sucursalId || !this.stockOk()) return;
 
     this.estado.set('procesando');
     this.errorMsg.set('');

@@ -38,6 +38,7 @@ from app.schemas.ventas import (
     VentaOut,
     VentaPage,
     VentaPresencialCreate,
+    VerificarStockItemOut,
 )
 
 router = APIRouter()
@@ -173,6 +174,50 @@ def _to_admin_out(venta: Venta) -> VentaAdminOut:
         cliente_email=venta.cliente.email,
         comprobante_url=venta.pago.comprobante_url if venta.pago else None,
     )
+
+
+@router.get("/checkout/verificar-stock/{sucursal_id}", response_model=list[VerificarStockItemOut])
+def verificar_stock_checkout(
+    sucursal_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+) -> list[VerificarStockItemOut]:
+    """Chequeo proactivo, ANTES de pagar (pedido del usuario): antes esto
+    solo se validaba recien al capturar el pago (_verificar_stock_carrito),
+    asi que un cliente podia elegir sucursal, metodo de pago, y hasta llegar
+    a aprobar en PayPal, para recien ahi enterarse de que algo de su carrito
+    no tenia stock en esa sucursal. El checkout llama esto cada vez que
+    cambia la sucursal elegida, para avisar producto por producto ANTES de
+    mostrar los botones de pago."""
+    cliente = _get_cliente_o_403(db, usuario)
+    carrito = _get_carrito_activo_no_vacio(db, cliente.id)
+
+    resultado = []
+    for d in carrito.detalles:
+        inventario = (
+            db.query(Inventario)
+            .filter(
+                Inventario.producto_id == d.producto_id,
+                Inventario.talla_id == d.talla_id,
+                Inventario.color_id == d.color_id,
+                Inventario.sucursal_id == sucursal_id,
+            )
+            .first()
+        )
+        cantidad_disponible = inventario.cantidad if inventario else 0
+        resultado.append(
+            VerificarStockItemOut(
+                detalle_id=d.id,
+                producto_id=d.producto_id,
+                producto_nombre=d.producto.nombre,
+                talla_codigo=d.talla.codigo,
+                color_nombre=d.color.nombre,
+                cantidad_pedida=d.cantidad,
+                cantidad_disponible=cantidad_disponible,
+                disponible=cantidad_disponible >= d.cantidad,
+            )
+        )
+    return resultado
 
 
 @router.post("/checkout/paypal/crear-orden", response_model=OrdenPaypalOut)
