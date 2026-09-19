@@ -7,7 +7,7 @@ import 'dart:io' show Platform;
 const bool usarBackendProduccion = true;
 
 const String _backendProduccionUrl = 'https://atelieraranier-backend-e99p.onrender.com';
-const String _frontendProduccionUrl = 'https://atelieraranier-frontend.onrender.com';
+const String _frontendProduccionUrl = 'https://atelieraranier-frontend-u6kh.onrender.com';
 
 /// URL base de la API de FastAPI según la plataforma de ejecución.
 ///
