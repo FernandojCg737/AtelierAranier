@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { Auth } from '../../../services/auth';
 
 interface Sucursal {
   id: number;
@@ -27,13 +28,11 @@ interface ProductoCatalogo {
   variantes: Variante[];
 }
 
-interface CatalogoSucursal {
-  sucursal: Sucursal;
-  productos: ProductoCatalogo[];
-  loading: boolean;
-  error: string;
-}
-
+// CU08, pedido explicito del usuario: pantalla dividida -- sucursales a la
+// izquierda, catalogo y disponibilidad de la elegida a la derecha. Antes se
+// precargaban todas las sucursales apiladas verticalmente; ahora se carga
+// (y cachea) el catalogo de una sucursal recien cuando se hace click en
+// ella, mostrando solo esa a la vez.
 @Component({
   selector: 'app-admin-catalogo',
   imports: [],
@@ -42,20 +41,27 @@ interface CatalogoSucursal {
 })
 export class AdminCatalogo implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(Auth);
 
-  protected readonly sucursalesDisponibles = signal<Sucursal[]>([]);
-  protected readonly catalogos = signal<CatalogoSucursal[]>([]);
-  protected readonly showPicker = signal(false);
+  // CU08, mismo criterio que CU12: un Encargado/Cajero solo consulta el
+  // catalogo de SU sucursal, nunca el de otras -- Administrador ve todas.
+  protected readonly esAdministrador = computed(() => this.auth.currentUser()?.tipo === 'administrador');
+
+  protected readonly sucursales = signal<Sucursal[]>([]);
+  protected readonly sucursalSeleccionada = signal<Sucursal | null>(null);
+  protected readonly productos = signal<ProductoCatalogo[]>([]);
+  protected readonly loadingSucursales = signal(false);
+  protected readonly loadingCatalogo = signal(false);
   protected readonly error = signal('');
+  protected readonly errorCatalogo = signal('');
   protected readonly busqueda = signal('');
 
-  protected readonly sucursalesParaAgregar = computed(() => {
-    const yaAgregadas = new Set(this.catalogos().map((c) => c.sucursal.id));
-    return this.sucursalesDisponibles().filter((s) => !yaAgregadas.has(s.id));
-  });
+  // Cache por sucursal: volver a hacer click en una ya vista no vuelve a pedirla.
+  private readonly cache = new Map<number, ProductoCatalogo[]>();
 
-  protected filtrarProductos(productos: ProductoCatalogo[]): ProductoCatalogo[] {
+  protected readonly productosFiltrados = computed(() => {
     const termino = this.busqueda().trim().toLowerCase();
+    const productos = this.productos();
     if (!termino) return productos;
 
     return productos.filter(
@@ -67,53 +73,52 @@ export class AdminCatalogo implements OnInit {
           (v) => v.talla_codigo.toLowerCase().includes(termino) || v.color_nombre.toLowerCase().includes(termino),
         ),
     );
-  }
+  });
 
   ngOnInit(): void {
-    this.loadSucursales();
+    void this.loadSucursales();
   }
 
-  protected togglePicker(): void {
-    this.showPicker.update((v) => !v);
-  }
+  protected async seleccionar(sucursal: Sucursal): Promise<void> {
+    this.sucursalSeleccionada.set(sucursal);
+    this.errorCatalogo.set('');
+    this.busqueda.set('');
 
-  protected async agregarCatalogo(sucursal: Sucursal): Promise<void> {
-    this.showPicker.set(false);
-    const entrada: CatalogoSucursal = { sucursal, productos: [], loading: true, error: '' };
-    this.catalogos.update((lista) => [...lista, entrada]);
+    const cacheado = this.cache.get(sucursal.id);
+    if (cacheado) {
+      this.productos.set(cacheado);
+      return;
+    }
 
+    this.loadingCatalogo.set(true);
+    this.productos.set([]);
     try {
       const productos = await firstValueFrom(
         this.http.get<ProductoCatalogo[]>(`${environment.apiUrl}/catalogo/sucursales/${sucursal.id}/productos`),
       );
-      this.catalogos.update((lista) =>
-        lista.map((c) => (c.sucursal.id === sucursal.id ? { ...c, productos, loading: false } : c)),
-      );
+      this.cache.set(sucursal.id, productos);
+      this.productos.set(productos);
     } catch {
-      this.catalogos.update((lista) =>
-        lista.map((c) =>
-          c.sucursal.id === sucursal.id ? { ...c, loading: false, error: 'No se pudo cargar el catalogo.' } : c,
-        ),
-      );
+      this.errorCatalogo.set('No se pudo cargar el catalogo de esta sucursal.');
+    } finally {
+      this.loadingCatalogo.set(false);
     }
-  }
-
-  protected quitarCatalogo(sucursalId: number): void {
-    this.catalogos.update((lista) => lista.filter((c) => c.sucursal.id !== sucursalId));
   }
 
   private async loadSucursales(): Promise<void> {
     this.error.set('');
+    this.loadingSucursales.set(true);
     try {
       const res = await firstValueFrom(this.http.get<Sucursal[]>(`${environment.apiUrl}/catalogo/sucursales`));
-      this.sucursalesDisponibles.set(res);
-      // Precarga el catalogo de todas las sucursales para que siempre esten
-      // visibles al entrar a la pagina, sin depender de que el usuario los
-      // haya agregado a mano en una visita anterior (el estado no persiste
-      // entre navegaciones).
-      await Promise.all(res.map((s) => this.agregarCatalogo(s)));
+      const propiaId = this.auth.currentUser()?.sucursal_id;
+      const visibles = this.esAdministrador() ? res : res.filter((s) => s.id === propiaId);
+
+      this.sucursales.set(visibles);
+      if (visibles.length > 0) void this.seleccionar(visibles[0]);
     } catch {
       this.error.set('No se pudo cargar las sucursales.');
+    } finally {
+      this.loadingSucursales.set(false);
     }
   }
 }

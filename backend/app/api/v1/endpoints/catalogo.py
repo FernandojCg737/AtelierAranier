@@ -21,11 +21,18 @@ def list_sucursales_catalogo(
 def list_catalogo_sucursal(
     sucursal_id: int,
     db: Session = Depends(get_db),
-    _usuario: Usuario = Depends(require_permiso("CU08")),
+    usuario: Usuario = Depends(require_permiso("CU08")),
 ) -> list[CatalogoProductoOut]:
     sucursal = db.query(Sucursal).filter(Sucursal.id == sucursal_id).first()
     if sucursal is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sucursal no encontrada.")
+
+    # CU08/CU12: Encargado/Cajero solo consultan el catalogo/inventario de SU
+    # sucursal -- antes esto solo se ocultaba en el frontend, pero la API en
+    # si no lo exigia (se podia pedir cualquier sucursal_id directo).
+    # Administrador ve todas.
+    if usuario.tipo != "administrador" and sucursal_id != getattr(usuario, "sucursal_id", None):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "No podes consultar el catalogo de otra sucursal.")
 
     productos = (
         db.query(Producto)
