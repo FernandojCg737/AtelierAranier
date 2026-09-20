@@ -52,6 +52,11 @@ class Usuario(Base):
     # session_id identifica la sesion activa: cada login la reemplaza, asi
     # que un token viejo (de otro dispositivo) deja de pasar la verificacion.
     session_id: Mapped[str | None] = mapped_column(String(64))
+    # Mismo instante de expiracion que lleva el JWT (60 min desde el login).
+    # Sin esto, "sesion activa" en CU01 solo significaba "session_id no es
+    # null", que nunca se limpiaba si el usuario cerraba la pestana sin
+    # desloguearse -- quedaba listado como activo para siempre.
+    sesion_expira_en: Mapped[datetime | None] = mapped_column(DateTime)
     reset_code_hash: Mapped[str | None] = mapped_column(String(255))
     reset_code_expires_at: Mapped[datetime | None] = mapped_column(DateTime)
 

@@ -49,6 +49,7 @@ def _issue_token(usuario: Usuario, db: Session, request: Request) -> TokenRespon
     # usuario tenia una sesion abierta en otro dispositivo, su token anterior
     # deja de matchear "sid" y get_current_user lo rechaza en su proximo request.
     usuario.session_id = uuid.uuid4().hex
+    usuario.sesion_expira_en = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     db.commit()
     db.refresh(usuario)
 
@@ -201,6 +202,7 @@ def logout(
     db: Session = Depends(get_db),
 ) -> MessageResponse:
     usuario.session_id = None
+    usuario.sesion_expira_en = None
     db.commit()
     _log_sesion_bitacora(db, usuario, "LOGOUT", request)
     return MessageResponse(message="Sesion cerrada.")

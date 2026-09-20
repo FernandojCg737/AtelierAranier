@@ -1,5 +1,6 @@
 import logging
 import uuid
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import text
@@ -7,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.audit import log_bitacora
+from app.core.config import settings
 from app.core.email import send_email
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
@@ -67,6 +69,9 @@ def cambiar_password(
     db.commit()
 
     usuario = db.query(Usuario).filter(Usuario.id == usuario.id).first()
+    usuario.sesion_expira_en = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    db.commit()
+    db.refresh(usuario)
     log_bitacora(db, usuario, "ACTUALIZAR", "usuario", usuario.id, f"Cambio de contrasena: {usuario.email}", request)
 
     try:
