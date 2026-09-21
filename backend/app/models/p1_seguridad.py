@@ -1,6 +1,6 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, String, Table, Text
+from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, String, Table, Text, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -125,3 +125,33 @@ class Cajero(Empleado):
     id: Mapped[int] = mapped_column(ForeignKey("empleado.id"), primary_key=True)
 
     __mapper_args__ = {"polymorphic_identity": "cajero"}
+
+
+class ConfiguracionAsistencia(Base):
+    # Fila unica (id=1) con la hora de liberacion y la clave del dia -- la
+    # clave se regenera sola en fn_estado_asistencia_hoy() cuando cambia el
+    # dia (barrido perezoso, sin proceso en segundo plano).
+    __tablename__ = "configuracion_asistencia"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    hora_liberacion: Mapped[time] = mapped_column(Time)
+    codigo: Mapped[str | None] = mapped_column(String(10))
+    codigo_fecha: Mapped[date | None] = mapped_column(Date)
+    # Instante (hora Bolivia) en que arranco la ventana de 5 minutos vigente
+    # hoy -- ya sea porque se alcanzo hora_liberacion o porque el
+    # Administrador la libero manualmente antes. Se resetea a NULL cada dia.
+    ventana_inicio: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class MarcadoAsistencia(Base):
+    __tablename__ = "marcado_asistencia"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    empleado_id: Mapped[int] = mapped_column(ForeignKey("empleado.id"))
+    fecha: Mapped[date] = mapped_column(Date)
+    hora_marcado: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    latitud: Mapped[float] = mapped_column(Float)
+    longitud: Mapped[float] = mapped_column(Float)
+    foto_url: Mapped[str | None] = mapped_column(String(500))
+
+    empleado: Mapped["Empleado"] = relationship()

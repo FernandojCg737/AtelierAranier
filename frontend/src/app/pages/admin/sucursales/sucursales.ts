@@ -14,6 +14,8 @@ interface Sucursal {
   telefono: string | null;
   estado: string;
   fecha_creacion: string;
+  latitud: number | null;
+  longitud: number | null;
 }
 
 @Component({
@@ -38,6 +40,9 @@ export class AdminSucursales implements OnInit {
   protected readonly sHorario = signal('');
   protected readonly sTelefono = signal('');
   protected readonly sEstado = signal('activa');
+  protected readonly sLatitud = signal<number | null>(null);
+  protected readonly sLongitud = signal<number | null>(null);
+  protected readonly ubicando = signal(false);
   protected readonly saving = signal(false);
 
   ngOnInit(): void {
@@ -53,6 +58,8 @@ export class AdminSucursales implements OnInit {
     this.sHorario.set('');
     this.sTelefono.set('');
     this.sEstado.set('activa');
+    this.sLatitud.set(null);
+    this.sLongitud.set(null);
     this.error.set('');
     this.showForm.set(true);
   }
@@ -66,8 +73,29 @@ export class AdminSucursales implements OnInit {
     this.sHorario.set(s.horario_atencion ?? '');
     this.sTelefono.set(s.telefono ?? '');
     this.sEstado.set(s.estado);
+    this.sLatitud.set(s.latitud);
+    this.sLongitud.set(s.longitud);
     this.error.set('');
     this.showForm.set(true);
+  }
+
+  protected usarMiUbicacion(): void {
+    if (!navigator.geolocation) {
+      this.error.set('Tu navegador no permite obtener la ubicacion.');
+      return;
+    }
+    this.ubicando.set(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.sLatitud.set(pos.coords.latitude);
+        this.sLongitud.set(pos.coords.longitude);
+        this.ubicando.set(false);
+      },
+      () => {
+        this.error.set('No se pudo obtener tu ubicacion. Da permiso de ubicacion e intenta de nuevo.');
+        this.ubicando.set(false);
+      },
+    );
   }
 
   protected closeForm(): void {
@@ -88,6 +116,8 @@ export class AdminSucursales implements OnInit {
       horario_atencion: this.sHorario() || null,
       telefono: this.sTelefono() || null,
       estado: this.sEstado(),
+      latitud: this.sLatitud(),
+      longitud: this.sLongitud(),
     };
 
     this.error.set('');

@@ -136,6 +136,29 @@
           </select>
         </label>
 
+        <label class="modal-field">
+          <span>Ubicacion (para validar la asistencia del personal, CU01)</span>
+          <div class="modal-field-row">
+            <input
+              type="number"
+              step="any"
+              placeholder="Latitud"
+              [value]="sLatitud()"
+              (input)="sLatitud.set($any($event.target).value ? +$any($event.target).value : null)"
+            />
+            <input
+              type="number"
+              step="any"
+              placeholder="Longitud"
+              [value]="sLongitud()"
+              (input)="sLongitud.set($any($event.target).value ? +$any($event.target).value : null)"
+            />
+          </div>
+          <button type="button" class="is-secondary" [disabled]="ubicando()" (click)="usarMiUbicacion()">
+            {{ ubicando() ? 'Obteniendo ubicacion...' : 'Usar mi ubicacion actual' }}
+          </button>
+        </label>
+
         <div class="modal-actions">
           <button type="button" class="is-secondary" (click)="closeForm()">Cancelar</button>
           <button type="submit" [disabled]="saving()">{{ saving() ? 'Guardando...' : 'Guardar' }}</button>

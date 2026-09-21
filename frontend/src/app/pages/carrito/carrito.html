@@ -62,13 +62,15 @@
           <span>Total ({{ cart.totalItems() }} articulos)</span>
           <span class="carrito-summary__total">{{ cart.totalPrice() | number: '1.2-2' }} Bs</span>
         </div>
-        <button type="button" class="carrito-summary__checkout" (click)="irACheckout()">Finalizar compra</button>
+        @if (auth.hasPermiso('CU11')) {
+          <button type="button" class="carrito-summary__checkout" (click)="irACheckout()">Finalizar compra</button>
+        }
 
-        @if (!reservaAbierta()) {
+        @if (!reservaAbierta() && auth.hasPermiso('CU10')) {
           <button type="button" class="carrito-summary__reservar" (click)="abrirReserva()">Reservar</button>
         }
 
-        @if (reservaAbierta()) {
+        @if (reservaAbierta() && auth.hasPermiso('CU10')) {
           <div class="carrito-reserva">
             @if (reservaEstado() === 'listo') {
               <div class="carrito-reserva__exito">

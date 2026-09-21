@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../../core/theme.dart';
 import '../../../models/sucursal_admin.dart';
@@ -41,6 +42,9 @@ class _SucursalesScreenState extends ConsumerState<SucursalesScreen> {
     final horarioCtrl = TextEditingController(text: sucursal?.horarioAtencion ?? '');
     final telefonoCtrl = TextEditingController(text: sucursal?.telefono ?? '');
     var estado = sucursal?.estado ?? 'activa';
+    var latitud = sucursal?.latitud;
+    var longitud = sucursal?.longitud;
+    var ubicando = false;
     final formKey = GlobalKey<FormState>();
 
     await showAdminFormSheet(
@@ -89,6 +93,45 @@ class _SucursalesScreenState extends ConsumerState<SucursalesScreen> {
                 ],
                 onChanged: (v) => setSheetState(() => estado = v!),
               ),
+              const SizedBox(height: 16),
+              Text(
+                latitud != null && longitud != null
+                    ? 'Ubicacion: ${latitud!.toStringAsFixed(5)}, ${longitud!.toStringAsFixed(5)}'
+                    : 'Sin ubicacion cargada (CU01 no podra validar la asistencia de esta sucursal)',
+                style: const TextStyle(fontSize: 12, color: AppColors.grayTextDark),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: ubicando
+                    ? null
+                    : () async {
+                        setSheetState(() => ubicando = true);
+                        try {
+                          final servicio = await Geolocator.isLocationServiceEnabled();
+                          if (!servicio) throw 'Activa el GPS del dispositivo.';
+                          var permiso = await Geolocator.checkPermission();
+                          if (permiso == LocationPermission.denied) {
+                            permiso = await Geolocator.requestPermission();
+                          }
+                          if (permiso == LocationPermission.denied || permiso == LocationPermission.deniedForever) {
+                            throw 'Necesitamos permiso de ubicacion.';
+                          }
+                          final pos = await Geolocator.getCurrentPosition(
+                            locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+                          );
+                          setSheetState(() {
+                            latitud = pos.latitude;
+                            longitud = pos.longitude;
+                          });
+                        } catch (_) {
+                          // silencioso, el campo simplemente queda sin cargar
+                        } finally {
+                          setSheetState(() => ubicando = false);
+                        }
+                      },
+                icon: const Icon(Icons.my_location, size: 16),
+                label: Text(ubicando ? 'Obteniendo ubicacion...' : 'Usar mi ubicacion actual'),
+              ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
@@ -104,6 +147,8 @@ class _SucursalesScreenState extends ConsumerState<SucursalesScreen> {
                         horarioAtencion: horarioCtrl.text.trim().isEmpty ? null : horarioCtrl.text.trim(),
                         telefono: telefonoCtrl.text.trim().isEmpty ? null : telefonoCtrl.text.trim(),
                         estado: estado,
+                        latitud: latitud,
+                        longitud: longitud,
                       );
                     } else {
                       await repo.updateSucursal(
@@ -115,6 +160,8 @@ class _SucursalesScreenState extends ConsumerState<SucursalesScreen> {
                         horarioAtencion: horarioCtrl.text.trim().isEmpty ? null : horarioCtrl.text.trim(),
                         telefono: telefonoCtrl.text.trim().isEmpty ? null : telefonoCtrl.text.trim(),
                         estado: estado,
+                        latitud: latitud,
+                        longitud: longitud,
                       );
                     }
                     if (context.mounted) Navigator.pop(context);

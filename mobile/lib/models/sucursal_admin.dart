@@ -13,6 +13,8 @@ class SucursalAdmin {
     this.telefono,
     required this.estado,
     required this.fechaCreacion,
+    this.latitud,
+    this.longitud,
   });
 
   final int id;
@@ -25,6 +27,8 @@ class SucursalAdmin {
   final String? telefono;
   final String estado; // activa | inactiva
   final String fechaCreacion;
+  final double? latitud;
+  final double? longitud;
 
   factory SucursalAdmin.fromJson(Map<String, dynamic> json) {
     return SucursalAdmin(
@@ -38,6 +42,8 @@ class SucursalAdmin {
       telefono: json['telefono'] as String?,
       estado: json['estado'] as String,
       fechaCreacion: json['fecha_creacion'] as String,
+      latitud: (json['latitud'] as num?)?.toDouble(),
+      longitud: (json['longitud'] as num?)?.toDouble(),
     );
   }
 }

@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints.ar_uso import router as ar_uso_router
+from app.api.v1.endpoints.asistencia import router as asistencia_router
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.bitacora import router as bitacora_router
 from app.api.v1.endpoints.carrito import admin_router as carritos_admin_router
@@ -30,6 +31,7 @@ api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(bitacora_router, prefix="/bitacora", tags=["bitacora"])
 api_router.include_router(ar_uso_router, prefix="/ar-uso", tags=["ar-uso"])
 api_router.include_router(sesiones_router, prefix="/sesiones", tags=["sesiones"])
+api_router.include_router(asistencia_router, prefix="/asistencia", tags=["asistencia"])
 api_router.include_router(sucursales_router, prefix="/sucursales", tags=["sucursales"])
 api_router.include_router(perfil_router, prefix="/perfil", tags=["perfil"])
 api_router.include_router(clientes_router, prefix="/clientes", tags=["clientes"])

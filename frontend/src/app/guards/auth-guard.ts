@@ -53,3 +53,16 @@ export const permisoGuard = (codigo: string): CanActivateFn => {
     return auth.hasPermiso(codigo) || auth.isAdmin() ? true : router.createUrlTree(['/admin']);
   };
 };
+
+// Igual que permisoGuard pero para paginas del lado del cliente (carrito,
+// reservas, etc.): si HAY sesion y el rol Cliente no tiene ese CU habilitado
+// (CU02), manda al inicio. A un visitante sin sesion no lo bloquea aca --
+// eso ya lo decide authGuard si la ruta tambien lo exige.
+export const clientePermisoGuard = (codigo: string): CanActivateFn => {
+  return () => {
+    const auth = inject(Auth);
+    const router = inject(Router);
+    if (!auth.currentUser()) return true;
+    return auth.hasPermiso(codigo) || auth.isAdmin() ? true : router.createUrlTree(['/']);
+  };
+};

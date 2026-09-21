@@ -51,4 +51,220 @@
       </tbody>
     </table>
   </div>
+
+  <hr class="admin-divider" />
+
+  @if (auth.isAdmin()) {
+    <!-- ================= Vista Administrador ================= -->
+    <div class="admin-content__header">
+      <div>
+        <span class="admin-content__eyebrow">P1 · CU01</span>
+        <h1>Control de Asistencia</h1>
+        <p>Clave diaria compartida para que el personal marque su asistencia, con ubicacion adjunta.</p>
+      </div>
+    </div>
+
+    <div class="asistencia-config">
+      <div class="asistencia-config__campo">
+        <label>Hora de liberacion automatica</label>
+        <input type="time" [value]="nuevaHora()" (input)="nuevaHora.set($any($event.target).value)" />
+        <button type="button" (click)="guardarHora()" [disabled]="guardandoHora()">Guardar hora</button>
+      </div>
+
+      <div class="asistencia-config__estado">
+        @if (estado(); as e) {
+          <span
+            class="admin-badge"
+            [class.admin-badge--pagada]="e.liberado"
+            [class.admin-badge--pendiente]="!e.liberado && !e.ventana_cerrada"
+          >
+            {{ e.liberado ? 'Clave liberada (ventana de 5 min)' : e.ventana_cerrada ? 'Ventana cerrada' : 'Clave aun no liberada' }}
+          </span>
+          @if (e.codigo) {
+            <strong class="asistencia-codigo">{{ e.codigo }}</strong>
+          }
+          @if (!e.liberado) {
+            <button type="button" (click)="liberarAhora()" [disabled]="liberando()">Liberar ahora</button>
+          }
+        }
+      </div>
+    </div>
+    @if (mensajeAdmin()) {
+      <p class="asistencia-mensaje">{{ mensajeAdmin() }}</p>
+    }
+
+    <h3 class="asistencia-subtitulo">Quien marco hoy</h3>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Empleado</th>
+            <th>Sucursal</th>
+            <th>Estado</th>
+            <th>Hora</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (cargandoAdmin()) {
+            <tr>
+              <td colspan="4" class="admin-table__empty">Cargando...</td>
+            </tr>
+          } @else if (marcadosHoy().length === 0) {
+            <tr>
+              <td colspan="4" class="admin-table__empty">No hay personal activo registrado.</td>
+            </tr>
+          } @else {
+            @for (m of marcadosHoy(); track m.empleado_id) {
+              <tr>
+                <td>{{ m.empleado_nombre }}</td>
+                <td>{{ m.sucursal_nombre || '-' }}</td>
+                <td>
+                  <span
+                    class="admin-badge"
+                    [class.admin-badge--pagada]="m.estado === 'marco'"
+                    [class.admin-badge--pendiente]="m.estado === 'pendiente'"
+                    [class.admin-badge--falta]="m.estado === 'falta'"
+                  >
+                    {{ m.estado === 'marco' ? 'Marco' : m.estado === 'falta' ? 'Falta' : 'Pendiente' }}
+                  </span>
+                </td>
+                <td>{{ m.hora_marcado ? (m.hora_marcado | date: 'h:mm a' : tzBolivia) : '-' }}</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="asistencia-subtitulo">Historial (ultimos 7 dias)</h3>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Empleado</th>
+            <th>Sucursal</th>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Foto</th>
+            <th>Ubicacion</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (historial().length === 0) {
+            <tr>
+              <td colspan="6" class="admin-table__empty">Sin marcados en el rango.</td>
+            </tr>
+          } @else {
+            @for (h of historial(); track h.id) {
+              <tr>
+                <td>{{ h.empleado_nombre }}</td>
+                <td>{{ h.sucursal_nombre || '-' }}</td>
+                <td>{{ h.fecha }}</td>
+                <td>{{ h.hora_marcado | date: 'h:mm a' : tzBolivia }}</td>
+                <td>
+                  @if (h.foto_url) {
+                    <a [href]="h.foto_url" target="_blank" rel="noopener">
+                      <img [src]="h.foto_url" alt="Foto de verificacion" class="asistencia-foto-mini" />
+                    </a>
+                  } @else {
+                    -
+                  }
+                </td>
+                <td>
+                  <a [href]="'https://www.google.com/maps?q=' + h.latitud + ',' + h.longitud" target="_blank" rel="noopener">
+                    Ver mapa
+                  </a>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <!-- ================= Vista Encargado / Cajero ================= -->
+    <div class="admin-content__header">
+      <div>
+        <span class="admin-content__eyebrow">P1 · CU01</span>
+        <h1>Marcar Asistencia</h1>
+        <p>Ingresa la clave del dia, tomate una foto de verificacion y adjunta tu ubicacion. Tienes 5 minutos desde que se libera.</p>
+      </div>
+    </div>
+
+    @if (estado(); as e) {
+      @if (e.ventana_cerrada) {
+        <p class="asistencia-mensaje asistencia-mensaje--error">
+          La ventana de 5 minutos de hoy ya se cerro. Si no marcaste, quedaste registrado como falta.
+        </p>
+      } @else if (!e.liberado) {
+        <p class="asistencia-mensaje">
+          La clave todavia no fue liberada (se libera a las {{ e.hora_liberacion.slice(0, 5) }} hora Bolivia, o antes
+          si tu Administrador la libera manualmente). Solo dura 5 minutos, mantente atento.
+        </p>
+      } @else {
+        <div class="asistencia-marcar">
+          <label>Clave del dia</label>
+          <input
+            type="text"
+            maxlength="6"
+            placeholder="000000"
+            [value]="codigoIngresado()"
+            (input)="codigoIngresado.set($any($event.target).value)"
+          />
+
+          <label class="asistencia-marcar__foto-label">
+            Foto de verificacion
+            <input type="file" accept="image/*" capture="user" (change)="onFotoSeleccionada($event)" />
+          </label>
+          @if (fotoPreviewUrl(); as preview) {
+            <img [src]="preview" alt="Vista previa" class="asistencia-foto-preview" />
+          }
+
+          <button
+            type="button"
+            (click)="marcarAsistencia()"
+            [disabled]="marcando() || !codigoIngresado() || !fotoSeleccionada()"
+          >
+            {{ marcando() ? 'Marcando...' : 'Marcar asistencia (adjunta tu ubicacion)' }}
+          </button>
+        </div>
+      }
+    }
+    @if (mensajeMarcado()) {
+      <p class="asistencia-mensaje asistencia-mensaje--ok">{{ mensajeMarcado() }}</p>
+    }
+    @if (errorMarcado()) {
+      <p class="asistencia-mensaje asistencia-mensaje--error">{{ errorMarcado() }}</p>
+    }
+
+    <h3 class="asistencia-subtitulo">Mi historial (semana actual)</h3>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Dia</th>
+            <th>Estado</th>
+            <th>Hora</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of filaSemanaActual(); track f.dia) {
+            <tr>
+              <td>{{ f.dia }}</td>
+              <td>
+                <span
+                  class="admin-badge"
+                  [class.admin-badge--pagada]="f.marcado"
+                  [class.admin-badge--pendiente]="!f.marcado"
+                >
+                  {{ f.marcado ? 'Marcado' : 'Sin marcar' }}
+                </span>
+              </td>
+              <td>{{ f.marcado ? (f.marcado.hora_marcado | date: 'h:mm a' : tzBolivia) : '-' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
 </div>

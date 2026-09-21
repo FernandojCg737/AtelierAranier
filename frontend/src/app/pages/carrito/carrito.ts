@@ -4,6 +4,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { Auth } from '../../services/auth';
 import { Cart } from '../../services/cart';
 
 interface Sucursal {
@@ -24,6 +25,7 @@ export class Carrito implements OnInit {
   protected readonly cart = inject(Cart);
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  protected readonly auth = inject(Auth);
 
   // Reservar el carrito entero: en vez de pagar ahora, retiene el stock y le
   // adjunta la fecha/hora en que el cliente ira a la sucursal a pagar y

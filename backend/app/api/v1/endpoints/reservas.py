@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user, require_permiso
+from app.api.deps import require_permiso, require_permiso_cliente
 from app.core.audit import log_bitacora
 from app.db.session import get_db
 from app.models import (
@@ -155,7 +155,7 @@ def crear_reserva(
     payload: ReservaCreate,
     request: Request,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU10")),
 ) -> ReservaOut:
     cliente = db.query(Cliente).filter(Cliente.id == usuario.id).first()
     if cliente is None:
@@ -218,7 +218,7 @@ def crear_reserva(
 @router.get("/mias", response_model=list[ReservaOut])
 def mis_reservas(
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU10")),
 ) -> list[ReservaOut]:
     _vencer_reservas_expiradas(db)
     reservas = (
@@ -232,7 +232,7 @@ def cancelar_mi_reserva(
     reserva_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU10")),
 ) -> ReservaOut:
     reserva = _get_reserva_or_404(db, reserva_id)
     if reserva.cliente_id != usuario.id:

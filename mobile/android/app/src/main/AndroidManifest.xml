@@ -11,6 +11,9 @@
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
     <!-- CU19: reconocimiento de voz para dictarle la pregunta al chatbot. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- CU01: ubicacion al marcar asistencia. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
         android:label="Atelier Aranier"
         android:name="${applicationName}"

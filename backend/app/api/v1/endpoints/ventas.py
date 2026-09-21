@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFil
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user, require_permiso
+from app.api.deps import get_current_user, require_permiso, require_permiso_cliente
 from app.core.audit import log_bitacora
 from app.core.paypal import capturar_orden, crear_orden
 from app.core.storage import upload_comprobante_pago
@@ -194,7 +194,7 @@ def _to_admin_out(venta: Venta) -> VentaAdminOut:
 @router.get("/checkout/verificar-stock", response_model=list[VerificarStockItemOut])
 def verificar_stock_checkout(
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU11")),
 ) -> list[VerificarStockItemOut]:
     """Chequeo proactivo, ANTES de pagar (pedido del usuario): antes esto
     solo se validaba recien al capturar el pago (_verificar_stock_carrito).
@@ -238,7 +238,7 @@ def verificar_stock_checkout(
 def crear_orden_paypal(
     request: Request,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU11")),
 ) -> OrdenPaypalOut:
     """Solo crea la orden en PayPal para que el frontend abra el checkout --
     no cobra nada ni toca el carrito todavia (eso recien pasa al capturar la
@@ -266,7 +266,7 @@ def capturar_orden_paypal(
     order_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU11")),
 ) -> list[VentaOut]:
     """Un solo pago de PayPal puede terminar repartido en varias ventas
     (pedido del usuario): la sucursal de cada item ya quedo fija al
@@ -312,7 +312,7 @@ async def checkout_qr(
     request: Request,
     file: UploadFile = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU11")),
 ) -> list[VentaOut]:
     """Pago por QR: no hay pasarela que lo verifique solo, asi que el
     cliente sube la foto del comprobante y la(s) venta(s) quedan pendientes
@@ -354,7 +354,7 @@ async def checkout_qr(
 @router.get("/mias", response_model=list[VentaOut])
 def mis_ventas(
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU11")),
 ) -> list[VentaOut]:
     cliente = _get_cliente_o_403(db, usuario)
     ventas = (
@@ -370,7 +370,7 @@ def mis_ventas(
 def mi_venta_detalle(
     venta_id: int,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU11")),
 ) -> VentaOut:
     """Detalle de una compra propia -- usado por la pantalla de comprobante
     descargable/imprimible en 'Mis compras'."""

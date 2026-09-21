@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Date, ForeignKey, String
+from sqlalchemy import Date, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -28,6 +28,12 @@ class Sucursal(Base):
     telefono: Mapped[str | None] = mapped_column(String(30))
     estado: Mapped[str] = mapped_column(String(20), default="activa")
     fecha_creacion: Mapped[date] = mapped_column(Date, default=date.today)
+    # CU01: coordenadas de la sucursal, usadas para validar que el empleado
+    # este fisicamente cerca al marcar asistencia. Opcionales -- si una
+    # sucursal no las tiene cargadas, el marcado de sus empleados no se
+    # valida por ubicacion (solo se registra).
+    latitud: Mapped[float | None] = mapped_column(Float)
+    longitud: Mapped[float | None] = mapped_column(Float)
 
     ciudad: Mapped["Ciudad"] = relationship(back_populates="sucursales")
     empleados: Mapped[list["Empleado"]] = relationship(back_populates="sucursal")

@@ -13,79 +13,97 @@
         <span class="dash__eyebrow">Mi cuenta</span>
         <h1>Hola, {{ auth.currentUser()?.nombre }}</h1>
       </div>
-      <a routerLink="/carrito" class="dash__carrito-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="9" cy="21" r="1" />
-          <circle cx="20" cy="21" r="1" />
-          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-        </svg>
-        <span>Ir a mi carrito</span>
-      </a>
+      @if (auth.hasPermiso('CU13')) {
+        <a routerLink="/carrito" class="dash__carrito-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1" />
+            <circle cx="20" cy="21" r="1" />
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+          </svg>
+          <span>Ir a mi carrito</span>
+        </a>
+      }
     </div>
 
     <nav class="dash__tabs">
       <button type="button" [class.is-active]="tab() === 'resumen'" (click)="setTab('resumen')">Resumen</button>
-      <button type="button" [class.is-active]="tab() === 'reservas'" (click)="setTab('reservas')">Mis Reservas</button>
-      <button type="button" [class.is-active]="tab() === 'compras'" (click)="setTab('compras')">Mis Compras</button>
-      <button type="button" [class.is-active]="tab() === 'pagos'" (click)="setTab('pagos')">Metodos de Pago</button>
-      <button type="button" [class.is-active]="tab() === 'notificaciones'" (click)="setTab('notificaciones')">
-        Notificaciones
-        @if (notificaciones.noLeidas() > 0) {
-          <span class="dash__tabs-badge">{{ notificaciones.noLeidas() }}</span>
-        }
-      </button>
-      <button type="button" [class.is-active]="tab() === 'datos'" (click)="setTab('datos')">Mis Datos</button>
-      <button type="button" [class.is-active]="tab() === 'seguridad'" (click)="setTab('seguridad')">Seguridad</button>
+      @if (auth.hasPermiso('CU10')) {
+        <button type="button" [class.is-active]="tab() === 'reservas'" (click)="setTab('reservas')">Mis Reservas</button>
+      }
+      @if (auth.hasPermiso('CU11')) {
+        <button type="button" [class.is-active]="tab() === 'compras'" (click)="setTab('compras')">Mis Compras</button>
+        <button type="button" [class.is-active]="tab() === 'pagos'" (click)="setTab('pagos')">Metodos de Pago</button>
+      }
+      @if (auth.hasPermiso('CU14')) {
+        <button type="button" [class.is-active]="tab() === 'notificaciones'" (click)="setTab('notificaciones')">
+          Notificaciones
+          @if (notificaciones.noLeidas() > 0) {
+            <span class="dash__tabs-badge">{{ notificaciones.noLeidas() }}</span>
+          }
+        </button>
+      }
+      @if (auth.hasPermiso('CU15')) {
+        <button type="button" [class.is-active]="tab() === 'datos'" (click)="setTab('datos')">Mis Datos</button>
+        <button type="button" [class.is-active]="tab() === 'seguridad'" (click)="setTab('seguridad')">Seguridad</button>
+      }
     </nav>
 
     <div class="dash__content">
       @if (tab() === 'resumen') {
         <div class="dash-stats">
-          <div class="dash-stat">
-            <span>Reservas activas</span>
-            <strong>{{ reservasActivas() }}</strong>
-          </div>
-          <div class="dash-stat">
-            <span>Compras realizadas</span>
-            <strong>{{ compras().length }}</strong>
-          </div>
-          <div class="dash-stat">
-            <span>Total gastado</span>
-            <strong>{{ totalGastado() }} Bs</strong>
-          </div>
+          @if (auth.hasPermiso('CU10')) {
+            <div class="dash-stat">
+              <span>Reservas activas</span>
+              <strong>{{ reservasActivas() }}</strong>
+            </div>
+          }
+          @if (auth.hasPermiso('CU11')) {
+            <div class="dash-stat">
+              <span>Compras realizadas</span>
+              <strong>{{ compras().length }}</strong>
+            </div>
+            <div class="dash-stat">
+              <span>Total gastado</span>
+              <strong>{{ totalGastado() }} Bs</strong>
+            </div>
+          }
         </div>
 
         <div class="dash-resumen-listas">
-          <div class="dash-resumen-bloque">
-            <h3>Ultimas reservas</h3>
-            @if (reservas().length === 0) {
-              <p class="dash-vacio">Todavia no tienes reservas.</p>
-            } @else {
-              @for (r of reservas().slice(0, 3); track r.id) {
-                <div class="dash-mini-item">
-                  <span>{{ r.detalles[0]?.producto_nombre }}{{ r.detalles.length > 1 ? ' y mas' : '' }}</span>
-                  <span class="admin-badge admin-badge--{{ r.estado }}">{{ r.estado }}</span>
-                </div>
+          @if (auth.hasPermiso('CU10')) {
+            <div class="dash-resumen-bloque">
+              <h3>Ultimas reservas</h3>
+              @if (reservas().length === 0) {
+                <p class="dash-vacio">Todavia no tienes reservas.</p>
+              } @else {
+                @for (r of reservas().slice(0, 3); track r.id) {
+                  <div class="dash-mini-item">
+                    <span>{{ r.detalles[0]?.producto_nombre }}{{ r.detalles.length > 1 ? ' y mas' : '' }}</span>
+                    <span class="admin-badge admin-badge--{{ r.estado }}">{{ r.estado }}</span>
+                  </div>
+                }
               }
-            }
-          </div>
-          <div class="dash-resumen-bloque">
-            <h3>Ultimas compras</h3>
-            @if (compras().length === 0) {
-              <p class="dash-vacio">Todavia no tienes compras.</p>
-            } @else {
-              @for (v of compras().slice(0, 3); track v.id) {
-                <div class="dash-mini-item">
-                  <span>#{{ v.id }} · {{ v.total }} Bs</span>
-                  <span class="admin-badge admin-badge--{{ v.estado_pago }}">{{ v.estado_pago }}</span>
-                </div>
+            </div>
+          }
+          @if (auth.hasPermiso('CU11')) {
+            <div class="dash-resumen-bloque">
+              <h3>Ultimas compras</h3>
+              @if (compras().length === 0) {
+                <p class="dash-vacio">Todavia no tienes compras.</p>
+              } @else {
+                @for (v of compras().slice(0, 3); track v.id) {
+                  <div class="dash-mini-item">
+                    <span>#{{ v.id }} · {{ v.total }} Bs</span>
+                    <span class="admin-badge admin-badge--{{ v.estado_pago }}">{{ v.estado_pago }}</span>
+                  </div>
+                }
               }
-            }
-          </div>
+            </div>
+          }
         </div>
       }
 
-      @if (tab() === 'reservas') {
+      @if (tab() === 'reservas' && auth.hasPermiso('CU10')) {
         @if (cargandoReservas()) {
           <p class="dash-vacio">Cargando...</p>
         } @else if (reservas().length === 0) {
@@ -117,7 +135,7 @@
         }
       }
 
-      @if (tab() === 'compras') {
+      @if (tab() === 'compras' && auth.hasPermiso('CU11')) {
         @if (cargandoCompras()) {
           <p class="dash-vacio">Cargando...</p>
         } @else if (compras().length === 0) {
@@ -201,7 +219,7 @@
         }
       }
 
-      @if (tab() === 'pagos') {
+      @if (tab() === 'pagos' && auth.hasPermiso('CU11')) {
         <p class="dash-nota">
           Por tu seguridad no guardamos numeros de tarjeta -- cuando pagas con tarjeta, eso pasa directo por PayPal
           y nunca llega a nuestros servidores. Aca ves con que metodos pagaste antes.
@@ -222,7 +240,7 @@
         }
       }
 
-      @if (tab() === 'notificaciones') {
+      @if (tab() === 'notificaciones' && auth.hasPermiso('CU14')) {
         @if (notificaciones.noLeidas() > 0) {
           <div class="dash-notif-acciones">
             <button type="button" (click)="notificaciones.marcarTodasLeidas()">Marcar todas como leidas</button>
@@ -247,7 +265,7 @@
         }
       }
 
-      @if (tab() === 'datos') {
+      @if (tab() === 'datos' && auth.hasPermiso('CU15')) {
         <div class="perfil-card">
           @if (profileError()) {
             <div class="perfil-alert is-error">{{ profileError() }}</div>
@@ -284,7 +302,7 @@
         </div>
       }
 
-      @if (tab() === 'seguridad') {
+      @if (tab() === 'seguridad' && auth.hasPermiso('CU15')) {
         <div class="perfil-card">
           @if (passwordError()) {
             <div class="perfil-alert is-error">{{ passwordError() }}</div>

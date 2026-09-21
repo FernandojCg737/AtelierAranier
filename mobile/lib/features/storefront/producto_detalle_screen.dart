@@ -127,6 +127,7 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
           }
           final p = snapshot.data!;
           final imagenes = p.imagenes.isEmpty ? <String>[] : p.imagenes;
+          final auth = ref.watch(authProvider);
 
           return ListView(
             padding: EdgeInsets.only(bottom: 32 + MediaQuery.of(context).padding.bottom),
@@ -196,11 +197,12 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
                     const Divider(height: 32),
                     Text(p.descripcion ?? 'Este producto no tiene una descripcion detallada todavia.'),
                     const Divider(height: 32),
-                    ElevatedButton(
-                      onPressed: p.agotado ? null : () => _abrirAgregarCarrito(p.id, p.nombre),
-                      child: Text(p.agotado ? 'SIN STOCK' : 'ANADIR AL CARRITO'),
-                    ),
-                    if (p.hasPhotos) ...[
+                    if (auth.hasPermiso('CU13'))
+                      ElevatedButton(
+                        onPressed: p.agotado ? null : () => _abrirAgregarCarrito(p.id, p.nombre),
+                        child: Text(p.agotado ? 'SIN STOCK' : 'ANADIR AL CARRITO'),
+                      ),
+                    if (p.hasPhotos && auth.hasPermiso('CU09')) ...[
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
                         onPressed: () => _abrirProbadorAr(p.id),
@@ -214,7 +216,7 @@ class _ProductoDetalleScreenState extends ConsumerState<ProductoDetalleScreen> {
                         ),
                       ),
                     ],
-                    if (!p.agotado) ...[
+                    if (!p.agotado && auth.hasPermiso('CU10')) ...[
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
                         onPressed: () => _abrirReserva(p.id, p.nombre),

@@ -29,7 +29,7 @@ class _RootShellState extends ConsumerState<RootShell> {
   Widget build(BuildContext context) {
     final cartCount = ref.watch(cartTotalItemsProvider);
     final auth = ref.watch(authProvider);
-    final esClienteConSesion = auth.usuario?.isCliente ?? false;
+    final esClienteConSesion = (auth.usuario?.isCliente ?? false) && auth.hasPermiso('CU19');
     final enHome = widget.navigationShell.currentIndex == 0;
     final floatingVisible = !enHome || _floatingVisibleEnHome;
 

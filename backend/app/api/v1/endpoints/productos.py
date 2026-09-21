@@ -5,7 +5,13 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user, require_permiso
+from app.api.deps import (
+    cliente_sin_permiso,
+    get_current_user,
+    get_current_user_optional,
+    require_permiso,
+    require_permiso_cliente,
+)
 from app.core.audit import log_bitacora, set_client_ip_for_trigger
 from app.core.decart import (
     construir_prompt_ar,
@@ -198,7 +204,12 @@ def _to_publico(producto: Producto) -> ProductoPublicoOut:
 
 
 @router.get("/publico", response_model=list[ProductoPublicoOut])
-def list_productos_publico(db: Session = Depends(get_db)) -> list[ProductoPublicoOut]:
+def list_productos_publico(
+    db: Session = Depends(get_db),
+    usuario: Usuario | None = Depends(get_current_user_optional),
+) -> list[ProductoPublicoOut]:
+    if cliente_sin_permiso(usuario, "CU08"):
+        return []
     query = (
         db.query(Producto)
         .options(
@@ -215,7 +226,13 @@ def list_productos_publico(db: Session = Depends(get_db)) -> list[ProductoPublic
 
 
 @router.get("/publico/{producto_id}", response_model=ProductoPublicoOut)
-def get_producto_publico(producto_id: int, db: Session = Depends(get_db)) -> ProductoPublicoOut:
+def get_producto_publico(
+    producto_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario | None = Depends(get_current_user_optional),
+) -> ProductoPublicoOut:
+    if cliente_sin_permiso(usuario, "CU08"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Esta funcionalidad no esta habilitada por el momento.")
     producto = (
         db.query(Producto)
         .options(
@@ -287,7 +304,7 @@ def _registrar_uso_ar(db: Session, usuario: Usuario, producto_id: int, modo: str
 def crear_ar_sesion(
     producto_id: int,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU09")),
 ) -> ArSesionOut:
     """Arranca una sesion del probador de realidad aumentada en vivo (CU09,
     modo ONLINE): genera un token de cliente de corta duracion (la key
@@ -319,7 +336,7 @@ async def crear_ar_foto(
     producto_id: int,
     file: UploadFile,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU09")),
 ) -> ArFotoTrabajoOut:
     """Modo VIRTUAL (CU09): el cliente sube una foto suya en vez de abrir la
     camara en vivo. Se manda esa foto + la imagen de referencia de la

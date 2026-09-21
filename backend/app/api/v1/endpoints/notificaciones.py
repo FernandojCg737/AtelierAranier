@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user, require_permiso
+from app.api.deps import get_current_user, require_permiso, require_permiso_cliente
 from app.db.session import get_db
 from app.models import Cliente, Notificacion, Usuario
 from app.schemas.notificaciones import NotificacionAdminOut, NotificacionOut, NotificacionPage
@@ -40,7 +40,7 @@ def _to_admin_out(n: Notificacion) -> NotificacionAdminOut:
 @router.get("/mias", response_model=list[NotificacionOut])
 def mis_notificaciones(
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU14")),
 ) -> list[NotificacionOut]:
     cliente = _get_cliente_o_403(db, usuario)
 
@@ -64,7 +64,7 @@ def mis_notificaciones(
 def marcar_leida(
     notificacion_id: int,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU14")),
 ) -> NotificacionOut:
     cliente = _get_cliente_o_403(db, usuario)
     notificacion = (
@@ -84,7 +84,7 @@ def marcar_leida(
 @router.post("/mias/marcar-todas-leidas", status_code=status.HTTP_204_NO_CONTENT)
 def marcar_todas_leidas(
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU14")),
 ) -> None:
     cliente = _get_cliente_o_403(db, usuario)
     db.query(Notificacion).filter(Notificacion.cliente_id == cliente.id, Notificacion.leida.is_(False)).update(

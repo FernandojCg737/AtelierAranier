@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 import '../../models/carrito.dart';
+import '../auth/auth_provider.dart';
 import 'cart_provider.dart';
 import 'reserva_form_screen.dart';
 import 'reservar_carrito_screen.dart';
@@ -17,6 +18,20 @@ class CarritoScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+    if (!auth.hasPermiso('CU13')) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text(
+            'El carrito de compras no esta disponible por el momento.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, color: AppColors.grayTextDark),
+          ),
+        ),
+      );
+    }
+
     final state = ref.watch(cartProvider);
     final items = state.items;
 
@@ -140,6 +155,7 @@ class _CarritoContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -184,19 +200,22 @@ class _CarritoContent extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => context.push('/checkout'),
-                child: const Text('FINALIZAR COMPRA'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () => _irAReservar(context, items),
-                icon: const Icon(Icons.event_outlined, size: 16),
-                label: const Text('RESERVAR'),
-                style: OutlinedButton.styleFrom(
-                  shape: const RoundedRectangleBorder(),
+              if (auth.hasPermiso('CU11'))
+                ElevatedButton(
+                  onPressed: () => context.push('/checkout'),
+                  child: const Text('FINALIZAR COMPRA'),
                 ),
-              ),
+              if (auth.hasPermiso('CU10')) ...[
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => _irAReservar(context, items),
+                  icon: const Icon(Icons.event_outlined, size: 16),
+                  label: const Text('RESERVAR'),
+                  style: OutlinedButton.styleFrom(
+                    shape: const RoundedRectangleBorder(),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               Center(
                 child: TextButton(

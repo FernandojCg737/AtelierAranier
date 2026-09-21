@@ -138,6 +138,8 @@ class AdminRepository {
     String? horarioAtencion,
     String? telefono,
     String estado = 'activa',
+    double? latitud,
+    double? longitud,
   }) async {
     final res = await _dio.post('/sucursales', data: {
       'nombre': nombre,
@@ -147,6 +149,8 @@ class AdminRepository {
       'horario_atencion': horarioAtencion,
       'telefono': telefono,
       'estado': estado,
+      'latitud': latitud,
+      'longitud': longitud,
     });
     return SucursalAdmin.fromJson(res.data as Map<String, dynamic>);
   }
@@ -160,6 +164,8 @@ class AdminRepository {
     String? horarioAtencion,
     String? telefono,
     required String estado,
+    double? latitud,
+    double? longitud,
   }) async {
     final res = await _dio.put('/sucursales/$id', data: {
       'nombre': nombre,
@@ -169,6 +175,8 @@ class AdminRepository {
       'horario_atencion': horarioAtencion,
       'telefono': telefono,
       'estado': estado,
+      'latitud': latitud,
+      'longitud': longitud,
     });
     return SucursalAdmin.fromJson(res.data as Map<String, dynamic>);
   }

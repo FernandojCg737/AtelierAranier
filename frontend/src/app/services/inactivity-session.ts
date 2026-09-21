@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { Auth } from './auth';
 
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
-const HEARTBEAT_INTERVAL_MS = 60 * 1000;
+const HEARTBEAT_INTERVAL_MS = 3 * 1000;
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'] as const;
 
 // Se instancia una sola vez desde App y vigila la sesion mientras haya un

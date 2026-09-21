@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_current_user_optional, require_permiso
+from app.api.deps import get_current_user, get_current_user_optional, require_permiso, require_permiso_cliente
 from app.core.gemini import generar_razones, generar_razones_relacionados
 from app.db.session import get_db
 from app.models import Cliente, Usuario
@@ -221,7 +221,7 @@ def _regenerar_recomendaciones(db: Session, cliente: Cliente) -> None:
 @router.get("/mias", response_model=list[RecomendacionOut])
 def mis_recomendaciones(
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU18")),
 ) -> list[RecomendacionOut]:
     cliente = _get_cliente_o_403(db, usuario)
 
@@ -491,7 +491,20 @@ def registrar_vista(
 
 
 @router.get("/relacionados/{producto_id}", response_model=list[RelacionadoOut])
-def productos_relacionados(producto_id: int, db: Session = Depends(get_db)) -> list[RelacionadoOut]:
+def productos_relacionados(
+    producto_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario | None = Depends(get_current_user_optional),
+) -> list[RelacionadoOut]:
+    # Publico (funciona para visitantes sin sesion, igual que antes). Si hay
+    # un cliente logueado y CU18 esta apagado para el rol Cliente (CU02),
+    # se devuelve vacio en vez de la lista -- no rompe la pagina, solo no
+    # muestra el widget. A un visitante anonimo no le afecta este toggle.
+    if usuario is not None and usuario.tipo != "administrador":
+        codigos_usuario = {p.nombre for p in usuario.rol.permisos} if usuario.rol else set()
+        if "CU18" not in codigos_usuario:
+            return []
+
     producto = db.execute(text("SELECT nombre FROM producto WHERE id = :pid"), {"pid": producto_id}).first()
     if producto is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Producto no encontrado.")

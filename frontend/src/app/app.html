@@ -14,5 +14,7 @@
 @if (!hideChrome()) {
   <app-footer />
   <app-whatsapp-float />
-  <app-chatbot-widget />
+  @if (auth.hasPermiso('CU19')) {
+    <app-chatbot-widget />
+  }
 }

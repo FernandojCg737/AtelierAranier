@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user, require_permiso
+from app.api.deps import get_current_user, require_permiso, require_permiso_cliente
 from app.db.session import get_db
 from app.models import Carrito, Cliente, Color, DetalleCarrito, Inventario, Producto, Sucursal, Talla, Usuario
 from app.schemas.carrito import CarritoAdminOut, CarritoItemCreate, CarritoItemUpdate, CarritoOut, DetalleCarritoOut
@@ -73,7 +73,7 @@ def _get_detalle_o_404(carrito: Carrito, detalle_id: int) -> DetalleCarrito:
 @router.get("", response_model=CarritoOut)
 def obtener_carrito(
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU13")),
 ) -> CarritoOut:
     cliente = _get_cliente_o_403(db, usuario)
     carrito = _get_carrito_activo(db, cliente.id)
@@ -84,7 +84,7 @@ def obtener_carrito(
 def agregar_item(
     payload: CarritoItemCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU13")),
 ) -> CarritoOut:
     cliente = _get_cliente_o_403(db, usuario)
 
@@ -146,7 +146,7 @@ def actualizar_item(
     detalle_id: int,
     payload: CarritoItemUpdate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU13")),
 ) -> CarritoOut:
     cliente = _get_cliente_o_403(db, usuario)
     carrito = _get_carrito_activo(db, cliente.id)
@@ -180,7 +180,7 @@ def actualizar_item(
 def eliminar_item(
     detalle_id: int,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU13")),
 ) -> CarritoOut:
     cliente = _get_cliente_o_403(db, usuario)
     carrito = _get_carrito_activo(db, cliente.id)
@@ -196,7 +196,7 @@ def eliminar_item(
 @router.delete("", response_model=CarritoOut)
 def vaciar_carrito(
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU13")),
 ) -> CarritoOut:
     cliente = _get_cliente_o_403(db, usuario)
     carrito = _get_carrito_activo(db, cliente.id)

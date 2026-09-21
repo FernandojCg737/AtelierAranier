@@ -44,6 +44,15 @@ final Map<String, String> _rutaAdminPorCodigo = {
       if (cu.route != null && cu.route!.startsWith('/admin/')) cu.route!: cu.code,
 };
 
+// Rutas del lado del cliente que dependen de un CU habilitado para el rol
+// Cliente (CU02, pestana Cliente) -- espejo de las rutas equivalentes en
+// app.routes.ts de la web (clientePermisoGuard).
+const Map<String, String> _rutaClientePorCodigo = {
+  '/carrito': 'CU13',
+  '/checkout': 'CU11',
+  '/chatbot': 'CU19',
+};
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
@@ -64,6 +73,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       final codigoRequerido = _rutaAdminPorCodigo[loc];
       if (codigoRequerido != null && !auth.isAdministrador && !auth.hasPermiso(codigoRequerido)) {
         return '/admin';
+      }
+
+      // Igual que clientePermisoGuard en la web: si HAY sesion de cliente y
+      // el rol Cliente no tiene el CU habilitado (CU02), manda al inicio.
+      final codigoCliente = _rutaClientePorCodigo[loc];
+      if (codigoCliente != null && auth.usuario != null && !auth.hasPermiso(codigoCliente)) {
+        return '/';
       }
       return null;
     },

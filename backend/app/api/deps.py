@@ -64,6 +64,42 @@ def require_staff(usuario: Usuario = Depends(get_current_user)) -> Usuario:
     return usuario
 
 
+def require_permiso_cliente(*codigos: str) -> Callable[[Usuario], Usuario]:
+    # Equivalente a require_permiso pero para funcionalidades del lado del
+    # cliente (CU09/CU18/CU19): no pasa por require_staff, porque quien
+    # llama es justamente un Cliente, no personal de la tienda. Lee el
+    # mismo mecanismo rol -> permisos (rol "Cliente", seedeado en
+    # 5a1d9f6c3e28 y asignado automaticamente por sp_crear_cliente), asi
+    # que apagar/prender un CU aca desde el panel (CU02, pestana Cliente)
+    # bloquea o habilita la funcionalidad de verdad, no solo la UI.
+    def _dependency(usuario: Usuario = Depends(get_current_user)) -> Usuario:
+        if usuario.tipo == "administrador":
+            return usuario
+        codigos_usuario = {p.nombre for p in usuario.rol.permisos} if usuario.rol else set()
+        if not codigos_usuario & set(codigos):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Esta funcionalidad no esta habilitada por el momento.")
+        return usuario
+
+    return _dependency
+
+
+def cliente_sin_permiso(usuario: Usuario | None, *codigos: str) -> bool:
+    """True si `usuario` es un cliente logueado al que le falta alguno de
+    estos permisos en su rol (CU02, pestana Cliente). Para endpoints
+    publicos (catalogo, relacionados) que un visitante anonimo puede seguir
+    usando igual que antes: solo restringe a quien SI tiene sesion."""
+    if usuario is None or usuario.tipo == "administrador":
+        return False
+    codigos_usuario = {p.nombre for p in usuario.rol.permisos} if usuario.rol else set()
+    return not (codigos_usuario & set(codigos))
+
+
+def require_administrador(usuario: Usuario = Depends(require_staff)) -> Usuario:
+    if usuario.tipo != "administrador":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Accion restringida al Administrador.")
+    return usuario
+
+
 def require_permiso(*codigos: str) -> Callable[[Usuario], Usuario]:
     # Administrador es superusuario por diseno: no depende de la tabla
     # rol_permiso, para que nunca pueda quedar sin acceso al panel por un

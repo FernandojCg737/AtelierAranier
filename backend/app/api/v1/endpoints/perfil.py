@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import require_permiso_cliente
 from app.core.audit import log_bitacora
 from app.core.config import settings
 from app.core.email import send_email
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def actualizar_perfil(
     payload: PerfilUpdate,
     request: Request,
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU15")),
     db: Session = Depends(get_db),
 ) -> UsuarioOut:
     if isinstance(usuario, Cliente):
@@ -49,7 +49,7 @@ def actualizar_perfil(
 def cambiar_password(
     payload: CambiarPasswordRequest,
     request: Request,
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU15")),
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     if not verify_password(payload.password_actual, usuario.password_hash):

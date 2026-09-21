@@ -33,6 +33,8 @@ def _to_out(sucursal: Sucursal) -> SucursalOut:
         telefono=sucursal.telefono,
         estado=sucursal.estado,
         fecha_creacion=sucursal.fecha_creacion,
+        latitud=sucursal.latitud,
+        longitud=sucursal.longitud,
     )
 
 
@@ -66,7 +68,7 @@ def create_sucursal(
     result = db.execute(
         text(
             "SELECT sp_crear_sucursal(:nombre, :ciudad_nombre, :departamento, :direccion, "
-            ":horario_atencion, :telefono, :estado)"
+            ":horario_atencion, :telefono, :estado, :latitud, :longitud)"
         ),
         {
             "nombre": payload.nombre,
@@ -76,6 +78,8 @@ def create_sucursal(
             "horario_atencion": payload.horario_atencion,
             "telefono": payload.telefono,
             "estado": payload.estado,
+            "latitud": payload.latitud,
+            "longitud": payload.longitud,
         },
     )
     sucursal_id = result.scalar_one()
@@ -99,7 +103,7 @@ def update_sucursal(
     db.execute(
         text(
             "SELECT sp_actualizar_sucursal(:id, :nombre, :ciudad_nombre, :departamento, :direccion, "
-            ":horario_atencion, :telefono, :estado)"
+            ":horario_atencion, :telefono, :estado, :latitud, :longitud)"
         ),
         {
             "id": sucursal_id,
@@ -110,6 +114,8 @@ def update_sucursal(
             "horario_atencion": payload.horario_atencion,
             "telefono": payload.telefono,
             "estado": payload.estado,
+            "latitud": payload.latitud,
+            "longitud": payload.longitud,
         },
     )
     db.commit()

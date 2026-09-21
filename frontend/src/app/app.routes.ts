@@ -39,14 +39,14 @@ import { ProductoDetalle } from './pages/producto-detalle/producto-detalle';
 import { RecuperarPassword } from './pages/recuperar-password/recuperar-password';
 import { Registro } from './pages/registro/registro';
 import { Tienda } from './pages/tienda/tienda';
-import { adminGuard, authGuard, permisoGuard } from './guards/auth-guard';
+import { adminGuard, authGuard, clientePermisoGuard, permisoGuard } from './guards/auth-guard';
 
 export const routes: Routes = [
   { path: '', component: Home },
   { path: 'tienda', component: Tienda },
   { path: 'cotizaciones', component: Cotizaciones },
-  { path: 'carrito', component: Carrito },
-  { path: 'checkout', component: Checkout, canActivate: [authGuard] },
+  { path: 'carrito', component: Carrito, canActivate: [clientePermisoGuard('CU13')] },
+  { path: 'checkout', component: Checkout, canActivate: [authGuard, clientePermisoGuard('CU13')] },
   { path: 'producto/:id', component: ProductoDetalle },
   { path: 'login', component: Login, data: { hideChrome: true } },
   { path: 'registro', component: Registro, data: { hideChrome: true } },

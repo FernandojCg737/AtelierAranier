@@ -237,6 +237,19 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
 
   Widget _buildDashboard(Usuario usuario) {
     final noLeidas = ref.watch(notificacionesNoLeidasProvider);
+    final auth = ref.watch(authProvider);
+    final visibleTabs = <_Tab>[
+      _Tab.resumen,
+      if (auth.hasPermiso('CU10')) _Tab.reservas,
+      if (auth.hasPermiso('CU11')) ...[_Tab.compras, _Tab.pagos],
+      if (auth.hasPermiso('CU14')) _Tab.notificaciones,
+      if (auth.hasPermiso('CU15')) ...[_Tab.datos, _Tab.seguridad],
+    ];
+    if (!visibleTabs.contains(_tab)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _tab = _Tab.resumen);
+      });
+    }
 
     return Column(
       children: [
@@ -251,12 +264,13 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                 style: TextButton.styleFrom(foregroundColor: AppColors.brandDark, padding: EdgeInsets.zero),
               ),
               const Spacer(),
-              OutlinedButton.icon(
-                onPressed: () => context.go('/carrito'),
-                icon: const Icon(Icons.shopping_bag_outlined, size: 16),
-                label: const Text('MI CARRITO'),
-                style: OutlinedButton.styleFrom(shape: const RoundedRectangleBorder(), padding: const EdgeInsets.symmetric(horizontal: 12)),
-              ),
+              if (auth.hasPermiso('CU13'))
+                OutlinedButton.icon(
+                  onPressed: () => context.go('/carrito'),
+                  icon: const Icon(Icons.shopping_bag_outlined, size: 16),
+                  label: const Text('MI CARRITO'),
+                  style: OutlinedButton.styleFrom(shape: const RoundedRectangleBorder(), padding: const EdgeInsets.symmetric(horizontal: 12)),
+                ),
             ],
           ),
         ),
@@ -273,6 +287,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
         _TabsBar(
           tab: _tab,
           noLeidas: noLeidas,
+          visibleTabs: visibleTabs,
           onSelect: (t) => setState(() => _tab = t),
         ),
         Expanded(
@@ -291,38 +306,48 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
   }
 
   Widget _buildResumen() {
+    final auth = ref.watch(authProvider);
+    final verReservas = auth.hasPermiso('CU10');
+    final verCompras = auth.hasPermiso('CU11');
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
-        Row(
-          children: [
-            Expanded(child: _StatCard(label: 'Reservas activas', value: '$_reservasActivas')),
-            const SizedBox(width: 10),
-            Expanded(child: _StatCard(label: 'Compras realizadas', value: '${(_compras ?? []).length}')),
-          ],
-        ),
-        const SizedBox(height: 10),
-        _StatCard(label: 'Total gastado', value: '${_totalGastado.toStringAsFixed(2)} Bs', fullWidth: true),
-        const SizedBox(height: 20),
-        _ResumenBloque(
-          titulo: 'Ultimas reservas',
-          vacio: 'Todavia no tienes reservas.',
-          cargando: _cargandoReservas,
-          items: (_reservas ?? []).take(3).map((r) {
-            final primero = r.detalles.isNotEmpty ? r.detalles.first.productoNombre : '';
-            final etiqueta = r.detalles.length > 1 ? '$primero y mas' : primero;
-            return _MiniItem(texto: etiqueta, estado: r.estado);
-          }).toList(),
-        ),
-        const SizedBox(height: 16),
-        _ResumenBloque(
-          titulo: 'Ultimas compras',
-          vacio: 'Todavia no tienes compras.',
-          cargando: _cargandoCompras,
-          items: (_compras ?? []).take(3).map((v) {
-            return _MiniItem(texto: '#${v.id} · ${v.total.toStringAsFixed(2)} Bs', estado: v.estadoPago);
-          }).toList(),
-        ),
+        if (verReservas || verCompras)
+          Row(
+            children: [
+              if (verReservas) Expanded(child: _StatCard(label: 'Reservas activas', value: '$_reservasActivas')),
+              if (verReservas && verCompras) const SizedBox(width: 10),
+              if (verCompras) Expanded(child: _StatCard(label: 'Compras realizadas', value: '${(_compras ?? []).length}')),
+            ],
+          ),
+        if (verCompras) ...[
+          const SizedBox(height: 10),
+          _StatCard(label: 'Total gastado', value: '${_totalGastado.toStringAsFixed(2)} Bs', fullWidth: true),
+        ],
+        if (verReservas) ...[
+          const SizedBox(height: 20),
+          _ResumenBloque(
+            titulo: 'Ultimas reservas',
+            vacio: 'Todavia no tienes reservas.',
+            cargando: _cargandoReservas,
+            items: (_reservas ?? []).take(3).map((r) {
+              final primero = r.detalles.isNotEmpty ? r.detalles.first.productoNombre : '';
+              final etiqueta = r.detalles.length > 1 ? '$primero y mas' : primero;
+              return _MiniItem(texto: etiqueta, estado: r.estado);
+            }).toList(),
+          ),
+        ],
+        if (verCompras) ...[
+          const SizedBox(height: 16),
+          _ResumenBloque(
+            titulo: 'Ultimas compras',
+            vacio: 'Todavia no tienes compras.',
+            cargando: _cargandoCompras,
+            items: (_compras ?? []).take(3).map((v) {
+              return _MiniItem(texto: '#${v.id} · ${v.total.toStringAsFixed(2)} Bs', estado: v.estadoPago);
+            }).toList(),
+          ),
+        ],
       ],
     );
   }
@@ -629,10 +654,11 @@ String _fmtFecha(DateTime d) =>
 }
 
 class _TabsBar extends StatelessWidget {
-  const _TabsBar({required this.tab, required this.noLeidas, required this.onSelect});
+  const _TabsBar({required this.tab, required this.noLeidas, required this.visibleTabs, required this.onSelect});
 
   final _Tab tab;
   final int noLeidas;
+  final List<_Tab> visibleTabs;
   final ValueChanged<_Tab> onSelect;
 
   static const _labels = {
@@ -654,7 +680,7 @@ class _TabsBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
           children: [
-            for (final t in _Tab.values)
+            for (final t in visibleTabs)
               _TabButton(
                 label: _labels[t]!,
                 selected: t == tab,

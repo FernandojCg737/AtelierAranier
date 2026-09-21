@@ -11,6 +11,9 @@ class SucursalCreate(BaseModel):
     horario_atencion: str | None = Field(default=None, max_length=100)
     telefono: str | None = Field(default=None, max_length=30)
     estado: str = Field(default="activa", pattern="^(activa|inactiva)$")
+    # CU01: coordenadas para validar la ubicacion al marcar asistencia.
+    latitud: float | None = Field(default=None, ge=-90, le=90)
+    longitud: float | None = Field(default=None, ge=-180, le=180)
 
 
 class SucursalUpdate(BaseModel):
@@ -21,6 +24,8 @@ class SucursalUpdate(BaseModel):
     horario_atencion: str | None = Field(default=None, max_length=100)
     telefono: str | None = Field(default=None, max_length=30)
     estado: str = Field(pattern="^(activa|inactiva)$")
+    latitud: float | None = Field(default=None, ge=-90, le=90)
+    longitud: float | None = Field(default=None, ge=-180, le=180)
 
 
 class SucursalOut(BaseModel):
@@ -34,6 +39,8 @@ class SucursalOut(BaseModel):
     telefono: str | None
     estado: str
     fecha_creacion: date
+    latitud: float | None
+    longitud: float | None
 
     model_config = {"from_attributes": True}
 

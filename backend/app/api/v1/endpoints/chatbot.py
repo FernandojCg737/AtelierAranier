@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_permiso
+from app.api.deps import get_current_user, require_permiso, require_permiso_cliente
 from app.core.gemini import generar_respuesta_chat
 from app.db.session import get_db
 from app.models import Chatbot, ChatbotMensaje, Cliente, Usuario
@@ -140,7 +140,7 @@ def _construir_contexto(db: Session, mensaje: str) -> str:
 def enviar_mensaje(
     payload: MensajeIn,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    usuario: Usuario = Depends(require_permiso_cliente("CU19")),
 ) -> MensajeOut:
     cliente = _get_cliente_o_403(db, usuario)
     sesion = _get_or_create_sesion(db, cliente.id)
