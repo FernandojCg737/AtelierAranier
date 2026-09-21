@@ -33,5 +33,8 @@ Thumbs.db
 
 # Claude Code / documentacion interna (no va al repo)
 .claude/
-docs/
+docs/*
+!docs/metodos-por-cu/
+!docs/Analisis de clases/
+!docs/Diagramas de Secuencia/
 .git-commit-msg.txt
