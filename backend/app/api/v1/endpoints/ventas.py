@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 from decimal import Decimal
 
@@ -138,6 +139,7 @@ def _query_venta_con_detalles(db: Session):
         joinedload(Venta.cliente),
         joinedload(Venta.pago),
         joinedload(Venta.calificacion),
+        joinedload(Venta.devoluciones),
         joinedload(VentaDigital.detalles).joinedload(DetalleVentaDigital.producto),
         joinedload(VentaDigital.detalles).joinedload(DetalleVentaDigital.talla),
         joinedload(VentaDigital.detalles).joinedload(DetalleVentaDigital.color),
@@ -152,6 +154,21 @@ def _to_out(venta: Venta) -> VentaOut:
     detalles = getattr(venta, "detalles", [])
     atendido_por = getattr(venta, "atendido_por", None)
     calificacion = getattr(venta, "calificacion", None)
+    # Devolucion info: la mas reciente (si existe)
+    devoluciones = getattr(venta, "devoluciones", [])
+    ultima_dev = devoluciones[-1] if devoluciones else None
+
+    # Plazo maximo de devolucion: 24 horas desde la fecha de compra
+    ahora = datetime.utcnow()
+    horas_transcurridas = (ahora - venta.fecha).total_seconds() / 3600.0 if venta.fecha else 999.0
+    horas_restantes = max(0.0, round(24.0 - horas_transcurridas, 1))
+    devolucion_activa = ultima_dev is not None and ultima_dev.estado in ("solicitada", "aprobada", "completada")
+    puede_devolver = (
+        venta.estado == "pagada"
+        and not devolucion_activa
+        and horas_transcurridas <= 24.0
+    )
+
     return VentaOut(
         id=venta.id,
         tipo=venta.tipo,
@@ -179,6 +196,11 @@ def _to_out(venta: Venta) -> VentaOut:
             )
             for d in detalles
         ],
+        tiene_devolucion=ultima_dev is not None,
+        estado_devolucion=ultima_dev.estado if ultima_dev else None,
+        monto_devolucion=ultima_dev.monto_reembolso if ultima_dev else None,
+        puede_devolver=puede_devolver,
+        horas_restantes_devolucion=horas_restantes if (horas_transcurridas <= 24.0 and not devolucion_activa) else None,
     )
 
 

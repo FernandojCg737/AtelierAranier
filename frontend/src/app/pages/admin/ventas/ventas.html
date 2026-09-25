@@ -36,6 +36,9 @@
     <button type="button" [class.is-active]="vista() === 'reservas'" (click)="cambiarVista('reservas')">
       Reservas por cobrar
     </button>
+    <button type="button" [class.is-active]="vista() === 'devoluciones'" (click)="cambiarVista('devoluciones')">
+      Devoluciones
+    </button>
   </nav>
 
   @if (error()) {
@@ -163,6 +166,16 @@
                   @if (v.estado_pago === 'completado') {
                     <a class="is-secondary" [routerLink]="['/admin/factura', v.id]" target="_blank">Ver factura</a>
                   }
+                  @if (v.estado === 'pagada' && !v.tiene_devolucion) {
+                    <button type="button" class="is-warning" [disabled]="procesando() === v.id" (click)="abrirDevolucionForm(v)">
+                      Devolver
+                    </button>
+                  }
+                  @if (v.tiene_devolucion) {
+                    <span class="admin-badge admin-badge--{{ v.estado_devolucion }}">
+                      Dev: {{ v.estado_devolucion }}
+                    </span>
+                  }
                   <button type="button" class="is-secondary" [disabled]="procesando() === v.id" (click)="abrirEditar(v)">
                     Editar
                   </button>
@@ -183,6 +196,93 @@
     <span>Pagina {{ page() }} de {{ totalPages }}</span>
     <button type="button" [disabled]="page() >= totalPages" (click)="goToPage(page() + 1)">Siguiente</button>
   </div>
+  }
+
+  @if (vista() === 'devoluciones') {
+    <div class="admin-filtros" style="margin-bottom: 16px">
+      <select [value]="filtroEstadoDevolucion()" (change)="filtroEstadoDevolucion.set($any($event.target).value); filtrarDevoluciones()">
+        <option value="">Todos los estados</option>
+        <option value="solicitada">Solicitadas</option>
+        <option value="completada">Completadas</option>
+        <option value="rechazada">Rechazadas</option>
+      </select>
+    </div>
+
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Venta</th>
+            <th>Cliente</th>
+            <th>Tipo</th>
+            <th>Motivo</th>
+            <th>Items devueltos</th>
+            <th>Monto</th>
+            <th>Metodo</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+            <th>Procesado por</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (cargandoDevoluciones()) {
+            <tr>
+              <td colspan="12" class="admin-table__empty">Cargando...</td>
+            </tr>
+          } @else if (devoluciones().length === 0) {
+            <tr>
+              <td colspan="12" class="admin-table__empty">No hay devoluciones.</td>
+            </tr>
+          } @else {
+            @for (d of devoluciones(); track d.id) {
+              <tr>
+                <td>{{ d.id }}</td>
+                <td>#{{ d.venta_id }}</td>
+                <td>
+                  <div class="admin-table__user">
+                    <strong>{{ d.cliente_nombre }}</strong>
+                    <span>{{ d.cliente_email }}</span>
+                  </div>
+                </td>
+                <td>{{ d.tipo === 'total' ? 'Total' : 'Parcial' }}</td>
+                <td>{{ motivoLabels[d.motivo] ?? d.motivo }}</td>
+                <td>
+                  <ul class="ventas-detalles">
+                    @for (det of d.detalles; track det.id) {
+                      <li>{{ det.cantidad_devuelta }}x {{ det.producto_nombre }} ({{ det.talla_codigo }}, {{ det.color_nombre }})</li>
+                    }
+                  </ul>
+                </td>
+                <td>{{ d.monto_reembolso }} Bs</td>
+                <td>{{ metodoLabels[d.metodo_reembolso] ?? d.metodo_reembolso }}</td>
+                <td>
+                  <span class="admin-badge admin-badge--{{ d.estado }}">{{ d.estado }}</span>
+                </td>
+                <td>{{ d.fecha_solicitud | date: "d MMM yyyy" : '-0400' }}</td>
+                <td>{{ d.empleado_nombre }}</td>
+                <td>
+                  <div class="ventas-acciones">
+                    @if (d.estado === 'solicitada') {
+                      <button type="button" [disabled]="procesando() === d.id" (click)="completarDevolucion(d)">
+                        Aprobar
+                      </button>
+                      <button type="button" class="is-danger" [disabled]="procesando() === d.id" (click)="rechazarDevolucion(d)">
+                        Rechazar
+                      </button>
+                    }
+                    @if (d.observaciones) {
+                      <span class="ventas-obs" title="{{ d.observaciones }}">📝 Nota</span>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
   }
 
   @if (formularioAbierto()) {
@@ -319,6 +419,108 @@
             (click)="confirmarVenta()"
           >
             {{ guardandoVenta() ? 'Guardando...' : editando() ? 'Guardar cambios' : 'Cobrar en efectivo' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (devolucionFormAbierto()) {
+    <div class="ventas-overlay" (click)="cerrarDevolucionForm()">
+      <div class="ventas-modal ventas-modal--wide" (click)="$event.stopPropagation()">
+        <h2>Registrar devolucion</h2>
+        <p class="ventas-modal__subtitulo">
+          Venta #{{ devolucionVenta()?.id }} · {{ devolucionVenta()?.cliente_nombre }}
+          · {{ devolucionVenta()?.total }} Bs
+        </p>
+
+        @if (errorDevolucion()) {
+          <div class="admin-error">{{ errorDevolucion() }}</div>
+        }
+
+        <label class="ventas-campo">
+          <span>Tipo de devolucion</span>
+          <select [value]="devolucionTipo()" (change)="onDevolucionTipoChange($any($event.target).value)">
+            <option value="total">Total (todos los items)</option>
+            <option value="parcial">Parcial (seleccionar items)</option>
+          </select>
+        </label>
+
+        <label class="ventas-campo">
+          <span>Motivo</span>
+          <select [value]="devolucionMotivo()" (change)="devolucionMotivo.set($any($event.target).value)">
+            <option value="defecto">Producto defectuoso</option>
+            <option value="talla_incorrecta">Talla incorrecta</option>
+            <option value="insatisfaccion">Insatisfaccion del cliente</option>
+            <option value="otro">Otro</option>
+          </select>
+        </label>
+
+        <label class="ventas-campo">
+          <span>Metodo de reembolso</span>
+          <select [value]="devolucionMetodo()" (change)="devolucionMetodo.set($any($event.target).value)">
+            <option value="mismo_medio">Mismo medio de pago</option>
+            <option value="credito_tienda">Credito en tienda</option>
+            <option value="efectivo">Efectivo</option>
+          </select>
+        </label>
+
+        <div class="ventas-campo">
+          <span>Items a devolver</span>
+          <ul class="devolucion-items">
+            @for (item of devolucionItems(); track item.item_linea_id; let i = $index) {
+              <li class="devolucion-item" [class.is-disabled]="devolucionTipo() === 'total'">
+                <label class="devolucion-item__check">
+                  <input
+                    type="checkbox"
+                    [checked]="item.seleccionado"
+                    [disabled]="devolucionTipo() === 'total'"
+                    (change)="toggleDevolucionItem(i)"
+                  />
+                  <span>
+                    {{ item.producto_nombre }}
+                    ({{ item.talla_codigo }}, {{ item.color_nombre }})
+                  </span>
+                </label>
+                <div class="devolucion-item__qty">
+                  <input
+                    type="number"
+                    [min]="1"
+                    [max]="item.cantidad_comprada"
+                    [value]="item.cantidad_devuelta"
+                    [disabled]="!item.seleccionado || devolucionTipo() === 'total'"
+                    (input)="actualizarCantidadDevolucion(i, +$any($event.target).value)"
+                  />
+                  <small>de {{ item.cantidad_comprada }}</small>
+                </div>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <label class="ventas-campo">
+          <span>Observaciones (opcional)</span>
+          <textarea
+            rows="3"
+            [value]="devolucionObs()"
+            (input)="devolucionObs.set($any($event.target).value)"
+            placeholder="Notas adicionales sobre la devolucion..."
+          ></textarea>
+        </label>
+
+        @if (totalDevolucion() > 0) {
+          <p class="ventas-seleccion">Monto a reembolsar: {{ totalDevolucion() | number: '1.2-2' }} Bs</p>
+        }
+
+        <div class="ventas-modal__acciones">
+          <button type="button" class="is-secondary" (click)="cerrarDevolucionForm()">Cancelar</button>
+          <button
+            type="button"
+            class="is-danger-solid"
+            [disabled]="guardandoDevolucion() || totalDevolucion() === 0"
+            (click)="confirmarDevolucion()"
+          >
+            {{ guardandoDevolucion() ? 'Registrando...' : 'Registrar devolucion' }}
           </button>
         </div>
       </div>

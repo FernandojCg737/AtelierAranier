@@ -451,3 +451,114 @@
     }
   }
 }
+
+// ---- Devoluciones (CU11) ----
+
+.ventas-acciones button.is-warning,
+.ventas-acciones a.is-warning {
+  background: #fff;
+  color: #b26a00;
+  border: 1px solid #ffe0a0;
+}
+
+.ventas-modal__acciones button.is-danger-solid {
+  background: #b3261e;
+  color: #fff;
+  border: none;
+}
+
+.ventas-modal--wide {
+  max-width: 540px;
+}
+
+.devolucion-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.devolucion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f2f2f2;
+
+  &.is-disabled {
+    opacity: 0.7;
+  }
+
+  &__check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    cursor: pointer;
+
+    input[type='checkbox'] {
+      width: auto;
+      margin: 0;
+    }
+  }
+
+  &__qty {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+
+    input {
+      width: 56px;
+      padding: 4px 6px;
+      font-size: 13px;
+      text-align: center;
+      border: 1px solid #ddd;
+    }
+
+    small {
+      font-size: 11px;
+      color: #999;
+    }
+  }
+}
+
+.ventas-campo textarea {
+  width: 100%;
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--brand-dark);
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+
+  &:focus {
+    border-color: var(--brand-dark);
+  }
+}
+
+.ventas-obs {
+  font-size: 11px;
+  color: #999;
+  cursor: help;
+}
+
+.admin-badge {
+  &--solicitada {
+    background: #fff4e0;
+    color: #b26a00;
+  }
+
+  &--completada,
+  &--devuelto,
+  &--devuelto_parcial {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  &--rechazada {
+    background: #fdecea;
+    color: #b3261e;
+  }
+}

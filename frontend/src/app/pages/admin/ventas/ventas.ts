@@ -33,6 +33,9 @@ interface VentaItem {
   atendido_por_nombre: string | null;
   comprobante_url: string | null;
   detalles: DetalleVentaItem[];
+  tiene_devolucion: boolean;
+  estado_devolucion: string | null;
+  monto_devolucion: string | null;
 }
 
 interface VentaPage {
@@ -95,7 +98,48 @@ interface ReservaPage {
   items: ReservaItem[];
 }
 
-type Vista = 'ventas' | 'reservas';
+interface DetalleDevolucionItem {
+  id: number;
+  item_linea_id: number;
+  producto_nombre: string;
+  talla_codigo: string;
+  color_nombre: string;
+  cantidad_devuelta: number;
+  precio_unitario: string;
+}
+
+interface DevolucionItem {
+  id: number;
+  venta_id: number;
+  empleado_nombre: string;
+  motivo: string;
+  tipo: string;
+  monto_reembolso: string;
+  metodo_reembolso: string;
+  estado: string;
+  fecha_solicitud: string;
+  fecha_resolucion: string | null;
+  observaciones: string | null;
+  detalles: DetalleDevolucionItem[];
+  cliente_nombre: string;
+  cliente_email: string;
+  venta_total: string;
+  venta_fecha: string;
+  sucursal_nombre: string;
+}
+
+interface ItemDevolucionSeleccion {
+  item_linea_id: number;
+  producto_nombre: string;
+  talla_codigo: string;
+  color_nombre: string;
+  cantidad_comprada: number;
+  cantidad_devuelta: number;
+  precio_unitario: number;
+  seleccionado: boolean;
+}
+
+type Vista = 'ventas' | 'reservas' | 'devoluciones';
 
 // CU11: panel financiero de staff (Administrador, Encargado de Sucursal,
 // Cajero) -- reune ventas en linea (PayPal), por QR (con aprobacion manual)
@@ -136,9 +180,30 @@ export class AdminVentas implements OnInit {
   protected readonly reservas = signal<ReservaItem[]>([]);
   protected readonly cargandoReservas = signal(false);
 
+  // ---------- Devoluciones ----------
+  protected readonly devoluciones = signal<DevolucionItem[]>([]);
+  protected readonly cargandoDevoluciones = signal(false);
+  protected readonly devolucionFormAbierto = signal(false);
+  protected readonly devolucionVenta = signal<VentaItem | null>(null);
+  protected readonly devolucionItems = signal<ItemDevolucionSeleccion[]>([]);
+  protected readonly devolucionMotivo = signal('defecto');
+  protected readonly devolucionTipo = signal('total');
+  protected readonly devolucionMetodo = signal('mismo_medio');
+  protected readonly devolucionObs = signal('');
+  protected readonly guardandoDevolucion = signal(false);
+  protected readonly errorDevolucion = signal('');
+  protected readonly filtroEstadoDevolucion = signal('');
+
+  protected readonly totalDevolucion = computed(() =>
+    this.devolucionItems()
+      .filter((i) => i.seleccionado)
+      .reduce((sum, i) => sum + i.precio_unitario * i.cantidad_devuelta, 0),
+  );
+
   protected cambiarVista(v: Vista): void {
     this.vista.set(v);
     if (v === 'reservas' && this.reservas().length === 0) void this.cargarReservas();
+    if (v === 'devoluciones') void this.cargarDevoluciones();
   }
 
   private async cargarReservas(): Promise<void> {
@@ -467,6 +532,155 @@ export class AdminVentas implements OnInit {
       this.guardandoVenta.set(false);
     }
   }
+
+  // ---------- Devoluciones (CU11) ----------
+
+  private async cargarDevoluciones(): Promise<void> {
+    this.cargandoDevoluciones.set(true);
+    try {
+      const params: Record<string, string> = {};
+      if (this.filtroEstadoDevolucion()) params['estado'] = this.filtroEstadoDevolucion();
+      const res = await firstValueFrom(
+        this.http.get<DevolucionItem[]>(`${environment.apiUrl}/devoluciones`, { params }),
+      );
+      this.devoluciones.set(res);
+    } catch {
+      this.devoluciones.set([]);
+    } finally {
+      this.cargandoDevoluciones.set(false);
+    }
+  }
+
+  protected filtrarDevoluciones(): void {
+    void this.cargarDevoluciones();
+  }
+
+  protected abrirDevolucionForm(venta: VentaItem): void {
+    this.devolucionVenta.set(venta);
+    this.devolucionItems.set(
+      venta.detalles.map((d) => ({
+        item_linea_id: d.id,
+        producto_nombre: d.producto_nombre,
+        talla_codigo: d.talla_codigo,
+        color_nombre: d.color_nombre,
+        cantidad_comprada: d.cantidad,
+        cantidad_devuelta: d.cantidad,
+        precio_unitario: Number(d.precio_unitario),
+        seleccionado: true,
+      })),
+    );
+    this.devolucionMotivo.set('defecto');
+    this.devolucionTipo.set('total');
+    this.devolucionMetodo.set('mismo_medio');
+    this.devolucionObs.set('');
+    this.errorDevolucion.set('');
+    this.devolucionFormAbierto.set(true);
+  }
+
+  protected cerrarDevolucionForm(): void {
+    this.devolucionFormAbierto.set(false);
+    this.devolucionVenta.set(null);
+  }
+
+  protected onDevolucionTipoChange(tipo: string): void {
+    this.devolucionTipo.set(tipo);
+    if (tipo === 'total') {
+      this.devolucionItems.update((items) =>
+        items.map((i) => ({ ...i, seleccionado: true, cantidad_devuelta: i.cantidad_comprada })),
+      );
+    }
+  }
+
+  protected toggleDevolucionItem(index: number): void {
+    this.devolucionItems.update((items) =>
+      items.map((i, idx) => (idx === index ? { ...i, seleccionado: !i.seleccionado } : i)),
+    );
+  }
+
+  protected actualizarCantidadDevolucion(index: number, cantidad: number): void {
+    this.devolucionItems.update((items) =>
+      items.map((i, idx) =>
+        idx === index ? { ...i, cantidad_devuelta: Math.min(Math.max(1, cantidad), i.cantidad_comprada) } : i,
+      ),
+    );
+  }
+
+  protected async confirmarDevolucion(): Promise<void> {
+    const venta = this.devolucionVenta();
+    if (!venta) return;
+
+    const itemsSeleccionados = this.devolucionItems().filter((i) => i.seleccionado);
+    if (itemsSeleccionados.length === 0) return;
+
+    this.guardandoDevolucion.set(true);
+    this.errorDevolucion.set('');
+    try {
+      await firstValueFrom(
+        this.http.post(`${environment.apiUrl}/devoluciones/${venta.id}`, {
+          motivo: this.devolucionMotivo(),
+          tipo: this.devolucionTipo(),
+          metodo_reembolso: this.devolucionMetodo(),
+          observaciones: this.devolucionObs() || null,
+          items: itemsSeleccionados.map((i) => ({
+            item_linea_id: i.item_linea_id,
+            cantidad_devuelta: i.cantidad_devuelta,
+          })),
+        }),
+      );
+      this.devolucionFormAbierto.set(false);
+      await this.load();
+      this.vista.set('devoluciones');
+      await this.cargarDevoluciones();
+    } catch (err) {
+      this.errorDevolucion.set(this.extraerError(err));
+    } finally {
+      this.guardandoDevolucion.set(false);
+    }
+  }
+
+  protected async completarDevolucion(dev: DevolucionItem): Promise<void> {
+    if (!confirm(`Completar la devolucion #${dev.id}? Esto reingresa el stock y reembolsa ${dev.monto_reembolso} Bs.`))
+      return;
+    this.procesando.set(dev.id);
+    this.error.set('');
+    try {
+      await firstValueFrom(this.http.post(`${environment.apiUrl}/devoluciones/${dev.id}/completar`, {}));
+      await this.cargarDevoluciones();
+      await this.load();
+    } catch (err) {
+      this.error.set(this.extraerError(err));
+    } finally {
+      this.procesando.set(null);
+    }
+  }
+
+  protected async rechazarDevolucion(dev: DevolucionItem): Promise<void> {
+    if (!confirm(`Rechazar la devolucion #${dev.id}?`)) return;
+    this.procesando.set(dev.id);
+    this.error.set('');
+    try {
+      await firstValueFrom(this.http.post(`${environment.apiUrl}/devoluciones/${dev.id}/rechazar`, {}));
+      await this.cargarDevoluciones();
+      await this.load();
+    } catch (err) {
+      this.error.set(this.extraerError(err));
+    } finally {
+      this.procesando.set(null);
+    }
+  }
+
+  protected readonly motivoLabels: Record<string, string> = {
+    defecto: 'Producto defectuoso',
+    talla_incorrecta: 'Talla incorrecta',
+    insatisfaccion: 'Insatisfaccion',
+    otro: 'Otro',
+  };
+
+  protected readonly metodoLabels: Record<string, string> = {
+    mismo_medio: 'Mismo medio de pago',
+    credito_tienda: 'Credito en tienda',
+    efectivo: 'Efectivo',
+  };
 
   private extraerError(err: unknown): string {
     if (err instanceof HttpErrorResponse) {

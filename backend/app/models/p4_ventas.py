@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -100,6 +100,7 @@ class Venta(Base):
     sucursal: Mapped["Sucursal"] = relationship(back_populates="ventas")
     pago: Mapped["Pago | None"] = relationship(back_populates="venta")
     calificacion: Mapped["Calificacion | None"] = relationship(back_populates="venta")
+    devoluciones: Mapped[list["Devolucion"]] = relationship(back_populates="venta", cascade="all, delete-orphan")
 
     __mapper_args__ = {
         "polymorphic_identity": "venta",
@@ -213,3 +214,47 @@ class Transaccion(Base):
     fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     pago: Mapped["Pago"] = relationship(back_populates="transaccion")
+
+
+class Devolucion(Base):
+    """CU11: devolucion total o parcial de una venta ya pagada. Un empleado
+    (Administrador/Encargado/Cajero) la procesa desde el panel de Gestion de
+    Ventas; al aprobarla y completarla se reingresa el stock al inventario y
+    se actualiza el estado de la venta a 'devuelto' o 'devuelto_parcial'."""
+
+    __tablename__ = "devolucion"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    venta_id: Mapped[int] = mapped_column(ForeignKey("venta.id"))
+    empleado_id: Mapped[int | None] = mapped_column(ForeignKey("empleado.id"), nullable=True)
+    motivo: Mapped[str] = mapped_column(String(30))
+    tipo: Mapped[str] = mapped_column(String(20))  # 'total' | 'parcial'
+    monto_reembolso: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    metodo_reembolso: Mapped[str] = mapped_column(String(30))  # 'mismo_medio' | 'credito_tienda' | 'efectivo'
+    # estados: solicitada -> aprobada -> completada | rechazada
+    estado: Mapped[str] = mapped_column(String(20), default="solicitada")
+    fecha_solicitud: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    fecha_resolucion: Mapped[datetime | None] = mapped_column(DateTime)
+    observaciones: Mapped[str | None] = mapped_column(Text)
+
+    venta: Mapped["Venta"] = relationship(back_populates="devoluciones")
+    empleado: Mapped["Empleado | None"] = relationship()
+    detalles: Mapped[list["DetalleDevolucion"]] = relationship(
+        back_populates="devolucion", cascade="all, delete-orphan"
+    )
+
+
+class DetalleDevolucion(Base):
+    """Items que se devuelven en una devolucion -- referencia al detalle
+    original de la venta (item_linea) para saber que producto/talla/color era,
+    y cuantas unidades de ese item se devuelven."""
+
+    __tablename__ = "detalle_devolucion"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    devolucion_id: Mapped[int] = mapped_column(ForeignKey("devolucion.id"))
+    item_linea_id: Mapped[int] = mapped_column(ForeignKey("item_linea.id"))
+    cantidad_devuelta: Mapped[int] = mapped_column()
+
+    devolucion: Mapped["Devolucion"] = relationship(back_populates="detalles")
+    item_linea: Mapped["ItemLinea"] = relationship()

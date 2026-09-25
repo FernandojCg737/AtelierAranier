@@ -45,6 +45,22 @@ interface VentaItem {
   calificacion_estrellas: number | null;
   calificacion_comentario: string | null;
   detalles: DetalleVentaItem[];
+  tiene_devolucion?: boolean;
+  estado_devolucion?: string | null;
+  monto_devolucion?: string | null;
+  puede_devolver?: boolean;
+  horas_restantes_devolucion?: number | null;
+}
+
+interface ItemDevolucionSeleccion {
+  item_linea_id: number;
+  producto_nombre: string;
+  talla_codigo: string;
+  color_nombre: string;
+  cantidad_comprada: number;
+  cantidad_devuelta: number;
+  precio_unitario: number;
+  seleccionado: boolean;
 }
 
 type Tab = 'resumen' | 'reservas' | 'compras' | 'pagos' | 'notificaciones' | 'datos' | 'seguridad';
@@ -200,6 +216,152 @@ export class Perfil implements OnInit {
       this.errorCalificacion.set(this.extractError(err));
     } finally {
       this.guardandoCalificacion.set(false);
+    }
+  }
+
+  // ---------- Solicitar Devolucion (CU11 - Cliente, 24 horas) ----------
+  protected readonly devolviendoVenta = signal<VentaItem | null>(null);
+  protected readonly itemsDevolucion = signal<ItemDevolucionSeleccion[]>([]);
+  protected readonly motivoDevolucion = signal<'defecto' | 'talla_incorrecta' | 'insatisfaccion' | 'otro'>('defecto');
+  protected readonly metodoReembolso = signal<'mismo_medio' | 'credito_tienda' | 'efectivo'>('mismo_medio');
+  protected readonly observacionesDevolucion = signal('');
+  protected readonly guardandoDevolucion = signal(false);
+  protected readonly errorDevolucion = signal('');
+  protected readonly exitoDevolucion = signal('');
+
+  protected readonly montoReembolsoTotal = computed(() => {
+    return this.itemsDevolucion()
+      .filter((i) => i.seleccionado)
+      .reduce((sum, i) => sum + i.precio_unitario * i.cantidad_devuelta, 0)
+      .toFixed(2);
+  });
+
+  protected readonly tieneItemsSeleccionados = computed(() => {
+    return this.itemsDevolucion().some((i) => i.seleccionado && i.cantidad_devuelta > 0);
+  });
+
+  protected estaEnPlazo24h(v: VentaItem): boolean {
+    if (v.puede_devolver !== undefined) {
+      return v.puede_devolver;
+    }
+    const fecha = new Date(v.fecha).getTime();
+    const diffHoras = (Date.now() - fecha) / (1000 * 60 * 60);
+    return diffHoras <= 24 && v.estado_pago === 'completado' && !v.tiene_devolucion;
+  }
+
+  protected horasRestantes(v: VentaItem): string {
+    if (v.horas_restantes_devolucion !== null && v.horas_restantes_devolucion !== undefined) {
+      const horas = Math.floor(v.horas_restantes_devolucion);
+      const minutos = Math.round((v.horas_restantes_devolucion - horas) * 60);
+      return `${horas}h ${minutos}m`;
+    }
+    const fecha = new Date(v.fecha).getTime();
+    const diffMs = fecha + 24 * 60 * 60 * 1000 - Date.now();
+    if (diffMs <= 0) return '0h';
+    const horas = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return `${horas}h ${minutos}m`;
+  }
+
+  protected abrirModalDevolucion(v: VentaItem): void {
+    this.devolviendoVenta.set(v);
+    this.errorDevolucion.set('');
+    this.exitoDevolucion.set('');
+    this.observacionesDevolucion.set('');
+    this.motivoDevolucion.set('defecto');
+    this.metodoReembolso.set('mismo_medio');
+    this.itemsDevolucion.set(
+      (v.detalles || []).map((d) => ({
+        item_linea_id: d.id,
+        producto_nombre: d.producto_nombre,
+        talla_codigo: d.talla_codigo,
+        color_nombre: d.color_nombre,
+        cantidad_comprada: d.cantidad,
+        cantidad_devuelta: d.cantidad,
+        precio_unitario: Number(d.precio_unitario) || 0,
+        seleccionado: true,
+      })),
+    );
+  }
+
+  protected cerrarModalDevolucion(): void {
+    this.devolviendoVenta.set(null);
+  }
+
+  protected toggleItemDevolucion(index: number): void {
+    this.itemsDevolucion.update((items) =>
+      items.map((item, idx) => (idx === index ? { ...item, seleccionado: !item.seleccionado } : item)),
+    );
+  }
+
+  protected setCantidadDevolucion(index: number, cantidad: number): void {
+    this.itemsDevolucion.update((items) =>
+      items.map((item, idx) => {
+        if (idx !== index) return item;
+        const cant = Math.max(1, Math.min(item.cantidad_comprada, cantidad));
+        return { ...item, cantidad_devuelta: cant };
+      }),
+    );
+  }
+
+  protected async enviarSolicitudDevolucion(): Promise<void> {
+    const venta = this.devolviendoVenta();
+    if (!venta) return;
+
+    const itemsAEnviar = this.itemsDevolucion()
+      .filter((i) => i.seleccionado && i.cantidad_devuelta > 0)
+      .map((i) => ({
+        item_linea_id: i.item_linea_id,
+        cantidad_devuelta: i.cantidad_devuelta,
+      }));
+
+    if (itemsAEnviar.length === 0) {
+      this.errorDevolucion.set('Debes seleccionar al menos un producto a devolver.');
+      return;
+    }
+
+    const todosCompletos = this.itemsDevolucion().every(
+      (i) => i.seleccionado && i.cantidad_devuelta === i.cantidad_comprada,
+    );
+    const tipo = todosCompletos ? 'total' : 'parcial';
+
+    this.guardandoDevolucion.set(true);
+    this.errorDevolucion.set('');
+
+    try {
+      await firstValueFrom(
+        this.http.post(`${environment.apiUrl}/devoluciones/solicitar/${venta.id}`, {
+          motivo: this.motivoDevolucion(),
+          tipo,
+          metodo_reembolso: this.metodoReembolso(),
+          observaciones: this.observacionesDevolucion() || null,
+          items: itemsAEnviar,
+        }),
+      );
+
+      this.exitoDevolucion.set('Tu solicitud de devolución fue enviada con éxito. Nuestro personal la revisará.');
+
+      // Actualizar estado reactivamente en compras()
+      this.compras.update((items) =>
+        items.map((it) =>
+          it.id === venta.id
+            ? {
+                ...it,
+                tiene_devolucion: true,
+                estado_devolucion: 'solicitada',
+                puede_devolver: false,
+              }
+            : it,
+        ),
+      );
+
+      setTimeout(() => {
+        this.cerrarModalDevolucion();
+      }, 1800);
+    } catch (err) {
+      this.errorDevolucion.set(this.extractError(err));
+    } finally {
+      this.guardandoDevolucion.set(false);
     }
   }
 

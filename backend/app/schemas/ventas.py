@@ -55,6 +55,12 @@ class VentaOut(BaseModel):
     calificacion_estrellas: int | None
     calificacion_comentario: str | None
     detalles: list[DetalleVentaOut]
+    # CU11: info de devolucion (si tiene)
+    tiene_devolucion: bool = False
+    estado_devolucion: str | None = None
+    monto_devolucion: Decimal | None = None
+    puede_devolver: bool = False
+    horas_restantes_devolucion: float | None = None
 
     @field_serializer("fecha")
     def _serialize_fecha(self, value: datetime) -> str:
