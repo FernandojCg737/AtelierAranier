@@ -538,12 +538,6 @@
   }
 }
 
-.ventas-obs {
-  font-size: 11px;
-  color: #999;
-  cursor: help;
-}
-
 .admin-badge {
   &--solicitada {
     background: #fff4e0;
@@ -562,3 +556,156 @@
     color: #b3261e;
   }
 }
+
+.devolucion-ver-modal {
+  max-width: 680px;
+  width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.devolucion-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+
+  h2 {
+    margin: 0 0 4px;
+    font-size: 20px;
+    color: var(--brand-dark);
+  }
+
+  .admin-badge {
+    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 700;
+  }
+}
+
+.devolucion-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.devolucion-info-card {
+  background: #f9f9f9;
+  border: 1px solid #ebebeb;
+  padding: 14px 16px;
+
+  h4 {
+    margin: 0 0 10px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--brand-dark);
+  }
+
+  p {
+    margin: 0 0 6px;
+    font-size: 13px;
+    color: #444;
+
+    strong {
+      color: #222;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.devolucion-monto-resaltado {
+  font-weight: 800;
+  color: #2e7d32;
+  font-size: 14px;
+}
+
+.devolucion-seccion-items {
+  margin-bottom: 20px;
+
+  h4 {
+    margin: 0 0 10px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--brand-dark);
+  }
+}
+
+.devolucion-tabla-wrap {
+  border: 1px solid #eee;
+  overflow-x: auto;
+}
+
+.devolucion-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    background: #fafafa;
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #777;
+    border-bottom: 1px solid #eee;
+  }
+
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f2f2f2;
+    color: #333;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.devolucion-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #f0f0f0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+  border-radius: 4px;
+}
+
+.devolucion-obs-box {
+  background: #fffcf5;
+  border: 1px solid #fae1c3;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+
+  h4 {
+    margin: 0 0 4px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #b26a00;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: #664d03;
+    white-space: pre-wrap;
+  }
+}
+

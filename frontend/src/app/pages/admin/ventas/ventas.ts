@@ -193,6 +193,7 @@ export class AdminVentas implements OnInit {
   protected readonly guardandoDevolucion = signal(false);
   protected readonly errorDevolucion = signal('');
   protected readonly filtroEstadoDevolucion = signal('');
+  protected readonly devolucionVerModal = signal<DevolucionItem | null>(null);
 
   protected readonly totalDevolucion = computed(() =>
     this.devolucionItems()
@@ -660,6 +661,37 @@ export class AdminVentas implements OnInit {
     this.error.set('');
     try {
       await firstValueFrom(this.http.post(`${environment.apiUrl}/devoluciones/${dev.id}/rechazar`, {}));
+      await this.cargarDevoluciones();
+      await this.load();
+    } catch (err) {
+      this.error.set(this.extraerError(err));
+    } finally {
+      this.procesando.set(null);
+    }
+  }
+
+  protected verDevolucion(dev: DevolucionItem): void {
+    this.devolucionVerModal.set(dev);
+  }
+
+  protected cerrarVerDevolucion(): void {
+    this.devolucionVerModal.set(null);
+  }
+
+  protected async eliminarDevolucion(dev: DevolucionItem): Promise<void> {
+    const aviso =
+      dev.estado === 'completada'
+        ? `¿Estás seguro de ELIMINAR la devolución #${dev.id}?\n\nADVERTENCIA: Esta devolución ya fue completada. Al eliminarla, se revertirá el reingreso de stock en inventario y la venta #${dev.venta_id} volverá a estar 'pagada'.`
+        : `¿Estás seguro de eliminar el registro de devolución #${dev.id}?`;
+    if (!confirm(aviso)) return;
+
+    this.procesando.set(dev.id);
+    this.error.set('');
+    try {
+      await firstValueFrom(this.http.delete(`${environment.apiUrl}/devoluciones/${dev.id}`));
+      if (this.devolucionVerModal()?.id === dev.id) {
+        this.cerrarVerDevolucion();
+      }
       await this.cargarDevoluciones();
       await this.load();
     } catch (err) {

@@ -528,3 +528,84 @@ def rechazar_devolucion(
 
     dev = _query_devolucion(db).filter(Devolucion.id == dev.id).first()
     return _to_admin_out(dev, db)
+
+
+@router.delete("/{devolucion_id}")
+def eliminar_devolucion(
+    devolucion_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(require_permiso("CU11")),
+):
+    """Elimina una devolucion. Si la devolucion estaba completada, se revierte
+    el reingreso de stock en el inventario y se restaura el estado de la venta
+    a 'pagada'. Registra la accion en la bitacora."""
+    empleado = _get_empleado_o_403(db, usuario)
+
+    dev = _query_devolucion(db).filter(Devolucion.id == devolucion_id).first()
+    if dev is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Devolucion no encontrada.")
+
+    venta = dev.venta
+    estado_previo = dev.estado
+
+    # Si estaba completada, revertir el reingreso de stock en la sucursal de la venta
+    if estado_previo == "completada":
+        sucursal_id = venta.sucursal_id
+        for detalle in dev.detalles:
+            item = detalle.item_linea
+            inventario = (
+                db.query(Inventario)
+                .filter(
+                    Inventario.producto_id == item.producto_id,
+                    Inventario.talla_id == item.talla_id,
+                    Inventario.color_id == item.color_id,
+                    Inventario.sucursal_id == sucursal_id,
+                )
+                .first()
+            )
+            if inventario is not None:
+                inventario.cantidad = max(0, inventario.cantidad - detalle.cantidad_devuelta)
+                db.flush()
+                db.execute(
+                    text(
+                        "INSERT INTO movimiento_inventario "
+                        "(inventario_id, empleado_id, tipo, cantidad, fecha, documento_referencia) "
+                        "VALUES (:inv_id, :emp_id, 'salida', :cant, now(), :doc)"
+                    ),
+                    {
+                        "inv_id": inventario.id,
+                        "emp_id": empleado.id,
+                        "cant": detalle.cantidad_devuelta,
+                        "doc": f"Reversion Devolucion #{dev.id} de venta #{venta.id}",
+                    },
+                )
+
+        # Restaurar venta a 'pagada' si no existen otras devoluciones completadas
+        otras_completadas = (
+            db.query(Devolucion)
+            .filter(
+                Devolucion.venta_id == venta.id,
+                Devolucion.id != dev.id,
+                Devolucion.estado == "completada",
+            )
+            .first()
+        )
+        if not otras_completadas:
+            venta.estado = "pagada"
+
+    db.delete(dev)
+    db.commit()
+
+    log_bitacora(
+        db,
+        usuario,
+        "ELIMINAR",
+        "devolucion",
+        devolucion_id,
+        f"Devolucion #{devolucion_id} (estado previo: {estado_previo}) eliminada para venta #{venta.id}",
+        request,
+    )
+
+    return {"message": f"Devolucion #{devolucion_id} eliminada exitosamente."}
+

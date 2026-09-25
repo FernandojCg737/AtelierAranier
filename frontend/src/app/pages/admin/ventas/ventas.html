@@ -264,6 +264,9 @@
                 <td>{{ d.empleado_nombre }}</td>
                 <td>
                   <div class="ventas-acciones">
+                    <button type="button" class="is-secondary" (click)="verDevolucion(d)">
+                      Ver
+                    </button>
                     @if (d.estado === 'solicitada') {
                       <button type="button" [disabled]="procesando() === d.id" (click)="completarDevolucion(d)">
                         Aprobar
@@ -272,9 +275,9 @@
                         Rechazar
                       </button>
                     }
-                    @if (d.observaciones) {
-                      <span class="ventas-obs" title="{{ d.observaciones }}">📝 Nota</span>
-                    }
+                    <button type="button" class="is-danger" [disabled]="procesando() === d.id" (click)="eliminarDevolucion(d)">
+                      Eliminar
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -521,6 +524,108 @@
             (click)="confirmarDevolucion()"
           >
             {{ guardandoDevolucion() ? 'Registrando...' : 'Registrar devolucion' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (devolucionVerModal(); as dev) {
+    <div class="ventas-overlay" (click)="cerrarVerDevolucion()">
+      <div class="ventas-modal devolucion-ver-modal" (click)="$event.stopPropagation()">
+        <div class="devolucion-modal-header">
+          <div>
+            <h2>Detalle de Devolución #{{ dev.id }}</h2>
+            <p class="ventas-modal__subtitulo">
+              Asociada a la venta <strong>#{{ dev.venta_id }}</strong> · Sucursal <strong>{{ dev.sucursal_nombre }}</strong>
+            </p>
+          </div>
+          <span class="admin-badge admin-badge--{{ dev.estado }}">{{ dev.estado }}</span>
+        </div>
+
+        <div class="devolucion-info-grid">
+          <div class="devolucion-info-card">
+            <h4>Información del Cliente</h4>
+            <p><strong>Nombre:</strong> {{ dev.cliente_nombre }}</p>
+            <p><strong>Email:</strong> {{ dev.cliente_email }}</p>
+            <p><strong>Total de la Venta:</strong> {{ dev.venta_total }} Bs</p>
+            <p><strong>Fecha de Compra:</strong> {{ dev.venta_fecha | date: "d MMM yyyy, h:mm a" : '-0400' }}</p>
+          </div>
+          <div class="devolucion-info-card">
+            <h4>Datos de la Devolución</h4>
+            <p><strong>Tipo:</strong> {{ dev.tipo === 'total' ? 'Devolución Total' : 'Devolución Parcial' }}</p>
+            <p><strong>Motivo:</strong> {{ motivoLabels[dev.motivo] ?? dev.motivo }}</p>
+            <p><strong>Método de Reembolso:</strong> {{ metodoLabels[dev.metodo_reembolso] ?? dev.metodo_reembolso }}</p>
+            <p><strong>Monto a Reembolsar:</strong> <span class="devolucion-monto-resaltado">{{ dev.monto_reembolso }} Bs</span></p>
+            <p><strong>Fecha Solicitud:</strong> {{ dev.fecha_solicitud | date: "d MMM yyyy, h:mm a" : '-0400' }}</p>
+            @if (dev.fecha_resolucion) {
+              <p><strong>Fecha Resolución:</strong> {{ dev.fecha_resolucion | date: "d MMM yyyy, h:mm a" : '-0400' }}</p>
+            }
+            <p><strong>Atendido por:</strong> {{ dev.empleado_nombre || 'Sin asignar' }}</p>
+          </div>
+        </div>
+
+        <div class="devolucion-seccion-items">
+          <h4>Prendas / Productos Devueltos</h4>
+          <div class="devolucion-tabla-wrap">
+            <table class="devolucion-tabla">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Variante</th>
+                  <th>Cant. Devuelta</th>
+                  <th>Precio Unit.</th>
+                  <th>Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (det of dev.detalles; track det.id) {
+                  <tr>
+                    <td><strong>{{ det.producto_nombre }}</strong></td>
+                    <td><span class="devolucion-chip">{{ det.talla_codigo }} · {{ det.color_nombre }}</span></td>
+                    <td>{{ det.cantidad_devuelta }}</td>
+                    <td>{{ det.precio_unitario }} Bs</td>
+                    <td><strong>{{ (+det.precio_unitario * det.cantidad_devuelta) | number: '1.2-2' }} Bs</strong></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        @if (dev.observaciones) {
+          <div class="devolucion-obs-box">
+            <h4>Observaciones</h4>
+            <p>{{ dev.observaciones }}</p>
+          </div>
+        }
+
+        <div class="ventas-modal__acciones">
+          <button type="button" class="is-secondary" (click)="cerrarVerDevolucion()">Cerrar</button>
+          @if (dev.estado === 'solicitada') {
+            <button
+              type="button"
+              class="is-danger"
+              [disabled]="procesando() === dev.id"
+              (click)="rechazarDevolucion(dev)"
+            >
+              Rechazar
+            </button>
+            <button
+              type="button"
+              [disabled]="procesando() === dev.id"
+              (click)="completarDevolucion(dev)"
+            >
+              Aprobar
+            </button>
+          }
+          <button
+            type="button"
+            class="is-danger"
+            [disabled]="procesando() === dev.id"
+            (click)="eliminarDevolucion(dev)"
+          >
+            Eliminar
           </button>
         </div>
       </div>
