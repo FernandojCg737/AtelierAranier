@@ -129,6 +129,18 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     });
   }
 
+  void _abrirSolicitarDevolucion(Venta v) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _SolicitarDevolucionSheet(
+        venta: v,
+        onSuccess: _cargarCompras,
+      ),
+    );
+  }
+
   Future<void> _enviarCalificacion(Venta v) async {
     if (_estrellas < 1) return;
     setState(() {
@@ -433,6 +445,58 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                   ),
                 if (v.completada) ...[
                   const Divider(height: 24),
+                  if (v.tieneDevolucion) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF4E0),
+                        border: Border.all(color: const Color(0xFFF6C87D)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.assignment_return_outlined, size: 16, color: Color(0xFFB26A00)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'DEVOLUCIÓN: ${(v.estadoDevolucion ?? "solicitada").toUpperCase()}',
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: Color(0xFFB26A00), letterSpacing: 0.5),
+                            ),
+                          ),
+                          if (v.montoDevolucion != null)
+                            Text(
+                              '${v.montoDevolucion!.toStringAsFixed(2)} Bs',
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Color(0xFFB26A00)),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ] else if (v.puedeDevolver) ...[
+                    OutlinedButton.icon(
+                      onPressed: () => _abrirSolicitarDevolucion(v),
+                      icon: const Icon(Icons.assignment_return_outlined, size: 16, color: Color(0xFFA05E03)),
+                      label: Text(
+                        'SOLICITAR DEVOLUCIÓN (${v.tiempoRestanteDevolucion})',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFA05E03)),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFF8EB),
+                        side: const BorderSide(color: Color(0xFFF6C87D)),
+                        shape: const RoundedRectangleBorder(),
+                        minimumSize: const Size.fromHeight(38),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ] else ...[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        'Plazo de devolución vencido (24h)',
+                        style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.grayText),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
                   if (v.calificada)
                     _EstrellasVista(estrellas: v.calificacionEstrellas!, comentario: v.calificacionComentario)
                   else if (_calificandoVentaId == v.id)
@@ -638,8 +702,10 @@ String _fmtFecha(DateTime d) =>
   switch (estado) {
     case 'pendiente':
     case 'verificando':
+    case 'solicitada':
       return (const Color(0xFFB26A00), const Color(0xFFFFF4E0));
     case 'rechazado':
+    case 'rechazada':
     case 'cancelada':
     case 'vencida':
       return (AppColors.danger, AppColors.dangerBg);
@@ -1031,4 +1097,369 @@ class _SuccessBanner extends StatelessWidget {
     color: AppColors.successBg,
     child: Text(message, style: const TextStyle(color: AppColors.success, fontSize: 13)),
   );
+}
+
+class _SolicitarDevolucionSheet extends ConsumerStatefulWidget {
+  const _SolicitarDevolucionSheet({
+    required this.venta,
+    required this.onSuccess,
+  });
+
+  final Venta venta;
+  final VoidCallback onSuccess;
+
+  @override
+  ConsumerState<_SolicitarDevolucionSheet> createState() => _SolicitarDevolucionSheetState();
+}
+
+class _SolicitarDevolucionSheetState extends ConsumerState<_SolicitarDevolucionSheet> {
+  late Map<int, bool> _seleccionados;
+  late Map<int, int> _cantidades;
+  String _motivo = 'defecto';
+  String _metodoReembolso = 'mismo_medio';
+  final _obsCtrl = TextEditingController();
+  bool _guardando = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _seleccionados = {for (final d in widget.venta.detalles) d.id: true};
+    _cantidades = {for (final d in widget.venta.detalles) d.id: d.cantidad};
+  }
+
+  @override
+  void dispose() {
+    _obsCtrl.dispose();
+    super.dispose();
+  }
+
+  double get _montoTotal {
+    double total = 0.0;
+    for (final d in widget.venta.detalles) {
+      if (_seleccionados[d.id] == true) {
+        total += d.precioUnitario * (_cantidades[d.id] ?? d.cantidad);
+      }
+    }
+    return total;
+  }
+
+  bool get _haySeleccionados {
+    return widget.venta.detalles.any((d) => _seleccionados[d.id] == true && (_cantidades[d.id] ?? 0) > 0);
+  }
+
+  Future<void> _confirmar() async {
+    final items = widget.venta.detalles
+        .where((d) => _seleccionados[d.id] == true && (_cantidades[d.id] ?? 0) > 0)
+        .map((d) => {
+              'item_linea_id': d.id,
+              'cantidad_devuelta': _cantidades[d.id] ?? d.cantidad,
+            })
+        .toList();
+
+    if (items.isEmpty) {
+      setState(() => _error = 'Debes seleccionar al menos una prenda a devolver.');
+      return;
+    }
+
+    final todos = widget.venta.detalles.every(
+      (d) => _seleccionados[d.id] == true && (_cantidades[d.id] ?? 0) == d.cantidad,
+    );
+    final tipo = todos ? 'total' : 'parcial';
+
+    setState(() {
+      _guardando = true;
+      _error = null;
+    });
+
+    try {
+      await ref.read(ventasRepositoryProvider).solicitarDevolucion(
+            ventaId: widget.venta.id,
+            motivo: _motivo,
+            tipo: tipo,
+            metodoReembolso: _metodoReembolso,
+            observaciones: _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
+            items: items,
+          );
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tu solicitud de devolución fue enviada con éxito.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      widget.onSuccess();
+    } catch (e) {
+      if (mounted) setState(() => _error = extractErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _guardando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.brandWhite,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.88,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'SOLICITAR DEVOLUCIÓN',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.brandDark,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Compra #${widget.venta.id} · Plazo de 24 horas',
+                        style: const TextStyle(fontSize: 12, color: AppColors.grayTextDark),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFF8EB),
+                      border: Border(left: BorderSide(color: Color(0xFFF59E0B), width: 4)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.access_time, size: 18, color: Color(0xFFD97706)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Ventana de 24h activa: Te quedan ${widget.venta.tiempoRestanteDevolucion} para solicitar devolución. Marca las prendas a devolver.',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF854D0E), height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_error != null) ...[
+                    _ErrorBanner(_error!),
+                    const SizedBox(height: 10),
+                  ],
+                  const Text(
+                    'PRENDAS A DEVOLVER:',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.grayText, letterSpacing: 0.5),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final d in widget.venta.detalles) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: _seleccionados[d.id] == true ? AppColors.brandDark : AppColors.grayBorderLight,
+                        ),
+                        color: _seleccionados[d.id] == true ? const Color(0xFFFAFAFA) : AppColors.brandWhite,
+                      ),
+                      child: Row(
+                        children: [
+                          Checkbox(
+                            value: _seleccionados[d.id] ?? false,
+                            activeColor: AppColors.brandDark,
+                            onChanged: (val) {
+                              setState(() => _seleccionados[d.id] = val ?? false);
+                            },
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  d.productoNombre,
+                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.brandDark),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${d.tallaCodigo} · ${d.colorNombre} · ${d.precioUnitario.toStringAsFixed(2)} Bs c/u',
+                                  style: const TextStyle(fontSize: 11, color: AppColors.grayTextDark),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_seleccionados[d.id] == true)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline, size: 20),
+                                  onPressed: (_cantidades[d.id] ?? d.cantidad) > 1
+                                      ? () {
+                                          setState(() => _cantidades[d.id] = (_cantidades[d.id] ?? d.cantidad) - 1);
+                                        }
+                                      : null,
+                                ),
+                                Text(
+                                  '${_cantidades[d.id] ?? d.cantidad}/${d.cantidad}',
+                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.add_circle_outline, size: 20),
+                                  onPressed: (_cantidades[d.id] ?? d.cantidad) < d.cantidad
+                                      ? () {
+                                          setState(() => _cantidades[d.id] = (_cantidades[d.id] ?? d.cantidad) + 1);
+                                        }
+                                      : null,
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  const Text(
+                    'MOTIVO DE LA DEVOLUCIÓN',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.grayText, letterSpacing: 0.5),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: _motivo,
+                    decoration: const InputDecoration(
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'defecto', child: Text('Defecto de fábrica o costura')),
+                      DropdownMenuItem(value: 'talla_incorrecta', child: Text('Talla no me quedó / Talla equivocada')),
+                      DropdownMenuItem(value: 'insatisfaccion', child: Text('No cumple expectativas / Insatisfacción')),
+                      DropdownMenuItem(value: 'otro', child: Text('Otro motivo')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setState(() => _motivo = val);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'MÉTODO DE REEMBOLSO PREFERIDO',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.grayText, letterSpacing: 0.5),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: _metodoReembolso,
+                    decoration: const InputDecoration(
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'mismo_medio', child: Text('Mismo medio de pago original')),
+                      DropdownMenuItem(value: 'credito_tienda', child: Text('Crédito en tienda / Vale para compras')),
+                      DropdownMenuItem(value: 'efectivo', child: Text('Efectivo en sucursal de retiro')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setState(() => _metodoReembolso = val);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'OBSERVACIONES (OPCIONAL)',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.grayText, letterSpacing: 0.5),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _obsCtrl,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      hintText: 'Cuéntanos brevemente qué ocurrió con las prendas...',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    color: const Color(0xFFF7F7F7),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total a reembolsar:',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.brandCharcoal),
+                        ),
+                        Text(
+                          '${_montoTotal.toStringAsFixed(2)} Bs',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.brandDark),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _guardando ? null : () => Navigator.of(context).pop(),
+                          style: OutlinedButton.styleFrom(
+                            shape: const RoundedRectangleBorder(),
+                            minimumSize: const Size.fromHeight(44),
+                          ),
+                          child: const Text('CANCELAR'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: (!_haySeleccionados || _guardando) ? null : _confirmar,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.brandDark,
+                            foregroundColor: AppColors.brandWhite,
+                            shape: const RoundedRectangleBorder(),
+                            minimumSize: const Size.fromHeight(44),
+                          ),
+                          child: Text(
+                            _guardando ? 'ENVIANDO...' : 'CONFIRMAR SOLICITUD',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

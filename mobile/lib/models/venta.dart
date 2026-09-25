@@ -40,6 +40,11 @@ class Venta {
     required this.detalles,
     this.calificacionEstrellas,
     this.calificacionComentario,
+    this.tieneDevolucion = false,
+    this.estadoDevolucion,
+    this.montoDevolucion,
+    this.puedeDevolver = false,
+    this.horasRestantesDevolucion,
   });
 
   final int id;
@@ -52,9 +57,27 @@ class Venta {
   final List<DetalleVenta> detalles;
   final int? calificacionEstrellas;
   final String? calificacionComentario;
+  final bool tieneDevolucion;
+  final String? estadoDevolucion; // solicitada | completada | rechazada
+  final double? montoDevolucion;
+  final bool puedeDevolver;
+  final double? horasRestantesDevolucion;
 
   bool get completada => estadoPago == 'completado';
   bool get calificada => calificacionEstrellas != null;
+
+  String get tiempoRestanteDevolucion {
+    if (horasRestantesDevolucion != null) {
+      final h = horasRestantesDevolucion!.floor();
+      final m = ((horasRestantesDevolucion! - h) * 60).round();
+      return '${h}h ${m}m';
+    }
+    final diffMs = fecha.toUtc().add(const Duration(hours: 24)).difference(DateTime.now().toUtc()).inMinutes;
+    if (diffMs <= 0) return '0h';
+    final h = diffMs ~/ 60;
+    final m = diffMs % 60;
+    return '${h}h ${m}m';
+  }
 
   factory Venta.fromJson(Map<String, dynamic> json) {
     return Venta(
@@ -68,6 +91,11 @@ class Venta {
       detalles: (json['detalles'] as List<dynamic>).map((e) => DetalleVenta.fromJson(e as Map<String, dynamic>)).toList(),
       calificacionEstrellas: json['calificacion_estrellas'] as int?,
       calificacionComentario: json['calificacion_comentario'] as String?,
+      tieneDevolucion: json['tiene_devolucion'] as bool? ?? false,
+      estadoDevolucion: json['estado_devolucion'] as String?,
+      montoDevolucion: json['monto_devolucion'] != null ? num.parse(json['monto_devolucion'].toString()).toDouble() : null,
+      puedeDevolver: json['puede_devolver'] as bool? ?? false,
+      horasRestantesDevolucion: json['horas_restantes_devolucion'] != null ? num.parse(json['horas_restantes_devolucion'].toString()).toDouble() : null,
     );
   }
 }

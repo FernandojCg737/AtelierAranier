@@ -103,6 +103,27 @@ class VentasRepository {
   Future<void> calificar({required int ventaId, required int estrellas, String? comentario}) {
     return _dio.post('/calificaciones/venta/$ventaId', data: {'estrellas': estrellas, 'comentario': comentario});
   }
+
+  // CU11: solicitar devolucion total o parcial de una compra (plazo 24h)
+  Future<void> solicitarDevolucion({
+    required int ventaId,
+    required String motivo,
+    required String tipo,
+    required String metodoReembolso,
+    String? observaciones,
+    required List<Map<String, dynamic>> items,
+  }) {
+    return _dio.post(
+      '/devoluciones/solicitar/$ventaId',
+      data: {
+        'motivo': motivo,
+        'tipo': tipo,
+        'metodo_reembolso': metodoReembolso,
+        'observaciones': observaciones,
+        'items': items,
+      },
+    );
+  }
 }
 
 final ventasRepositoryProvider = Provider<VentasRepository>((ref) {
